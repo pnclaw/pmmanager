@@ -14,12 +14,10 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-build
 
 WORKDIR /app
 
-# Restore dependencies first (layer cache friendly)
-COPY src/PrnMediamanager.Api/*.csproj ./
-RUN dotnet restore
+RUN --mount=type=bind,rw,source=src/PrnMediamanager.Api,target=/app \
+    dotnet publish -c Release -o /tmp/publish
 
-COPY src/PrnMediamanager.Api/ ./
-RUN dotnet publish -c Release -o /app/publish --no-restore
+RUN cp -r /tmp/publish/. /app/publish
 
 # ─── Stage 3: Runtime image ──────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
