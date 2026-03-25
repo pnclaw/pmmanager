@@ -1,6 +1,6 @@
 # pmmanager
 private media manager
 
-## About
+## About this project
 
 tbd
