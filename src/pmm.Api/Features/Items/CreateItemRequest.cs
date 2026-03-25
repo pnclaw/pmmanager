@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace PrnMediamanager.Api.Features.Items;
+namespace pmm.Api.Features.Items;
 
 public class CreateItemRequest
 {

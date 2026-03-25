@@ -3,10 +3,10 @@ FROM node:22-alpine AS frontend-build
 
 WORKDIR /frontend
 
-COPY src/PrnMediamanager.Frontend/package*.json ./
+COPY src/pmm.Frontend/package*.json ./
 RUN npm ci
 
-COPY src/PrnMediamanager.Frontend/ ./
+COPY src/pmm.Frontend/ ./
 RUN npm run build
 
 # ─── Stage 2: Build .NET backend ─────────────────────────────────────────────
@@ -14,10 +14,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-build
 
 WORKDIR /app
 
-RUN --mount=type=bind,rw,source=src/PrnMediamanager.Api,target=/app \
-    dotnet publish -c Release -o /tmp/publish
-
-RUN cp -r /tmp/publish/. /app/publish
+COPY src/ ./src/
+RUN dotnet publish ./src/pmm.Api/pmm.Api.csproj -c Release -o /app/publish
 
 # ─── Stage 3: Runtime image ──────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
@@ -41,4 +39,4 @@ ENV ASPNETCORE_URLS=http://+:8080
 
 EXPOSE 8080
 
-ENTRYPOINT ["dotnet", "PrnMediamanager.Api.dll"]
+ENTRYPOINT ["dotnet", "pmm.Api.dll"]

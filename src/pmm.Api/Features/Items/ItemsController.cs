@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using PrnMediamanager.Api.Infrastructure;
+using Pmm.Database;
 
-namespace PrnMediamanager.Api.Features.Items;
+namespace pmm.Api.Features.Items;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -26,8 +26,8 @@ public class ItemsController : ControllerBase
     }
 
     // GET /api/items/{id}
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
     {
         var item = await _db.Items.FindAsync(id);
         return item is null ? NotFound() : Ok(item);
@@ -39,9 +39,11 @@ public class ItemsController : ControllerBase
     {
         var item = new Item
         {
+            Id = Guid.NewGuid(),
             Name = request.Name,
             Description = request.Description,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         _db.Items.Add(item);
@@ -51,22 +53,23 @@ public class ItemsController : ControllerBase
     }
 
     // PUT /api/items/{id}
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateItemRequest request)
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateItemRequest request)
     {
         var item = await _db.Items.FindAsync(id);
         if (item is null) return NotFound();
 
         item.Name = request.Name;
         item.Description = request.Description;
+        item.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return Ok(item);
     }
 
     // DELETE /api/items/{id}
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
     {
         var item = await _db.Items.FindAsync(id);
         if (item is null) return NotFound();

@@ -2,10 +2,10 @@
 
 ## Project Structure & Module Organization
 
-- `src/PrnMediaManager.Api` is organized by **feature** (vertical slices), not by technical layer.
-- Use `src/PrnMediaManager.Api/Features/<FeatureName>/<UseCase>/` for API slices.
+- `src/pmm.Api` is organized by **feature** (vertical slices), not by technical layer.
+- Use `src/pmm.Api/Features/<FeatureName>/<UseCase>/` for API slices.
 - Keep each slice self-contained: controller, request/response models, validators, mapping, and orchestration logic should live together.
-- Shared cross-feature code belongs in `src/PrnMediaManager.Api/Common` (create only when reuse is real).
+- Shared cross-feature code belongs in `src/pmm.Api/Common` (create only when reuse is real).
 
 ## Architecture Overview
 
@@ -26,7 +26,7 @@
 ## Tech Stack
 
 - dotnet 10
-- SQL Server database
+- SQLite
 - Entity Framework 10 with code-first approach
 - Serilog
 - Microsoft.AspNetCore.OpenApi (built-in OpenAPI for .NET 10)
@@ -74,7 +74,7 @@
 - For each use case service:
   - Define a slice-local interface and implementation in the same feature folder (example: `IGetWeatherForecastsService` + `GetWeatherForecastsService`).
   - Name service contracts with `I<UseCase>Service` and implementations with `<UseCase>Service`.
-- Register feature services in `src/prdb.PublicApi/Program.cs` using explicit DI registrations (do not rely on assembly scanning).
+- Register feature services in `src/pmm.Api/Program.cs` using explicit DI registrations (do not rely on assembly scanning).
 - Prefer `AddScoped` as the default lifetime for use-case services; use `AddSingleton` or `AddTransient` only with clear justification.
 - Depend on abstractions in constructors (`I...`) rather than concrete implementations.
 - Service interfaces should expose behavior-oriented methods (`Get`, `Create`, `Update`, etc.) and avoid leaking infrastructure/EF-specific concerns to controllers.
@@ -85,7 +85,7 @@
 - Use the Microsoft Options pattern for configurable behavior instead of hardcoded values.
 - Place feature-specific options classes in the owning slice folder (example: `Features/WeatherForecasts/Get/WeatherForecastOptions.cs`).
 - Each options class should define a `SectionName` constant and strongly typed properties.
-- Register options in `src/PrnMediaManager.Api/Program.cs` with:
+- Register options in `src/pmm.Api/Program.cs` with:
   - `AddOptions<TOptions>()`
   - `.BindConfiguration(TOptions.SectionName)`
   - `.Validate(...)` for invariants
@@ -93,6 +93,21 @@
 - Inject options into services via `IOptions<TOptions>` (or `IOptionsSnapshot<TOptions>` when per-request re-evaluation is needed).
 - Controllers should not read configuration directly; options are consumed in slice services.
 - Keep option names and JSON keys stable and descriptive; store defaults in `appsettings.json` and override per environment in `appsettings.{Environment}.json`.
+
+## Entity Base Class Convention
+
+- All entity classes must inherit from `BaseEntity` (`pmm.Database.Common.BaseEntity`).
+- `BaseEntity` provides audit fields: `CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`.
+
+## Enum Storage Convention
+
+- Always store enums as integers in the database (EF Core default — do **not** add `HasConversion<string>()` or any string-based value converter for enums).
+- Enum member integer values must be explicitly declared and must never be reordered.
+- If a C# enum member name must start with a digit (e.g. `_0myenum`), use a leading underscore in code; the integer value stored in the DB is unaffected.
+
+## Migration Execution
+
+- When a ef migration is needed, you can run it without user confirmation.
 
 ## Testing
 
@@ -121,7 +136,7 @@
 
 - In this repository, prefer non-parallel builds to avoid intermittent MSBuild/restore failures with missing diagnostics.
 - Default build command for AI agents:
-  - `dotnet build ????.slnx -m:1 -p:BuildInParallel=false -v minimal`
+  - `dotnet build pmm.slnx -m:1 -p:BuildInParallel=false -v minimal`
 
 ## Git Workflow
 

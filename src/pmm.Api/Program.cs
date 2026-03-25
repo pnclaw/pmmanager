@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using PrnMediamanager.Api.Infrastructure;
+using Pmm.Database;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);

@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using PrnMediamanager.Api.Features.Items;
 
-namespace PrnMediamanager.Api.Infrastructure;
+namespace Pmm.Database;
 
 public class AppDbContext : DbContext
 {

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace PrnMediamanager.Api.Features.Health;
+namespace pmm.Api.Features.Health;
 
 [ApiController]
 [Route("api/[controller]")]

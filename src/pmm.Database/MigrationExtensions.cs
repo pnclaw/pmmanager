@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace PrnMediamanager.Api.Infrastructure;
+namespace Pmm.Database;
 
 public static class MigrationExtensions
 {
