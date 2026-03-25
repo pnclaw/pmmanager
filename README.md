@@ -13,7 +13,26 @@ A self-hosted private media manager built with .NET 10 and Vue 3.
 
 ## Getting Started
 
-### Docker (recommended)
+### Docker Hub (recommended)
+
+```bash
+docker run -d \
+  -p 8080:8080 \
+  -v pmm-data:/app/data \
+  -v pmm-logs:/app/logs \
+  --restart unless-stopped \
+  pnclaw/pmmanager:latest
+```
+
+App runs at [http://localhost:8080](http://localhost:8080). Data is persisted in the `pmm-data` volume.
+
+To use a specific version instead of `latest`:
+
+```bash
+docker run -d ... pnclaw/pmmanager:1.0.0
+```
+
+### Docker Compose
 
 ```bash
 docker-compose up
