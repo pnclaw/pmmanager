@@ -61,3 +61,38 @@ TestResults/
 
 # Agent skills (generic multi-agent install location — developer-local)
 .agents/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vite / Vue build output
+dist/
+dist-ssr/
+*.local
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Environment files (may contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+screenshots/
+
+# Docker volumes (local data)
+data/
+
+# macOS
+.DS_Store
+
+# JetBrains IDEs
+.idea/
