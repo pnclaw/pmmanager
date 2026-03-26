@@ -67,7 +67,7 @@
           size="small"
           variant="text"
           color="error"
-          @click="deleteIndexer(item.id)"
+          @click="confirmDelete(item)"
         />
         </div>
       </template>
@@ -148,6 +148,20 @@
       </v-card>
     </v-dialog>
 
+    <!-- Delete confirmation dialog -->
+    <v-dialog v-model="deleteDialog" max-width="400" persistent>
+      <v-card title="Delete Indexer">
+        <v-card-text>
+          Delete <strong>{{ deletingIndexer?.title }}</strong>? This cannot be undone.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+          <v-btn color="error" :loading="deleting" @click="deleteIndexer">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Save anyway dialog -->
     <v-dialog v-model="saveAnywayDialog" max-width="440" persistent>
       <v-card title="Test Failed">
@@ -188,6 +202,9 @@ const saveAnywayDialog = ref(false)
 const testResult = ref<{ success: boolean; message: string } | null>(null)
 const editingId = ref<string | null>(null)
 const formRef = ref()
+const deleteDialog = ref(false)
+const deleting = ref(false)
+const deletingIndexer = ref<Indexer | null>(null)
 
 const emptyForm = () => ({
   title: '',
@@ -323,13 +340,23 @@ async function scrapeIndexer(id: string) {
   }
 }
 
-async function deleteIndexer(id: string) {
+function confirmDelete(indexer: Indexer) {
+  deletingIndexer.value = indexer
+  deleteDialog.value = true
+}
+
+async function deleteIndexer() {
+  if (!deletingIndexer.value) return
+  deleting.value = true
   error.value = null
   try {
-    await api.indexers.delete(id)
+    await api.indexers.delete(deletingIndexer.value.id)
+    deleteDialog.value = false
     await fetchIndexers()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to delete indexer'
+  } finally {
+    deleting.value = false
   }
 }
 

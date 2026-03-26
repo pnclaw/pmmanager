@@ -41,7 +41,7 @@
       <template #item.actions="{ item }">
         <div class="d-flex justify-end flex-nowrap">
           <v-btn icon="mdi-pencil" size="small" variant="text" @click="openEditDialog(item)" />
-          <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="deleteClient(item.id)" />
+          <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDelete(item)" />
         </div>
       </template>
     </v-data-table>
@@ -167,6 +167,20 @@
       </v-card>
     </v-dialog>
 
+    <!-- Delete confirmation dialog -->
+    <v-dialog v-model="deleteDialog" max-width="400" persistent>
+      <v-card title="Delete Download Client">
+        <v-card-text>
+          Delete <strong>{{ deletingClient?.title }}</strong>? This cannot be undone.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+          <v-btn color="error" :loading="deleting" @click="deleteClient">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Save-anyway dialog -->
     <v-dialog v-model="saveAnywayDialog" max-width="440" persistent>
       <v-card title="Test Failed">
@@ -207,6 +221,9 @@ const saveAnywayDialog = ref(false)
 const testResult = ref<{ success: boolean; message: string } | null>(null)
 const editingId = ref<string | null>(null)
 const formRef = ref()
+const deleteDialog = ref(false)
+const deleting = ref(false)
+const deletingClient = ref<DownloadClient | null>(null)
 
 const emptyForm = () => ({
   title: '',
@@ -341,13 +358,23 @@ async function persistForm() {
   }
 }
 
-async function deleteClient(id: string) {
+function confirmDelete(client: DownloadClient) {
+  deletingClient.value = client
+  deleteDialog.value = true
+}
+
+async function deleteClient() {
+  if (!deletingClient.value) return
+  deleting.value = true
   error.value = null
   try {
-    await api.downloadClients.delete(id)
+    await api.downloadClients.delete(deletingClient.value.id)
+    deleteDialog.value = false
     await fetchClients()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to delete client'
+  } finally {
+    deleting.value = false
   }
 }
 
