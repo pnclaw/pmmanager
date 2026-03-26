@@ -62,6 +62,7 @@ export interface CreateDownloadClientRequest {
 
 export type UpdateDownloadClientRequest = CreateDownloadClientRequest
 
+
 export interface Indexer {
   id: string
   title: string
