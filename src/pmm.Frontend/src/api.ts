@@ -26,6 +26,42 @@ export enum ParsingType {
   Newznab = 0,
 }
 
+export enum ClientType {
+  Sabnzbd = 0,
+  Nzbget = 1,
+}
+
+export interface DownloadClient {
+  id: string
+  title: string
+  clientType: number
+  host: string
+  port: number
+  useSsl: boolean
+  apiKey: string
+  username: string
+  password: string
+  category: string
+  isEnabled: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateDownloadClientRequest {
+  title: string
+  clientType: ClientType
+  host: string
+  port: number
+  useSsl: boolean
+  apiKey: string
+  username: string
+  password: string
+  category: string
+  isEnabled: boolean
+}
+
+export type UpdateDownloadClientRequest = CreateDownloadClientRequest
+
 export interface Indexer {
   id: string
   title: string
@@ -150,5 +186,17 @@ export const api = {
       request<number[]>(`/indexers/${id}/rows/categories`),
     clearRows: (id: string) =>
       request<void>(`/indexers/${id}/rows`, { method: 'DELETE' }),
+  },
+  downloadClients: {
+    list: () => request<DownloadClient[]>('/download-clients'),
+    get: (id: string) => request<DownloadClient>(`/download-clients/${id}`),
+    create: (data: CreateDownloadClientRequest) =>
+      request<DownloadClient>('/download-clients', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: UpdateDownloadClientRequest) =>
+      request<DownloadClient>(`/download-clients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<void>(`/download-clients/${id}`, { method: 'DELETE' }),
+    test: (data: { clientType: ClientType; host: string; port: number; useSsl: boolean; apiKey: string; username: string; password: string }) =>
+      request<{ success: boolean; message: string }>('/download-clients/test', { method: 'POST', body: JSON.stringify(data) }),
   },
 }

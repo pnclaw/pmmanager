@@ -27,6 +27,12 @@
           to="/indexers"
           rounded="lg"
         />
+        <v-list-item
+          prepend-icon="mdi-download-network"
+          title="Download Clients"
+          to="/download-clients"
+          rounded="lg"
+        />
       </v-list>
     </v-navigation-drawer>
 

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using pmm.Api.Features.DownloadClients;
 using pmm.Api.Features.Indexers.Scraping;
 using Pmm.Database;
 using Serilog;
@@ -19,6 +20,7 @@ builder.Services.AddControllers();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IndexerScrapeService>();
 builder.Services.AddHostedService<IndexerScraperBackgroundService>();
+builder.Services.AddScoped<DownloadClientTester>();
 
 // EF Core / SQLite — DB_PATH env var takes precedence over appsettings
 var dbPath = Environment.GetEnvironmentVariable("DB_PATH")
