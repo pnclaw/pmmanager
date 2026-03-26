@@ -21,6 +21,12 @@
           to="/items"
           rounded="lg"
         />
+        <v-list-item
+          prepend-icon="mdi-database-search"
+          title="Indexers"
+          to="/indexers"
+          rounded="lg"
+        />
       </v-list>
     </v-navigation-drawer>
 
