@@ -26,6 +26,30 @@ export enum ParsingType {
   Newznab = 0,
 }
 
+export enum VideoQuality {
+  P720  = 0,
+  P1080 = 1,
+  P2160 = 2,
+}
+
+export const VideoQualityLabels: Record<VideoQuality, string> = {
+  [VideoQuality.P720]:  '720p',
+  [VideoQuality.P1080]: '1080p',
+  [VideoQuality.P2160]: '2160p',
+}
+
+export interface AppSettings {
+  prdbApiKey: string
+  prdbApiUrl: string
+  preferredVideoQuality: VideoQuality
+}
+
+export interface UpdateSettingsRequest {
+  prdbApiKey: string
+  prdbApiUrl: string
+  preferredVideoQuality: VideoQuality
+}
+
 export enum ClientType {
   Sabnzbd = 0,
   Nzbget = 1,
@@ -138,6 +162,34 @@ export interface IndexerStats {
   rowsByCategory: { category: number; count: number }[]
 }
 
+export interface PrdbSite {
+  id: string
+  title: string
+  url: string
+  networkId: string | null
+  networkTitle: string | null
+  isFavorite: boolean
+  favoritedAtUtc: string | null
+  videoCount: number
+}
+
+export interface PrdbVideo {
+  id: string
+  title: string
+  releaseDate: string | null
+  actorCount: number
+  preNames: { id: string; title: string }[]
+}
+
+export interface PrdbActor {
+  id: string
+  name: string
+  gender: number
+  nationality: number
+  birthday: string | null
+  aliases: string[]
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -201,6 +253,34 @@ export const api = {
       request<number[]>(`/indexers/${id}/rows/categories`),
     clearRows: (id: string) =>
       request<void>(`/indexers/${id}/rows`, { method: 'DELETE' }),
+  },
+  prdbSites: {
+    list: (params?: { search?: string; favoritesOnly?: boolean }) => {
+      const q = new URLSearchParams()
+      if (params?.search) q.set('search', params.search)
+      if (params?.favoritesOnly) q.set('favoritesOnly', 'true')
+      return request<PrdbSite[]>(`/prdb-sites?${q}`)
+    },
+    videos: (id: string, params?: { search?: string }) => {
+      const q = new URLSearchParams()
+      if (params?.search) q.set('search', params.search)
+      return request<PrdbVideo[]>(`/prdb-sites/${id}/videos?${q}`)
+    },
+  },
+  prdbActors: {
+    list: (params?: { search?: string }) => {
+      const q = new URLSearchParams()
+      if (params?.search) q.set('search', params.search)
+      return request<PrdbActor[]>(`/prdb-actors?${q}`)
+    },
+  },
+  prdbSync: {
+    syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
+  },
+  settings: {
+    get: () => request<AppSettings>('/settings'),
+    update: (data: UpdateSettingsRequest) =>
+      request<AppSettings>('/settings', { method: 'PUT', body: JSON.stringify(data) }),
   },
   downloadClients: {
     list: () => request<DownloadClient[]>('/download-clients'),
