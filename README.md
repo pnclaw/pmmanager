@@ -60,6 +60,76 @@ npm run dev
 
 The frontend dev server proxies `/api` requests to the backend automatically.
 
+## Data Management
+
+The SQLite database is stored at `/app/data/app.db` inside the container. Schema migrations run automatically every time the container starts — no manual steps needed when upgrading.
+
+### Named volumes vs bind mounts
+
+The `docker run` example uses **named volumes** (`pmm-data`). Data lives inside Docker's managed storage — portable, but requires Docker commands to access directly.
+
+The `docker-compose.yml` uses **bind mounts** (`./data`). The database file sits on your host filesystem at `./data/app.db`, making it easy to inspect, back up, or restore with ordinary file operations.
+
+### Backup
+
+**Named volume:**
+```bash
+docker cp $(docker ps -qf name=pmm):/app/data/app.db ./backup.db
+```
+
+**Bind mount (Compose):**
+```bash
+cp ./data/app.db ./backup-$(date +%Y%m%d).db
+```
+
+### Restore
+
+1. Stop the container:
+   ```bash
+   docker compose down        # or: docker stop <container>
+   ```
+2. Replace the database file:
+   - Named volume: `docker cp ./backup.db $(docker ps -aqf name=pmm):/app/data/app.db`
+   - Bind mount: `cp ./backup.db ./data/app.db`
+3. Start the container — any new migrations will apply automatically on top of the restored data.
+
+### Start fresh
+
+**Named volume:**
+```bash
+docker compose down
+docker volume rm pmmanager_pmm-data
+docker compose up -d
+```
+
+**Bind mount (Compose):**
+```bash
+docker compose down
+rm ./data/app.db
+docker compose up -d
+```
+
+### Inspect the database directly
+
+**Inside the container:**
+```bash
+docker exec -it <container-name> sh
+sqlite3 /app/data/app.db
+```
+
+**From the host (Compose bind mount only):**
+
+Open `./data/app.db` with [DB Browser for SQLite](https://sqlitebrowser.org/) or any SQLite-compatible tool.
+
+### Upgrading
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+The new image will apply any pending schema migrations on startup automatically.
+
 ## Configuration
 
 | Variable | Default | Description |

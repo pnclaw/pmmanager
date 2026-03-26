@@ -4,22 +4,34 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseWindowsService();
+
+var logsPath = Path.GetFullPath(
+    Environment.GetEnvironmentVariable("LOGS_PATH") ?? "logs/app-.log");
+
+Directory.CreateDirectory(Path.GetDirectoryName(logsPath)!);
+
 // Serilog — reads MinimumLevel from appsettings, writes to Console + rolling File
 builder.Host.UseSerilog((ctx, _, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration)
     .Enrich.FromLogContext()
     .WriteTo.Console()
     .WriteTo.File(
-        path: "logs/app-.log",
+        path: logsPath,
         rollingInterval: RollingInterval.Day,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
+builder.Services.AddHostedService<pmm.Api.Background.SyncWorker>();
 
 // EF Core / SQLite — DB_PATH env var takes precedence over appsettings
-var dbPath = Environment.GetEnvironmentVariable("DB_PATH")
+var dbPath = Path.GetFullPath(
+    Environment.GetEnvironmentVariable("DB_PATH")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "./data/app.db";
+    ?? "./data/app.db");
+
+Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
@@ -57,3 +69,5 @@ app.MapControllers();
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+public partial class Program { }

@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="src/pmm.Api/pmm.Api.csproj" />
   <Project Path="src/pmm.Database/pmm.Database.csproj" />
+  <Project Path="tests/pmm.Api.Tests/pmm.Api.Tests.csproj" />
 </Solution>
