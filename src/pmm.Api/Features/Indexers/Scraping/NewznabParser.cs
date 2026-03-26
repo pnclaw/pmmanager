@@ -34,7 +34,7 @@ public static class NewznabParser
             results.Add(new ParsedIndexerRow
             {
                 Title = (string?)item.Element("title") ?? string.Empty,
-                NzbId = (string?)item.Element("guid") ?? string.Empty,
+                NzbId = ExtractId((string?)item.Element("guid") ?? string.Empty),
                 NzbUrl = (string?)item.Element("link") ?? string.Empty,
                 NzbSize = long.TryParse(sizeStr, out var size) ? size : 0,
                 NzbPublishedAt = pubDate,
@@ -44,6 +44,15 @@ public static class NewznabParser
         }
 
         return results;
+    }
+
+    // If the guid is a URL (e.g. https://site/details/f7291d3a-...), return the last path segment.
+    // Otherwise return the value as-is (some indexers already return a plain ID).
+    private static string ExtractId(string guid)
+    {
+        if (Uri.TryCreate(guid, UriKind.Absolute, out var uri))
+            return uri.Segments[^1].Trim('/');
+        return guid;
     }
 }
 
