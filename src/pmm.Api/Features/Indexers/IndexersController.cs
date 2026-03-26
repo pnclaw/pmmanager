@@ -85,6 +85,107 @@ public class IndexersController(AppDbContext db) : ControllerBase
         return Ok(ToResponse(indexer));
     }
 
+    [HttpGet("{id:guid}/rows")]
+    [EndpointSummary("List indexer rows")]
+    [EndpointDescription("Returns a paginated, filtered list of rows scraped from this indexer.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetRows(Guid id, [FromQuery] IndexerRowsQuery query)
+    {
+        if (!await db.Indexers.AnyAsync(i => i.Id == id)) return NotFound();
+
+        var q = db.IndexerRows.Where(r => r.IndexerId == id);
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+            q = q.Where(r => r.Title.Contains(query.Search));
+
+        if (query.Categories is { Length: > 0 })
+            q = q.Where(r => query.Categories.Contains(r.Category));
+
+        if (query.From.HasValue)
+            q = q.Where(r => r.NzbPublishedAt >= query.From.Value);
+
+        if (query.To.HasValue)
+            q = q.Where(r => r.NzbPublishedAt <= query.To.Value);
+
+        if (query.MinSize.HasValue)
+            q = q.Where(r => r.NzbSize >= query.MinSize.Value);
+
+        if (query.MaxSize.HasValue)
+            q = q.Where(r => r.NzbSize <= query.MaxSize.Value);
+
+        var total = await q.CountAsync();
+        var items = await q
+            .OrderByDescending(r => r.NzbPublishedAt)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(r => new IndexerRowResponse
+            {
+                Id = r.Id,
+                IndexerId = r.IndexerId,
+                Title = r.Title,
+                NzbId = r.NzbId,
+                NzbUrl = r.NzbUrl,
+                NzbSize = r.NzbSize,
+                NzbPublishedAt = r.NzbPublishedAt,
+                FileSize = r.FileSize,
+                Category = r.Category,
+                CreatedAt = r.CreatedAt,
+            })
+            .ToListAsync();
+
+        return Ok(new { items, total });
+    }
+
+    [HttpGet("{id:guid}/rows/categories")]
+    [EndpointSummary("List distinct categories for indexer")]
+    [EndpointDescription("Returns the distinct category values present in the rows for this indexer.")]
+    [ProducesResponseType(typeof(IEnumerable<int>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetRowCategories(Guid id)
+    {
+        if (!await db.Indexers.AnyAsync(i => i.Id == id)) return NotFound();
+
+        var categories = await db.IndexerRows
+            .Where(r => r.IndexerId == id)
+            .Select(r => r.Category)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToListAsync();
+
+        return Ok(categories);
+    }
+
+    [HttpDelete("{id:guid}/rows")]
+    [EndpointSummary("Clear indexer rows")]
+    [EndpointDescription("Deletes all scraped rows for this indexer.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearRows(Guid id)
+    {
+        if (!await db.Indexers.AnyAsync(i => i.Id == id)) return NotFound();
+
+        await db.IndexerRows.Where(r => r.IndexerId == id).ExecuteDeleteAsync();
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/backfill")]
+    [EndpointSummary("Backfill indexer")]
+    [EndpointDescription("Fetches and saves the specified number of pages from this indexer.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Backfill(Guid id, [FromQuery] int pages, [FromServices] IndexerScrapeService scraper)
+    {
+        if (pages < 1) return BadRequest(new { error = "pages must be at least 1" });
+
+        var indexer = await db.Indexers.FindAsync(id);
+        if (indexer is null) return NotFound();
+
+        var newRows = await scraper.ScrapeIndexerAsync(indexer, pages);
+        return Ok(new { newRows });
+    }
+
     [HttpPost("{id:guid}/scrape")]
     [EndpointSummary("Scrape indexer")]
     [EndpointDescription("Fetches the latest NZBs from the indexer and saves new rows to the database.")]

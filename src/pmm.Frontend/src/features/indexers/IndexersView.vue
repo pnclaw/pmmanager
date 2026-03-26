@@ -38,10 +38,19 @@
 
       <template #item.actions="{ item }">
         <v-btn
+          icon="mdi-table"
+          size="small"
+          variant="text"
+          color="secondary"
+          title="View rows"
+          @click="router.push(`/indexers/${item.id}/rows`)"
+        />
+        <v-btn
           icon="mdi-download"
           size="small"
           variant="text"
           color="primary"
+          title="Scrape latest"
           :loading="scrapingId === item.id"
           :disabled="scrapingId !== null"
           @click="scrapeIndexer(item.id)"
@@ -124,7 +133,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { api, type Indexer, ParsingType } from '../../api'
+
+const router = useRouter()
 
 const parsingTypeOptions = [
   { title: 'Newznab', value: ParsingType.Newznab },
@@ -156,7 +168,7 @@ const headers = [
   { title: 'URL', key: 'url' },
   { title: 'Type', key: 'parsingType', width: '120px' },
   { title: 'Status', key: 'isEnabled', width: '110px' },
-  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '130px' },
+  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '160px' },
 ]
 
 const required = (v: string) => !!v || 'Required'

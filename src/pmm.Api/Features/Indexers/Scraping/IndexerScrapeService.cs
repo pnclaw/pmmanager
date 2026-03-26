@@ -6,10 +6,10 @@ namespace pmm.Api.Features.Indexers.Scraping;
 public class IndexerScrapeService(AppDbContext db, IHttpClientFactory httpClientFactory, ILogger<IndexerScrapeService> logger)
 {
     private const int PageSize = 100;
-    private const int Pages = 3;
+    private const int DefaultPages = 3;
     private const int Category = 6000;
 
-    public async Task<int> ScrapeIndexerAsync(Indexer indexer, CancellationToken ct = default)
+    public async Task<int> ScrapeIndexerAsync(Indexer indexer, int pages = DefaultPages, CancellationToken ct = default)
     {
         var baseUrl = $"{indexer.Url.TrimEnd('/')}{indexer.ApiPath}";
 
@@ -21,7 +21,7 @@ public class IndexerScrapeService(AppDbContext db, IHttpClientFactory httpClient
         var newRows = new List<IndexerRow>();
         var client = httpClientFactory.CreateClient();
 
-        for (var page = 0; page < Pages; page++)
+        for (var page = 0; page < pages; page++)
         {
             var offset = page * PageSize;
             var url = $"{baseUrl}?t=search&cat={Category}&apikey={indexer.ApiKey}&offset={offset}&limit={PageSize}";
@@ -81,7 +81,7 @@ public class IndexerScrapeService(AppDbContext db, IHttpClientFactory httpClient
         foreach (var indexer in indexers)
         {
             if (ct.IsCancellationRequested) break;
-            await ScrapeIndexerAsync(indexer, ct);
+            await ScrapeIndexerAsync(indexer, ct: ct);
         }
     }
 }

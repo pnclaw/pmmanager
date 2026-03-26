@@ -60,6 +60,35 @@ export interface ScrapeResult {
   newRows: number
 }
 
+export interface IndexerRow {
+  id: string
+  indexerId: string
+  title: string
+  nzbId: string
+  nzbUrl: string
+  nzbSize: number
+  nzbPublishedAt: string | null
+  fileSize: number | null
+  category: number
+  createdAt: string
+}
+
+export interface IndexerRowsQuery {
+  page?: number
+  pageSize?: number
+  search?: string
+  categories?: number[]
+  from?: string
+  to?: string
+  minSize?: number
+  maxSize?: number
+}
+
+export interface PagedResult<T> {
+  items: T[]
+  total: number
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -98,5 +127,23 @@ export const api = {
       request<void>(`/indexers/${id}`, { method: 'DELETE' }),
     scrape: (id: string) =>
       request<ScrapeResult>(`/indexers/${id}/scrape`, { method: 'POST' }),
+    backfill: (id: string, pages: number) =>
+      request<ScrapeResult>(`/indexers/${id}/backfill?pages=${pages}`, { method: 'POST' }),
+    rows: (id: string, query: IndexerRowsQuery = {}) => {
+      const params = new URLSearchParams()
+      if (query.page) params.set('page', String(query.page))
+      if (query.pageSize) params.set('pageSize', String(query.pageSize))
+      if (query.search) params.set('search', query.search)
+      if (query.categories?.length) query.categories.forEach(c => params.append('categories', String(c)))
+      if (query.from) params.set('from', query.from)
+      if (query.to) params.set('to', query.to)
+      if (query.minSize != null) params.set('minSize', String(query.minSize))
+      if (query.maxSize != null) params.set('maxSize', String(query.maxSize))
+      return request<PagedResult<IndexerRow>>(`/indexers/${id}/rows?${params}`)
+    },
+    rowCategories: (id: string) =>
+      request<number[]>(`/indexers/${id}/rows/categories`),
+    clearRows: (id: string) =>
+      request<void>(`/indexers/${id}/rows`, { method: 'DELETE' }),
   },
 }
