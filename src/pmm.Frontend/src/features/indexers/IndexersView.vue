@@ -15,6 +15,10 @@
       {{ error }}
     </v-alert>
 
+    <v-alert v-if="scrapeResult !== null" type="success" class="mb-4" closable @click:close="scrapeResult = null">
+      Scrape complete — {{ scrapeResult }} new row{{ scrapeResult === 1 ? '' : 's' }} saved.
+    </v-alert>
+
     <v-data-table
       :headers="headers"
       :items="indexers"
@@ -33,6 +37,15 @@
       </template>
 
       <template #item.actions="{ item }">
+        <v-btn
+          icon="mdi-download"
+          size="small"
+          variant="text"
+          color="primary"
+          :loading="scrapingId === item.id"
+          :disabled="scrapingId !== null"
+          @click="scrapeIndexer(item.id)"
+        />
         <v-btn
           icon="mdi-pencil"
           size="small"
@@ -79,6 +92,12 @@
               class="mb-2"
             />
             <v-text-field
+              v-model="form.apiPath"
+              label="API Path"
+              placeholder="/api"
+              class="mb-2"
+            />
+            <v-text-field
               v-model="form.apiKey"
               label="API Key"
               class="mb-2"
@@ -114,6 +133,8 @@ const parsingTypeOptions = [
 const indexers = ref<Indexer[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const scrapeResult = ref<number | null>(null)
+const scrapingId = ref<string | null>(null)
 const dialog = ref(false)
 const saving = ref(false)
 const editingId = ref<string | null>(null)
@@ -122,6 +143,7 @@ const formRef = ref()
 const emptyForm = () => ({
   title: '',
   url: '',
+  apiPath: '',
   parsingType: ParsingType.Newznab,
   isEnabled: true,
   apiKey: '',
@@ -134,7 +156,7 @@ const headers = [
   { title: 'URL', key: 'url' },
   { title: 'Type', key: 'parsingType', width: '120px' },
   { title: 'Status', key: 'isEnabled', width: '110px' },
-  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '90px' },
+  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '130px' },
 ]
 
 const required = (v: string) => !!v || 'Required'
@@ -167,6 +189,7 @@ function openEditDialog(indexer: Indexer) {
   form.value = {
     title: indexer.title,
     url: indexer.url,
+    apiPath: indexer.apiPath,
     parsingType: indexer.parsingType,
     isEnabled: indexer.isEnabled,
     apiKey: indexer.apiKey,
@@ -191,6 +214,20 @@ async function submitForm() {
     error.value = e instanceof Error ? e.message : 'Failed to save indexer'
   } finally {
     saving.value = false
+  }
+}
+
+async function scrapeIndexer(id: string) {
+  scrapeResult.value = null
+  error.value = null
+  scrapingId.value = id
+  try {
+    const result = await api.indexers.scrape(id)
+    scrapeResult.value = result.newRows
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Scrape failed'
+  } finally {
+    scrapingId.value = null
   }
 }
 

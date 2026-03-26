@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using pmm.Api.Features.Indexers.Scraping;
 using Pmm.Database;
 using Serilog;
 
@@ -15,6 +16,9 @@ builder.Host.UseSerilog((ctx, _, lc) => lc
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IndexerScrapeService>();
+builder.Services.AddHostedService<IndexerScraperBackgroundService>();
 
 // EF Core / SQLite — DB_PATH env var takes precedence over appsettings
 var dbPath = Environment.GetEnvironmentVariable("DB_PATH")

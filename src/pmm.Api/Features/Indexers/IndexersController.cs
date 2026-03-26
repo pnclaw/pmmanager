@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using pmm.Api.Features.Indexers.Scraping;
 using Pmm.Database;
 
 namespace pmm.Api.Features.Indexers;
@@ -82,6 +83,20 @@ public class IndexersController(AppDbContext db) : ControllerBase
 
         await db.SaveChangesAsync();
         return Ok(ToResponse(indexer));
+    }
+
+    [HttpPost("{id:guid}/scrape")]
+    [EndpointSummary("Scrape indexer")]
+    [EndpointDescription("Fetches the latest NZBs from the indexer and saves new rows to the database.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Scrape(Guid id, [FromServices] IndexerScrapeService scraper)
+    {
+        var indexer = await db.Indexers.FindAsync(id);
+        if (indexer is null) return NotFound();
+
+        var newRows = await scraper.ScrapeIndexerAsync(indexer);
+        return Ok(new { newRows });
     }
 
     [HttpDelete("{id:guid}")]

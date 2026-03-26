@@ -30,6 +30,7 @@ export interface Indexer {
   id: string
   title: string
   url: string
+  apiPath: string
   parsingType: number
   isEnabled: boolean
   apiKey: string
@@ -40,6 +41,7 @@ export interface Indexer {
 export interface CreateIndexerRequest {
   title: string
   url: string
+  apiPath: string
   parsingType: ParsingType
   isEnabled: boolean
   apiKey: string
@@ -48,9 +50,14 @@ export interface CreateIndexerRequest {
 export interface UpdateIndexerRequest {
   title: string
   url: string
+  apiPath: string
   parsingType: ParsingType
   isEnabled: boolean
   apiKey: string
+}
+
+export interface ScrapeResult {
+  newRows: number
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -89,5 +96,7 @@ export const api = {
       request<Indexer>(`/indexers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) =>
       request<void>(`/indexers/${id}`, { method: 'DELETE' }),
+    scrape: (id: string) =>
+      request<ScrapeResult>(`/indexers/${id}/scrape`, { method: 'POST' }),
   },
 }
