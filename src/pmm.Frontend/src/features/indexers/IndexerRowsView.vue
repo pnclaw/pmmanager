@@ -266,8 +266,8 @@ async function fetchRows() {
       categories: filters.categories.length ? filters.categories : undefined,
       from: filters.from || undefined,
       to: filters.to || undefined,
-      minSize: filters.minSizeGb != null ? Math.round(filters.minSizeGb * 1_073_741_824) : undefined,
-      maxSize: filters.maxSizeGb != null ? Math.round(filters.maxSizeGb * 1_073_741_824) : undefined,
+      minSize: filters.minSizeGb ? Math.round(filters.minSizeGb * 1_073_741_824) : undefined,
+      maxSize: filters.maxSizeGb ? Math.round(filters.maxSizeGb * 1_073_741_824) : undefined,
     })
     rows.value = result.items
     totalRows.value = result.total
