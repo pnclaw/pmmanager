@@ -111,21 +111,21 @@
 
 ## Testing
 
-**Frameworks:** xUnit + Moq
-**Test style:** Inline results in assertions: `SomeMethod().Should().Be(expected)`
+**Primary strategy: integration tests using `WebApplicationFactory<Program>`.**
 
-## E2E Testing (Bruno)
+Tests live in `tests/pmm.Api.Tests/`. Each test class spins up the real application in-process against a dedicated temporary SQLite database, so the full slice (controller → EF Core → SQLite) is exercised with no mocks.
 
-**Adding or modifying an API endpoint is not complete until the corresponding Bruno e2e tests are written and committed. This applies to AI agents as much as human developers — do not consider a feature done until the Bruno files exist.**
+**Frameworks:** xUnit + FluentAssertions
+**Test style:** `actual.Should().Be(expected)`
 
-- E2E tests live in `tests/e2e/` as a [Bruno](https://www.usebruno.com/) collection.
-- One folder per API tag/resource (mirrors the OpenAPI tags).
-- File naming: `<seq>_<method>-<resource>.bru` (e.g., `01_get-health.bru`).
-- Every request file must have at minimum: a status code test and a response shape test.
-- Each resource folder must include at least one sad-path file (e.g., 404 on unknown ID, 405 on wrong method, 400 on invalid payload, 401 on missing auth).
-- Use `{{baseUrl}}` and `{{apiKey}}` environment variables throughout — never hardcode URLs or tokens.
-- When an auth flow is added: the first request in the auth folder must call the login endpoint and store the token via `bru.setVar("accessToken", res.body.token)`. All subsequent authenticated requests use `auth: bearer` with `{{accessToken}}`.
-- Environments are defined in `tests/e2e/environments/`: `local.bru` (localhost) and `staging.bru`.
+### Rules
+
+- **Adding or modifying an API endpoint is not complete until integration tests are written.** This applies to AI agents as much as human developers.
+- One test class per feature/resource (e.g., `Indexers/IndexersTests.cs`).
+- Each test class owns its own `PmmApiFactory` instance (via `IAsyncLifetime`) to ensure full database isolation.
+- Every endpoint needs at minimum: a happy-path test and a sad-path test (404 on unknown ID, 400 on invalid payload).
+- Use `HttpClient.PostAsJsonAsync` / `ReadFromJsonAsync` for request/response serialisation.
+- Use unit tests (xUnit + Moq) only when genuine business logic exists that is worth testing in isolation — not for thin CRUD.
 
 ## Solution Files
 

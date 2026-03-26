@@ -22,6 +22,37 @@ export interface HealthResponse {
   timestamp: string
 }
 
+export enum ParsingType {
+  Newznab = 0,
+}
+
+export interface Indexer {
+  id: string
+  title: string
+  url: string
+  parsingType: number
+  isEnabled: boolean
+  apiKey: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateIndexerRequest {
+  title: string
+  url: string
+  parsingType: ParsingType
+  isEnabled: boolean
+  apiKey: string
+}
+
+export interface UpdateIndexerRequest {
+  title: string
+  url: string
+  parsingType: ParsingType
+  isEnabled: boolean
+  apiKey: string
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -48,5 +79,15 @@ export const api = {
       request<Item>(`/items/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: number) =>
       request<void>(`/items/${id}`, { method: 'DELETE' }),
+  },
+  indexers: {
+    list: () => request<Indexer[]>('/indexers'),
+    get: (id: string) => request<Indexer>(`/indexers/${id}`),
+    create: (data: CreateIndexerRequest) =>
+      request<Indexer>('/indexers', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: UpdateIndexerRequest) =>
+      request<Indexer>(`/indexers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<void>(`/indexers/${id}`, { method: 'DELETE' }),
   },
 }
