@@ -10,4 +10,7 @@ public class SendNzbRequest
 
     [MaxLength(2000)]
     public string Name { get; set; } = string.Empty;
+
+    [Required]
+    public Guid IndexerId { get; set; }
 }

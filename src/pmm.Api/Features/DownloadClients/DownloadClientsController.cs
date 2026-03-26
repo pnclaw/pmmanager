@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pmm.Database;
@@ -116,7 +117,22 @@ public class DownloadClientsController(AppDbContext db) : ControllerBase
         var client = await db.DownloadClients.FindAsync(id);
         if (client is null) return NotFound();
 
+        var sw = Stopwatch.StartNew();
         var (success, message) = await sender.SendAsync(client, request.NzbUrl, request.Name);
+        sw.Stop();
+
+        db.IndexerApiRequests.Add(new IndexerApiRequest
+        {
+            Id = Guid.NewGuid(),
+            IndexerId = request.IndexerId,
+            RequestType = IndexerRequestType.Grab,
+            OccurredAt = DateTime.UtcNow,
+            Success = success,
+            HttpStatusCode = null, // request to indexer is made by the download client
+            ResponseTimeMs = (int)sw.ElapsedMilliseconds,
+        });
+        await db.SaveChangesAsync();
+
         return Ok(new { success, message });
     }
 

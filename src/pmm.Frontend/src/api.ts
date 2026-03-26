@@ -198,10 +198,10 @@ export const api = {
       request<void>(`/download-clients/${id}`, { method: 'DELETE' }),
     test: (data: { clientType: ClientType; host: string; port: number; useSsl: boolean; apiKey: string; username: string; password: string }) =>
       request<{ success: boolean; message: string }>('/download-clients/test', { method: 'POST', body: JSON.stringify(data) }),
-    send: (id: string, nzbUrl: string, name: string) =>
+    send: (id: string, nzbUrl: string, name: string, indexerId: string) =>
       request<{ success: boolean; message: string }>(`/download-clients/${id}/send`, {
         method: 'POST',
-        body: JSON.stringify({ nzbUrl, name }),
+        body: JSON.stringify({ nzbUrl, name, indexerId }),
       }),
   },
 }

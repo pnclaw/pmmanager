@@ -447,7 +447,7 @@ async function sendToClient(clientId: string, row?: IndexerRow) {
   pickerDialog.value = false
   sendingRowId.value = target.id
   try {
-    const result = await api.downloadClients.send(clientId, target.nzbUrl, target.title)
+    const result = await api.downloadClients.send(clientId, target.nzbUrl, target.title, target.indexerId)
     snackbarText.value = result.message
     snackbarColor.value = result.success ? 'success' : 'error'
     snackbar.value = true

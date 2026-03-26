@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Xml.Linq;
 using Microsoft.EntityFrameworkCore;
 using Pmm.Database;
+using Pmm.Database.Enums;
 
 namespace pmm.Api.Features.Indexers.Scraping;
 
@@ -20,6 +22,7 @@ public class IndexerScrapeService(AppDbContext db, IHttpClientFactory httpClient
             .ToHashSetAsync(ct);
 
         var newRows = new List<IndexerRow>();
+        var apiRequests = new List<IndexerApiRequest>();
         var client = httpClientFactory.CreateClient();
 
         for (var page = 0; page < pages; page++)
@@ -27,16 +30,30 @@ public class IndexerScrapeService(AppDbContext db, IHttpClientFactory httpClient
             var offset = page * PageSize;
             var url = $"{baseUrl}?t=search&cat={Category}&apikey={indexer.ApiKey}&offset={offset}&limit={PageSize}";
 
+            var sw = Stopwatch.StartNew();
             string xml;
+            int? statusCode = null;
+            bool success;
+
             try
             {
-                xml = await client.GetStringAsync(url, ct);
+                var response = await client.GetAsync(url, ct);
+                sw.Stop();
+                statusCode = (int)response.StatusCode;
+                success = response.IsSuccessStatusCode;
+                xml = await response.Content.ReadAsStringAsync(ct);
             }
             catch (Exception ex)
             {
+                sw.Stop();
+                apiRequests.Add(MakeSearchRequest(indexer.Id, false, null, (int)sw.ElapsedMilliseconds));
                 logger.LogWarning(ex, "Failed to fetch page {Page} for indexer {Title}", page, indexer.Title);
                 break;
             }
+
+            apiRequests.Add(MakeSearchRequest(indexer.Id, success, statusCode, (int)sw.ElapsedMilliseconds));
+
+            if (!success) break;
 
             var items = NewznabParser.Parse(xml);
             if (items.Count == 0) break;
@@ -64,11 +81,13 @@ public class IndexerScrapeService(AppDbContext db, IHttpClientFactory httpClient
         }
 
         if (newRows.Count > 0)
-        {
             db.IndexerRows.AddRange(newRows);
-            await db.SaveChangesAsync(ct);
+
+        db.IndexerApiRequests.AddRange(apiRequests);
+        await db.SaveChangesAsync(ct);
+
+        if (newRows.Count > 0)
             logger.LogInformation("Saved {Count} new rows for indexer {Title}", newRows.Count, indexer.Title);
-        }
 
         return newRows.Count;
     }
@@ -113,6 +132,17 @@ public class IndexerScrapeService(AppDbContext db, IHttpClientFactory httpClient
             return (false, $"Error: {ex.Message}");
         }
     }
+
+    private static IndexerApiRequest MakeSearchRequest(Guid indexerId, bool success, int? statusCode, int responseTimeMs) => new()
+    {
+        Id = Guid.NewGuid(),
+        IndexerId = indexerId,
+        RequestType = IndexerRequestType.Search,
+        OccurredAt = DateTime.UtcNow,
+        Success = success,
+        HttpStatusCode = statusCode,
+        ResponseTimeMs = responseTimeMs,
+    };
 
     public async Task ScrapeAllEnabledAsync(CancellationToken ct = default)
     {
