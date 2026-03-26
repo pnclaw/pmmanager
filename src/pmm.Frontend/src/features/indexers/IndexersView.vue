@@ -39,6 +39,14 @@
       <template #item.actions="{ item }">
         <div class="d-flex justify-end flex-nowrap">
         <v-btn
+          icon="mdi-chart-bar"
+          size="small"
+          variant="text"
+          color="secondary"
+          title="Stats"
+          @click="router.push(`/indexers/${item.id}/stats`)"
+        />
+        <v-btn
           icon="mdi-table"
           size="small"
           variant="text"
@@ -222,7 +230,7 @@ const headers = [
   { title: 'URL', key: 'url' },
   { title: 'Type', key: 'parsingType', width: '120px' },
   { title: 'Status', key: 'isEnabled', width: '110px' },
-  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '176px', minWidth: '176px' },
+  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '210px', minWidth: '210px' },
 ]
 
 const required = (v: string) => !!v || 'Required'

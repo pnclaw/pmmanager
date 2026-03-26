@@ -125,6 +125,18 @@ export interface PagedResult<T> {
   total: number
 }
 
+export interface IndexerStats {
+  totalSearchRequests: number
+  totalGrabs: number
+  totalRows: number
+  avgResponseTimeMs: number | null
+  searchSuccess: number
+  searchFailure: number
+  requestsPerDay: { date: string; search: number; grab: number }[]
+  avgResponseTimePerDay: { date: string; avgMs: number }[]
+  rowsByCategory: { category: number; count: number }[]
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -182,6 +194,8 @@ export const api = {
       if (query.maxSize != null) params.set('maxSize', String(query.maxSize))
       return request<PagedResult<IndexerRow>>(`/indexers/${id}/rows?${params}`)
     },
+    stats: (id: string) =>
+      request<IndexerStats>(`/indexers/${id}/stats`),
     rowCategories: (id: string) =>
       request<number[]>(`/indexers/${id}/rows/categories`),
     clearRows: (id: string) =>

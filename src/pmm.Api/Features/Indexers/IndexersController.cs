@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using pmm.Api.Features.Indexers.Scraping;
 using Pmm.Database;
+using Pmm.Database.Enums;
 
 namespace pmm.Api.Features.Indexers;
 
@@ -95,6 +96,81 @@ public class IndexersController(AppDbContext db) : ControllerBase
     {
         var (success, message) = await scraper.TestIndexerAsync(request.Url, request.ApiPath, request.ApiKey);
         return Ok(new { success, message });
+    }
+
+    [HttpGet("{id:guid}/stats")]
+    [EndpointSummary("Get indexer stats")]
+    [EndpointDescription("Returns aggregated statistics for an indexer over the last 30 days.")]
+    [ProducesResponseType(typeof(IndexerStatsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetStats(Guid id)
+    {
+        if (!await db.Indexers.AnyAsync(i => i.Id == id)) return NotFound();
+
+        var cutoff = DateTime.UtcNow.Date.AddDays(-29);
+
+        // All-time summary — computed in DB
+        var totalSearch = await db.IndexerApiRequests.LongCountAsync(r => r.IndexerId == id && r.RequestType == IndexerRequestType.Search);
+        var totalGrabs  = await db.IndexerApiRequests.LongCountAsync(r => r.IndexerId == id && r.RequestType == IndexerRequestType.Grab);
+        var totalRows   = await db.IndexerRows.LongCountAsync(r => r.IndexerId == id);
+        var avgRt       = await db.IndexerApiRequests
+            .Where(r => r.IndexerId == id && r.RequestType == IndexerRequestType.Search && r.ResponseTimeMs != null)
+            .AverageAsync(r => (double?)r.ResponseTimeMs);
+
+        // Last 30 days — pull into memory for reliable date grouping with SQLite
+        var recent = await db.IndexerApiRequests
+            .Where(r => r.IndexerId == id && r.OccurredAt >= cutoff)
+            .Select(r => new { r.OccurredAt, r.RequestType, r.Success, r.ResponseTimeMs })
+            .ToListAsync();
+
+        var searchSuccess = recent.Count(r => r.RequestType == IndexerRequestType.Search && r.Success);
+        var searchFailure = recent.Count(r => r.RequestType == IndexerRequestType.Search && !r.Success);
+
+        // Group by calendar date
+        var byDate = recent.GroupBy(r => r.OccurredAt.Date).ToDictionary(g => g.Key, g => g.ToList());
+
+        var dates = Enumerable.Range(0, 30).Select(i => cutoff.AddDays(i)).ToList();
+
+        var requestsPerDay = dates.Select(date =>
+        {
+            if (!byDate.TryGetValue(date, out var items))
+                return new DailyRequestStat(date.ToString("yyyy-MM-dd"), 0, 0);
+            var search = items.Count(r => r.RequestType == IndexerRequestType.Search);
+            var grab   = items.Count(r => r.RequestType == IndexerRequestType.Grab);
+            return new DailyRequestStat(date.ToString("yyyy-MM-dd"), search, grab);
+        }).ToList();
+
+        var avgRtPerDay = dates.Select(date =>
+        {
+            if (!byDate.TryGetValue(date, out var items)) return new DailyResponseTimeStat(date.ToString("yyyy-MM-dd"), 0);
+            var avg = items
+                .Where(r => r.RequestType == IndexerRequestType.Search && r.ResponseTimeMs.HasValue)
+                .Select(r => (double)r.ResponseTimeMs!.Value)
+                .DefaultIfEmpty(0)
+                .Average();
+            return new DailyResponseTimeStat(date.ToString("yyyy-MM-dd"), Math.Round(avg, 1));
+        }).ToList();
+
+        var rowsByCategory = await db.IndexerRows
+            .Where(r => r.IndexerId == id)
+            .GroupBy(r => r.Category)
+            .Select(g => new { Category = g.Key, Count = g.Count() })
+            .OrderByDescending(g => g.Count)
+            .Take(10)
+            .ToListAsync();
+
+        return Ok(new IndexerStatsResponse
+        {
+            TotalSearchRequests = totalSearch,
+            TotalGrabs          = totalGrabs,
+            TotalRows           = totalRows,
+            AvgResponseTimeMs   = avgRt.HasValue ? Math.Round(avgRt.Value, 1) : null,
+            SearchSuccess       = searchSuccess,
+            SearchFailure       = searchFailure,
+            RequestsPerDay      = requestsPerDay,
+            AvgResponseTimePerDay = avgRtPerDay,
+            RowsByCategory      = rowsByCategory.Select(r => new CategoryStat(r.Category, r.Count)).ToList(),
+        });
     }
 
     [HttpGet("{id:guid}/rows")]
