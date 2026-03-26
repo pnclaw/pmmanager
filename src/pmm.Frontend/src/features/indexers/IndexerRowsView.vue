@@ -158,7 +158,50 @@
           <v-icon size="small">mdi-download</v-icon>
         </a>
       </template>
+      <template #item.send="{ item }">
+        <v-btn
+          icon="mdi-send"
+          size="small"
+          variant="text"
+          color="primary"
+          :loading="sendingRowId === item.id"
+          :disabled="sendingRowId !== null || usenetClients.length === 0"
+          :title="usenetClients.length === 0 ? 'No enabled download clients' : 'Send to download client'"
+          @click="handleSend(item)"
+        />
+      </template>
     </v-data-table-server>
+
+    <!-- Client picker dialog -->
+    <v-dialog v-model="pickerDialog" max-width="380" persistent>
+      <v-card title="Send to Download Client">
+        <v-card-text>
+          <v-list lines="one" density="compact">
+            <v-list-item
+              v-for="client in usenetClients"
+              :key="client.id"
+              :title="client.title"
+              :subtitle="clientTypeLabel(client.clientType)"
+              rounded="lg"
+              @click="sendToClient(client.id)"
+            >
+              <template #append>
+                <v-icon>mdi-chevron-right</v-icon>
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="pickerDialog = false">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Toast -->
+    <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="4000" location="bottom right">
+      {{ snackbarText }}
+    </v-snackbar>
 
     <!-- Backfill dialog -->
     <v-dialog v-model="backfillDialog" max-width="400" persistent>
@@ -200,7 +243,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { api, type Indexer, type IndexerRow } from '../../api'
+import { api, type Indexer, type IndexerRow, type DownloadClient, ClientType } from '../../api'
+
+const USENET_TYPES = new Set([ClientType.Sabnzbd, ClientType.Nzbget])
 
 const router = useRouter()
 const route = useRoute()
@@ -219,6 +264,22 @@ const clearing = ref(false)
 const backfillDialog = ref(false)
 const clearDialog = ref(false)
 const backfillPages = ref(10)
+
+const usenetClients = ref<DownloadClient[]>([])
+const sendingRowId = ref<string | null>(null)
+const pickerDialog = ref(false)
+const pendingRow = ref<IndexerRow | null>(null)
+const snackbar = ref(false)
+const snackbarText = ref('')
+const snackbarColor = ref('success')
+
+const clientTypeLabels: Record<number, string> = {
+  [ClientType.Sabnzbd]: 'SABnzbd',
+  [ClientType.Nzbget]: 'NZBGet',
+}
+function clientTypeLabel(value: number): string {
+  return clientTypeLabels[value] ?? String(value)
+}
 
 const filters = reactive({
   indexerId: (route.params.id as string) || null as string | null,
@@ -239,6 +300,7 @@ const headers = [
   { title: 'File Size', key: 'fileSize', width: '110px', sortable: false },
   { title: 'Published', key: 'nzbPublishedAt', width: '160px', sortable: false },
   { title: 'NZB', key: 'nzbUrl', width: '60px', sortable: false, align: 'center' as const },
+  { title: '', key: 'send', width: '48px', sortable: false, align: 'center' as const },
 ]
 
 function formatSize(bytes: number): string {
@@ -370,8 +432,42 @@ async function clearRows() {
   }
 }
 
+function handleSend(row: IndexerRow) {
+  if (usenetClients.value.length === 1) {
+    sendToClient(usenetClients.value[0].id, row)
+  } else {
+    pendingRow.value = row
+    pickerDialog.value = true
+  }
+}
+
+async function sendToClient(clientId: string, row?: IndexerRow) {
+  const target = row ?? pendingRow.value
+  if (!target) return
+  pickerDialog.value = false
+  sendingRowId.value = target.id
+  try {
+    const result = await api.downloadClients.send(clientId, target.nzbUrl, target.title)
+    snackbarText.value = result.message
+    snackbarColor.value = result.success ? 'success' : 'error'
+    snackbar.value = true
+  } catch (e) {
+    snackbarText.value = e instanceof Error ? e.message : 'Send failed'
+    snackbarColor.value = 'error'
+    snackbar.value = true
+  } finally {
+    sendingRowId.value = null
+    pendingRow.value = null
+  }
+}
+
 onMounted(async () => {
-  indexers.value = await api.indexers.list()
+  const [allIndexers, allClients] = await Promise.all([
+    api.indexers.list(),
+    api.downloadClients.list(),
+  ])
+  indexers.value = allIndexers
+  usenetClients.value = allClients.filter(c => c.isEnabled && USENET_TYPES.has(c.clientType))
   if (filters.indexerId) {
     await Promise.all([fetchRows(), loadCategories()])
   }

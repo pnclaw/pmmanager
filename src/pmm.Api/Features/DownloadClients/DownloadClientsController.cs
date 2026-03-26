@@ -102,6 +102,24 @@ public class DownloadClientsController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/send")]
+    [Consumes("application/json")]
+    [EndpointSummary("Send NZB to download client")]
+    [EndpointDescription("Sends an NZB URL to the specified download client for download.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Send(
+        Guid id,
+        [FromBody] SendNzbRequest request,
+        [FromServices] DownloadClientSender sender)
+    {
+        var client = await db.DownloadClients.FindAsync(id);
+        if (client is null) return NotFound();
+
+        var (success, message) = await sender.SendAsync(client, request.NzbUrl, request.Name);
+        return Ok(new { success, message });
+    }
+
     [HttpPost("test")]
     [Consumes("application/json")]
     [EndpointSummary("Test download client connection")]
