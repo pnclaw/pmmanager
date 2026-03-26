@@ -49,6 +49,7 @@ public class IndexersController(AppDbContext db) : ControllerBase
             ParsingType = request.ParsingType,
             IsEnabled = request.IsEnabled,
             ApiKey = request.ApiKey,
+            ApiPath = request.ApiPath,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
@@ -76,6 +77,7 @@ public class IndexersController(AppDbContext db) : ControllerBase
         indexer.ParsingType = request.ParsingType;
         indexer.IsEnabled = request.IsEnabled;
         indexer.ApiKey = request.ApiKey;
+        indexer.ApiPath = request.ApiPath;
         indexer.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync();
@@ -105,6 +107,7 @@ public class IndexersController(AppDbContext db) : ControllerBase
         ParsingType = (int)indexer.ParsingType,
         IsEnabled = indexer.IsEnabled,
         ApiKey = indexer.ApiKey,
+        ApiPath = indexer.ApiPath,
         CreatedAt = indexer.CreatedAt,
         UpdatedAt = indexer.UpdatedAt,
     };

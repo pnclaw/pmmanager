@@ -11,6 +11,7 @@ public class IndexerResponse
 
     public bool IsEnabled { get; set; }
     public string ApiKey { get; set; } = string.Empty;
+    public string ApiPath { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
