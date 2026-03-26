@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pmm.Database;
 
@@ -10,9 +11,11 @@ using Pmm.Database;
 namespace Pmm.Database.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260326174210_AddDownloadClient")]
+    partial class AddDownloadClient
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
@@ -119,37 +122,6 @@ namespace Pmm.Database.Migrations
                     b.ToTable("Indexers");
                 });
 
-            modelBuilder.Entity("Pmm.Database.IndexerApiRequest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("HttpStatusCode")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("IndexerId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("OccurredAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RequestType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("ResponseTimeMs")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("Success")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IndexerId");
-
-                    b.ToTable("IndexerApiRequests");
-                });
-
             modelBuilder.Entity("Pmm.Database.IndexerRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -221,17 +193,6 @@ namespace Pmm.Database.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Items");
-                });
-
-            modelBuilder.Entity("Pmm.Database.IndexerApiRequest", b =>
-                {
-                    b.HasOne("Pmm.Database.Indexer", "Indexer")
-                        .WithMany()
-                        .HasForeignKey("IndexerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Indexer");
                 });
 
             modelBuilder.Entity("Pmm.Database.IndexerRow", b =>

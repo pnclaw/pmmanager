@@ -8,6 +8,9 @@ public class AppDbContext : DbContext
 
     public DbSet<Item> Items => Set<Item>();
     public DbSet<Indexer> Indexers => Set<Indexer>();
+    public DbSet<IndexerRow> IndexerRows => Set<IndexerRow>();
+    public DbSet<DownloadClient> DownloadClients => Set<DownloadClient>();
+    public DbSet<IndexerApiRequest> IndexerApiRequests => Set<IndexerApiRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
