@@ -6,13 +6,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseWindowsService();
 
+var logsPath = Environment.GetEnvironmentVariable("LOGS_PATH") ?? "logs/app-.log";
+
 // Serilog — reads MinimumLevel from appsettings, writes to Console + rolling File
 builder.Host.UseSerilog((ctx, _, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration)
     .Enrich.FromLogContext()
     .WriteTo.Console()
     .WriteTo.File(
-        path: "logs/app-.log",
+        path: logsPath,
         rollingInterval: RollingInterval.Day,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
