@@ -97,7 +97,7 @@ public class IndexersController(AppDbContext db) : ControllerBase
         var q = db.IndexerRows.Where(r => r.IndexerId == id);
 
         if (!string.IsNullOrWhiteSpace(query.Search))
-            q = q.Where(r => r.Title.Contains(query.Search));
+            q = q.Where(r => EF.Functions.Like(r.Title, $"%{query.Search}%"));
 
         if (query.Categories is { Length: > 0 })
             q = q.Where(r => query.Categories.Contains(r.Category));
