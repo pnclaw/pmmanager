@@ -37,7 +37,11 @@ public class SyncWorker(IServiceScopeFactory scopeFactory, IHttpClientFactory ht
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var http = httpClientFactory.CreateClient();
 
+        logger.LogInformation("SyncWorker run started at {Time}", DateTimeOffset.UtcNow);
+
         // TODO: implement sync logic
         await Task.CompletedTask;
+
+        logger.LogInformation("SyncWorker run completed at {Time}", DateTimeOffset.UtcNow);
     }
 }
