@@ -26,6 +26,30 @@ export enum ParsingType {
   Newznab = 0,
 }
 
+export enum VideoQuality {
+  P720  = 0,
+  P1080 = 1,
+  P2160 = 2,
+}
+
+export const VideoQualityLabels: Record<VideoQuality, string> = {
+  [VideoQuality.P720]:  '720p',
+  [VideoQuality.P1080]: '1080p',
+  [VideoQuality.P2160]: '2160p',
+}
+
+export interface AppSettings {
+  prdbApiKey: string
+  prdbApiUrl: string
+  preferredVideoQuality: VideoQuality
+}
+
+export interface UpdateSettingsRequest {
+  prdbApiKey: string
+  prdbApiUrl: string
+  preferredVideoQuality: VideoQuality
+}
+
 export enum ClientType {
   Sabnzbd = 0,
   Nzbget = 1,
@@ -201,6 +225,11 @@ export const api = {
       request<number[]>(`/indexers/${id}/rows/categories`),
     clearRows: (id: string) =>
       request<void>(`/indexers/${id}/rows`, { method: 'DELETE' }),
+  },
+  settings: {
+    get: () => request<AppSettings>('/settings'),
+    update: (data: UpdateSettingsRequest) =>
+      request<AppSettings>('/settings', { method: 'PUT', body: JSON.stringify(data) }),
   },
   downloadClients: {
     list: () => request<DownloadClient[]>('/download-clients'),

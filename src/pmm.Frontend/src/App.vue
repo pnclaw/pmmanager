@@ -33,6 +33,12 @@
           to="/download-clients"
           rounded="lg"
         />
+        <v-list-item
+          prepend-icon="mdi-cog"
+          title="Settings"
+          to="/settings"
+          rounded="lg"
+        />
       </v-list>
     </v-navigation-drawer>
 

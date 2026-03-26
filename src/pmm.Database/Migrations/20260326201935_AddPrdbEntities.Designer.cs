@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pmm.Database;
 
@@ -10,9 +11,11 @@ using Pmm.Database;
 namespace Pmm.Database.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260326201935_AddPrdbEntities")]
+    partial class AddPrdbEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
@@ -256,139 +259,6 @@ namespace Pmm.Database.Migrations
                     b.ToTable("Items");
                 });
 
-            modelBuilder.Entity("Pmm.Database.PrdbActor", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateOnly?>("Birthday")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("BirthdayType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Birthplace")
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("BraSize")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("BraSizeLabel")
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("BreastType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CareerEnd")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CareerStart")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateOnly?>("Deathday")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Ethnicity")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Eyecolor")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Gender")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Haircolor")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("Height")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("HipSize")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Nationality")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Piercings")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("PrdbCreatedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("PrdbUpdatedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("SyncedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Tattoos")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("WaistSize")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("PrdbActors");
-                });
-
-            modelBuilder.Entity("Pmm.Database.PrdbActorAlias", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ActorId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("SiteId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActorId");
-
-                    b.ToTable("PrdbActorAliases");
-                });
-
-            modelBuilder.Entity("Pmm.Database.PrdbActorImage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ActorId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("ImageType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Url")
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActorId");
-
-                    b.ToTable("PrdbActorImages");
-                });
-
             modelBuilder.Entity("Pmm.Database.PrdbNetwork", b =>
                 {
                     b.Property<Guid>("Id")
@@ -418,12 +288,6 @@ namespace Pmm.Database.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("FavoritedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsFavorite")
-                        .HasColumnType("INTEGER");
 
                     b.Property<Guid?>("NetworkId")
                         .HasColumnType("TEXT");
@@ -479,21 +343,6 @@ namespace Pmm.Database.Migrations
                     b.HasIndex("SiteId");
 
                     b.ToTable("PrdbVideos");
-                });
-
-            modelBuilder.Entity("Pmm.Database.PrdbVideoActor", b =>
-                {
-                    b.Property<Guid>("VideoId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ActorId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("VideoId", "ActorId");
-
-                    b.HasIndex("ActorId");
-
-                    b.ToTable("PrdbVideoActors");
                 });
 
             modelBuilder.Entity("Pmm.Database.PrdbVideoImage", b =>
@@ -559,28 +408,6 @@ namespace Pmm.Database.Migrations
                     b.Navigation("Indexer");
                 });
 
-            modelBuilder.Entity("Pmm.Database.PrdbActorAlias", b =>
-                {
-                    b.HasOne("Pmm.Database.PrdbActor", "Actor")
-                        .WithMany("Aliases")
-                        .HasForeignKey("ActorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Actor");
-                });
-
-            modelBuilder.Entity("Pmm.Database.PrdbActorImage", b =>
-                {
-                    b.HasOne("Pmm.Database.PrdbActor", "Actor")
-                        .WithMany("Images")
-                        .HasForeignKey("ActorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Actor");
-                });
-
             modelBuilder.Entity("Pmm.Database.PrdbSite", b =>
                 {
                     b.HasOne("Pmm.Database.PrdbNetwork", "Network")
@@ -599,25 +426,6 @@ namespace Pmm.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Site");
-                });
-
-            modelBuilder.Entity("Pmm.Database.PrdbVideoActor", b =>
-                {
-                    b.HasOne("Pmm.Database.PrdbActor", "Actor")
-                        .WithMany("VideoActors")
-                        .HasForeignKey("ActorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Pmm.Database.PrdbVideo", "Video")
-                        .WithMany()
-                        .HasForeignKey("VideoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Actor");
-
-                    b.Navigation("Video");
                 });
 
             modelBuilder.Entity("Pmm.Database.PrdbVideoImage", b =>
@@ -640,15 +448,6 @@ namespace Pmm.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Video");
-                });
-
-            modelBuilder.Entity("Pmm.Database.PrdbActor", b =>
-                {
-                    b.Navigation("Aliases");
-
-                    b.Navigation("Images");
-
-                    b.Navigation("VideoActors");
                 });
 
             modelBuilder.Entity("Pmm.Database.PrdbNetwork", b =>

@@ -5,6 +5,7 @@ import IndexersView from '../features/indexers/IndexersView.vue'
 import IndexerRowsView from '../features/indexers/IndexerRowsView.vue'
 import IndexerStatsView from '../features/indexers/IndexerStatsView.vue'
 import DownloadClientsView from '../features/download-clients/DownloadClientsView.vue'
+import SettingsView from '../features/settings/SettingsView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -16,6 +17,7 @@ const router = createRouter({
     { path: '/indexers/:id/rows', component: IndexerRowsView, meta: { title: 'Indexer Rows' } },
     { path: '/indexers/:id/stats', component: IndexerStatsView, meta: { title: 'Indexer Stats' } },
     { path: '/download-clients', component: DownloadClientsView, meta: { title: 'Download Clients' } },
+    { path: '/settings', component: SettingsView, meta: { title: 'Settings' } },
   ],
 })
 
