@@ -4,6 +4,8 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseWindowsService();
+
 // Serilog — reads MinimumLevel from appsettings, writes to Console + rolling File
 builder.Host.UseSerilog((ctx, _, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration)
@@ -15,6 +17,8 @@ builder.Host.UseSerilog((ctx, _, lc) => lc
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
+builder.Services.AddHostedService<pmm.Api.Background.SyncWorker>();
 
 // EF Core / SQLite — DB_PATH env var takes precedence over appsettings
 var dbPath = Environment.GetEnvironmentVariable("DB_PATH")
