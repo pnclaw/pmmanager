@@ -58,6 +58,7 @@ TestResults/
 
 # Claude
 .claude/settings.local.json
+CLAUDE.local.md
 
 # Agent skills (generic multi-agent install location — developer-local)
 .agents/
