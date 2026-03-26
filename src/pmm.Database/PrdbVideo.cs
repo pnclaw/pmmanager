@@ -20,4 +20,5 @@ public class PrdbVideo
 
     public ICollection<PrdbVideoImage> Images { get; set; } = [];
     public ICollection<PrdbVideoPreName> PreNames { get; set; } = [];
+    public ICollection<PrdbVideoActor> VideoActors { get; set; } = [];
 }

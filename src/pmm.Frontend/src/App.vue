@@ -33,6 +33,21 @@
           to="/download-clients"
           rounded="lg"
         />
+        <v-divider class="my-2" />
+        <v-list-subheader>PRDB</v-list-subheader>
+        <v-list-item
+          prepend-icon="mdi-web"
+          title="Sites"
+          to="/prdb/sites"
+          rounded="lg"
+        />
+        <v-list-item
+          prepend-icon="mdi-account-group"
+          title="Actors"
+          to="/prdb/actors"
+          rounded="lg"
+        />
+        <v-divider class="my-2" />
         <v-list-item
           prepend-icon="mdi-cog"
           title="Settings"
