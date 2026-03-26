@@ -4,21 +4,7 @@
       <v-col>
         <h1 class="text-h4">prdb Actors</h1>
       </v-col>
-      <v-col class="text-right">
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-sync"
-          :loading="syncing"
-          @click="sync"
-        >
-          Sync
-        </v-btn>
-      </v-col>
     </v-row>
-
-    <v-alert v-if="syncMessage" type="info" class="mb-4" closable @click:close="syncMessage = null">
-      {{ syncMessage }}
-    </v-alert>
 
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
@@ -60,12 +46,10 @@
 import { ref, onMounted } from 'vue'
 import { api, type PrdbActor } from '../../api'
 
-const actors     = ref<PrdbActor[]>([])
-const loading    = ref(false)
-const syncing    = ref(false)
-const error      = ref<string | null>(null)
-const syncMessage = ref<string | null>(null)
-const search     = ref('')
+const actors  = ref<PrdbActor[]>([])
+const loading = ref(false)
+const error   = ref<string | null>(null)
+const search  = ref('')
 
 const headers = [
   { title: 'Name',        key: 'name' },
@@ -86,20 +70,6 @@ async function load() {
     error.value = e.message
   } finally {
     loading.value = false
-  }
-}
-
-async function sync() {
-  syncing.value = true
-  syncMessage.value = null
-  error.value = null
-  try {
-    const result = await api.prdbActors.sync()
-    syncMessage.value = result.message
-  } catch (e: any) {
-    error.value = e.message
-  } finally {
-    syncing.value = false
   }
 }
 

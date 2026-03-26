@@ -266,7 +266,6 @@ export const api = {
       if (params?.search) q.set('search', params.search)
       return request<PrdbVideo[]>(`/prdb-sites/${id}/videos?${q}`)
     },
-    sync: () => request<{ message: string }>('/prdb-sites/sync', { method: 'POST' }),
   },
   prdbActors: {
     list: (params?: { search?: string }) => {
@@ -274,7 +273,9 @@ export const api = {
       if (params?.search) q.set('search', params.search)
       return request<PrdbActor[]>(`/prdb-actors?${q}`)
     },
-    sync: () => request<{ message: string }>('/prdb-actors/sync', { method: 'POST' }),
+  },
+  prdbSync: {
+    syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
   },
   settings: {
     get: () => request<AppSettings>('/settings'),

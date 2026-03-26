@@ -26,6 +26,7 @@ builder.Host.UseSerilog((ctx, _, lc) => lc
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IndexerScrapeService>();
+builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbSyncService>();
 builder.Services.AddHostedService<IndexerScraperBackgroundService>();
 builder.Services.AddScoped<DownloadClientTester>();
 builder.Services.AddScoped<DownloadClientSender>();

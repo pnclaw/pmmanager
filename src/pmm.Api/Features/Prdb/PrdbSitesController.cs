@@ -86,12 +86,4 @@ public class PrdbSitesController(AppDbContext db) : ControllerBase
         return Ok(videos);
     }
 
-    [HttpPost("sync")]
-    [EndpointSummary("Sync sites from prdb (stub)")]
-    [EndpointDescription("Placeholder — sync implementation pending.")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public IActionResult Sync()
-    {
-        return Ok(new { message = "Sync not yet implemented." });
-    }
 }

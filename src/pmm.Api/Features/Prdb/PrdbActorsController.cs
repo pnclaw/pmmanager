@@ -36,12 +36,4 @@ public class PrdbActorsController(AppDbContext db) : ControllerBase
         return Ok(actors);
     }
 
-    [HttpPost("sync")]
-    [EndpointSummary("Sync actors from prdb (stub)")]
-    [EndpointDescription("Placeholder — sync implementation pending.")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public IActionResult Sync()
-    {
-        return Ok(new { message = "Sync not yet implemented." });
-    }
 }

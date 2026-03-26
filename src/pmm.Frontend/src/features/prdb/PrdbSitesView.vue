@@ -16,8 +16,8 @@
       </v-col>
     </v-row>
 
-    <v-alert v-if="syncMessage" type="info" class="mb-4" closable @click:close="syncMessage = null">
-      {{ syncMessage }}
+    <v-alert v-if="syncResult" type="success" class="mb-4" closable @click:close="syncResult = null">
+      Sync complete — {{ syncResult.sitesUpserted }} sites, {{ syncResult.networksUpserted }} networks, {{ syncResult.videosUpserted }} videos upserted.
     </v-alert>
 
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
@@ -85,7 +85,7 @@ const sites      = ref<PrdbSite[]>([])
 const loading    = ref(false)
 const syncing    = ref(false)
 const error      = ref<string | null>(null)
-const syncMessage = ref<string | null>(null)
+const syncResult = ref<{ networksUpserted: number; sitesUpserted: number; videosUpserted: number } | null>(null)
 const search     = ref('')
 const favoritesOnly = ref(false)
 
@@ -114,11 +114,11 @@ async function load() {
 
 async function sync() {
   syncing.value = true
-  syncMessage.value = null
+  syncResult.value = null
   error.value = null
   try {
-    const result = await api.prdbSites.sync()
-    syncMessage.value = result.message
+    syncResult.value = await api.prdbSync.syncAll()
+    await load()
   } catch (e: any) {
     error.value = e.message
   } finally {
