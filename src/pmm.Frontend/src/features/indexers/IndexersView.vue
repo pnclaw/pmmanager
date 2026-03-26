@@ -37,6 +37,7 @@
       </template>
 
       <template #item.actions="{ item }">
+        <div class="d-flex justify-end flex-nowrap">
         <v-btn
           icon="mdi-table"
           size="small"
@@ -68,6 +69,7 @@
           color="error"
           @click="deleteIndexer(item.id)"
         />
+        </div>
       </template>
     </v-data-table>
 
@@ -168,7 +170,7 @@ const headers = [
   { title: 'URL', key: 'url' },
   { title: 'Type', key: 'parsingType', width: '120px' },
   { title: 'Status', key: 'isEnabled', width: '110px' },
-  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '160px' },
+  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '176px', minWidth: '176px' },
 ]
 
 const required = (v: string) => !!v || 'Required'
