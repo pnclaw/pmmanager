@@ -20,15 +20,9 @@ ShowInstDetails show
 ShowUninstDetails show
 
 Var PortNum
-Var DataDir
 Var Dialog
 Var PortLabel
 Var PortInput
-
-; ── Init ─────────────────────────────────────────────────────────────────────
-Function .onInit
-  StrCpy $DataDir "$COMMONAPPDATA\Private Media Manager"
-FunctionEnd
 
 ; ── Pages ─────────────────────────────────────────────────────────────────────
 Page custom PortPageCreate PortPageLeave
@@ -70,15 +64,19 @@ Section "Install"
   SetOutPath "$INSTDIR"
   File /r "publish\*"
 
-  CreateDirectory "$DataDir"
-  CreateDirectory "$DataDir\logs"
+  ; Use $COMMONAPPDATA directly — shell folder constants expand correctly as
+  ; direct instruction arguments but not when stored via StrCpy first
+  CreateDirectory "$COMMONAPPDATA\${APP_NAME}"
+  CreateDirectory "$COMMONAPPDATA\${APP_NAME}\logs"
 
   ; Register Windows Service
   nsExec::ExecToLog 'sc create "${SERVICE_NAME}" binPath= "$INSTDIR\${APP_EXE}" start= auto DisplayName= "${APP_NAME}"'
   nsExec::ExecToLog 'sc description "${SERVICE_NAME}" "${APP_NAME} service"'
 
-  ; Set service environment variables via PowerShell (REG_MULTI_SZ)
-  nsExec::ExecToLog "powershell -NonInteractive -Command $\"Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\${SERVICE_NAME}' -Name Environment -Type MultiString -Value @('ASPNETCORE_URLS=http://+:$PortNum','DB_PATH=$DataDir\app.db','LOGS_PATH=$DataDir\logs\app-.log','ASPNETCORE_ENVIRONMENT=Production')$\""
+  ; Set service environment variables (REG_MULTI_SZ) via PowerShell.
+  ; Paths are resolved inside PowerShell using [Environment]::GetFolderPath
+  ; to avoid NSIS shell-constant expansion issues.
+  nsExec::ExecToLog "powershell -NonInteractive -Command $\"$$d=[Environment]::GetFolderPath('CommonApplicationData')+'\${APP_NAME}'; Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\${SERVICE_NAME}' -Name Environment -Type MultiString -Value @('ASPNETCORE_URLS=http://+:$PortNum',('DB_PATH='+$$d+'\app.db'),('LOGS_PATH='+$$d+'\logs\app-.log'),'ASPNETCORE_ENVIRONMENT=Production')$\""
 
   nsExec::ExecToLog 'sc start "${SERVICE_NAME}"'
 
