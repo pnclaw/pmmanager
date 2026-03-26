@@ -85,6 +85,18 @@ public class IndexersController(AppDbContext db) : ControllerBase
         return Ok(ToResponse(indexer));
     }
 
+    [HttpPost("test")]
+    [Consumes("application/json")]
+    [EndpointSummary("Test indexer connection")]
+    [EndpointDescription("Tests connectivity to an indexer using its caps endpoint.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Test([FromBody] TestIndexerRequest request, [FromServices] IndexerScrapeService scraper)
+    {
+        var (success, message) = await scraper.TestIndexerAsync(request.Url, request.ApiPath, request.ApiKey);
+        return Ok(new { success, message });
+    }
+
     [HttpGet("{id:guid}/rows")]
     [EndpointSummary("List indexer rows")]
     [EndpointDescription("Returns a paginated, filtered list of rows scraped from this indexer.")]

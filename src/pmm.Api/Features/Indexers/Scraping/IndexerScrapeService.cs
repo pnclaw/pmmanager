@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using Microsoft.EntityFrameworkCore;
 using Pmm.Database;
 
@@ -70,6 +71,47 @@ public class IndexerScrapeService(AppDbContext db, IHttpClientFactory httpClient
         }
 
         return newRows.Count;
+    }
+
+    public async Task<(bool Success, string Message)> TestIndexerAsync(
+        string url, string apiPath, string apiKey, CancellationToken ct = default)
+    {
+        var baseUrl = $"{url.TrimEnd('/')}{apiPath}";
+        var testUrl = $"{baseUrl}?t=caps&apikey={apiKey}";
+
+        try
+        {
+            var client = httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+            var xml = await client.GetStringAsync(testUrl, ct);
+            var doc = XDocument.Parse(xml);
+
+            // Newznab error response: <error code="..." description="..."/>
+            var errorEl = doc.Root?.Element("error");
+            if (errorEl != null)
+            {
+                var code = (string?)errorEl.Attribute("code") ?? "?";
+                var description = (string?)errorEl.Attribute("description") ?? "Unknown error";
+                return (false, $"Indexer error {code}: {description}");
+            }
+
+            if (doc.Root?.Name.LocalName != "caps")
+                return (false, "Unexpected response — does not look like a Newznab API endpoint");
+
+            return (true, "Connection successful");
+        }
+        catch (TaskCanceledException)
+        {
+            return (false, "Connection timed out");
+        }
+        catch (HttpRequestException ex)
+        {
+            return (false, $"Connection failed: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Error: {ex.Message}");
+        }
     }
 
     public async Task ScrapeAllEnabledAsync(CancellationToken ct = default)

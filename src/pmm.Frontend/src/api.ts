@@ -125,6 +125,11 @@ export const api = {
       request<Indexer>(`/indexers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) =>
       request<void>(`/indexers/${id}`, { method: 'DELETE' }),
+    test: (data: { url: string; apiPath: string; apiKey: string }) =>
+      request<{ success: boolean; message: string }>('/indexers/test', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     scrape: (id: string) =>
       request<ScrapeResult>(`/indexers/${id}/scrape`, { method: 'POST' }),
     backfill: (id: string, pages: number) =>

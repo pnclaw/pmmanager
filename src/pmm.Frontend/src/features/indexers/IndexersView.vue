@@ -120,13 +120,45 @@
               hide-details
             />
           </v-form>
+
+          <v-alert
+            v-if="testResult"
+            :type="testResult.success ? 'success' : 'error'"
+            class="mt-4"
+            density="compact"
+          >
+            {{ testResult.message }}
+          </v-alert>
         </v-card-text>
         <v-card-actions>
+          <v-btn
+            variant="outlined"
+            :loading="testing"
+            prepend-icon="mdi-connection"
+            @click="runTest"
+          >
+            Test
+          </v-btn>
           <v-spacer />
           <v-btn variant="text" @click="dialog = false">Cancel</v-btn>
           <v-btn color="primary" :loading="saving" @click="submitForm">
             {{ editingId ? 'Save' : 'Create' }}
           </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Save anyway dialog -->
+    <v-dialog v-model="saveAnywayDialog" max-width="440" persistent>
+      <v-card title="Test Failed">
+        <v-card-text>
+          <p class="mb-2">{{ testResult?.message }}</p>
+          <p>The indexer has been <strong>disabled</strong>. Save anyway?</p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="saveAnywayDialog = false">Cancel</v-btn>
+          <v-btn color="warning" :loading="saving" @click="persistForm">Save Disabled</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -151,6 +183,9 @@ const scrapeResult = ref<number | null>(null)
 const scrapingId = ref<string | null>(null)
 const dialog = ref(false)
 const saving = ref(false)
+const testing = ref(false)
+const saveAnywayDialog = ref(false)
+const testResult = ref<{ success: boolean; message: string } | null>(null)
 const editingId = ref<string | null>(null)
 const formRef = ref()
 
@@ -195,6 +230,7 @@ async function fetchIndexers() {
 function openCreateDialog() {
   editingId.value = null
   form.value = emptyForm()
+  testResult.value = null
   dialog.value = true
 }
 
@@ -208,13 +244,55 @@ function openEditDialog(indexer: Indexer) {
     isEnabled: indexer.isEnabled,
     apiKey: indexer.apiKey,
   }
+  testResult.value = null
   dialog.value = true
+}
+
+async function runTest() {
+  testing.value = true
+  testResult.value = null
+  try {
+    testResult.value = await api.indexers.test({
+      url: form.value.url,
+      apiPath: form.value.apiPath,
+      apiKey: form.value.apiKey,
+    })
+  } catch (e) {
+    testResult.value = { success: false, message: e instanceof Error ? e.message : 'Test failed' }
+  } finally {
+    testing.value = false
+  }
 }
 
 async function submitForm() {
   const { valid } = await formRef.value.validate()
   if (!valid) return
 
+  // Always test before saving
+  testing.value = true
+  try {
+    testResult.value = await api.indexers.test({
+      url: form.value.url,
+      apiPath: form.value.apiPath,
+      apiKey: form.value.apiKey,
+    })
+  } catch (e) {
+    testResult.value = { success: false, message: e instanceof Error ? e.message : 'Test failed' }
+  } finally {
+    testing.value = false
+  }
+
+  if (!testResult.value?.success) {
+    form.value.isEnabled = false
+    saveAnywayDialog.value = true
+    return
+  }
+
+  await persistForm()
+}
+
+async function persistForm() {
+  saveAnywayDialog.value = false
   saving.value = true
   try {
     if (editingId.value) {
