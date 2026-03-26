@@ -1,11 +1,10 @@
 Unicode True
 RequestExecutionLevel admin
 
-!define APP_NAME    "Private Media Manager"
+!define APP_NAME     "Private Media Manager"
 !define SERVICE_NAME "PrivateMediaManager"
-!define APP_EXE     "pmm.Api.exe"
-!define DATA_DIR    "$COMMONAPPDATA\Private Media Manager"
-!define UNINST_REG  "Software\Microsoft\Windows\CurrentVersion\Uninstall\${SERVICE_NAME}"
+!define APP_EXE      "pmm.Api.exe"
+!define UNINST_REG   "Software\Microsoft\Windows\CurrentVersion\Uninstall\${SERVICE_NAME}"
 
 !ifndef APP_VERSION
   !define APP_VERSION "0.0.0"
@@ -21,11 +20,17 @@ ShowInstDetails show
 ShowUninstDetails show
 
 Var PortNum
+Var DataDir
 Var Dialog
 Var PortLabel
 Var PortInput
 
-; ── Pages ────────────────────────────────────────────────────────────────────
+; ── Init ─────────────────────────────────────────────────────────────────────
+Function .onInit
+  StrCpy $DataDir "$COMMONAPPDATA\Private Media Manager"
+FunctionEnd
+
+; ── Pages ─────────────────────────────────────────────────────────────────────
 Page custom PortPageCreate PortPageLeave
 Page instfiles
 UninstPage instfiles
@@ -54,7 +59,7 @@ Function PortPageLeave
   ${EndIf}
 FunctionEnd
 
-; ── Install ──────────────────────────────────────────────────────────────────
+; ── Install ───────────────────────────────────────────────────────────────────
 Section "Install"
   ; Stop and remove any previous installation
   nsExec::Exec 'sc stop "${SERVICE_NAME}"'
@@ -65,16 +70,15 @@ Section "Install"
   SetOutPath "$INSTDIR"
   File /r "publish\*"
 
-  CreateDirectory "${DATA_DIR}"
-  CreateDirectory "${DATA_DIR}\logs"
+  CreateDirectory "$DataDir"
+  CreateDirectory "$DataDir\logs"
 
   ; Register Windows Service
   nsExec::ExecToLog 'sc create "${SERVICE_NAME}" binPath= "$INSTDIR\${APP_EXE}" start= auto DisplayName= "${APP_NAME}"'
   nsExec::ExecToLog 'sc description "${SERVICE_NAME}" "${APP_NAME} service"'
 
-  ; Service environment variables (REG_MULTI_SZ — requires NSIS 3.08+)
-  WriteRegMultiStr HKLM "SYSTEM\CurrentControlSet\Services\${SERVICE_NAME}" "Environment" \
-    "ASPNETCORE_URLS=http://+:$PortNum$\0DB_PATH=${DATA_DIR}\app.db$\0LOGS_PATH=${DATA_DIR}\logs\app-.log$\0ASPNETCORE_ENVIRONMENT=Production"
+  ; Set service environment variables via PowerShell (REG_MULTI_SZ)
+  nsExec::ExecToLog "powershell -NonInteractive -Command $\"Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\${SERVICE_NAME}' -Name Environment -Type MultiString -Value @('ASPNETCORE_URLS=http://+:$PortNum','DB_PATH=$DataDir\app.db','LOGS_PATH=$DataDir\logs\app-.log','ASPNETCORE_ENVIRONMENT=Production')$\""
 
   nsExec::ExecToLog 'sc start "${SERVICE_NAME}"'
 
@@ -86,16 +90,16 @@ Section "Install"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
   ; Add/Remove Programs entry
-  WriteRegStr   HKLM "${UNINST_REG}" "DisplayName"     "${APP_NAME}"
-  WriteRegStr   HKLM "${UNINST_REG}" "UninstallString"  '"$INSTDIR\Uninstall.exe"'
-  WriteRegStr   HKLM "${UNINST_REG}" "InstallLocation"  "$INSTDIR"
-  WriteRegStr   HKLM "${UNINST_REG}" "DisplayVersion"   "${APP_VERSION}"
-  WriteRegStr   HKLM "${UNINST_REG}" "Publisher"        "pnclaw"
-  WriteRegDWORD HKLM "${UNINST_REG}" "NoModify"         1
-  WriteRegDWORD HKLM "${UNINST_REG}" "NoRepair"         1
+  WriteRegStr   HKLM "${UNINST_REG}" "DisplayName"    "${APP_NAME}"
+  WriteRegStr   HKLM "${UNINST_REG}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+  WriteRegStr   HKLM "${UNINST_REG}" "InstallLocation" "$INSTDIR"
+  WriteRegStr   HKLM "${UNINST_REG}" "DisplayVersion"  "${APP_VERSION}"
+  WriteRegStr   HKLM "${UNINST_REG}" "Publisher"       "pnclaw"
+  WriteRegDWORD HKLM "${UNINST_REG}" "NoModify"        1
+  WriteRegDWORD HKLM "${UNINST_REG}" "NoRepair"        1
 SectionEnd
 
-; ── Uninstall ────────────────────────────────────────────────────────────────
+; ── Uninstall ─────────────────────────────────────────────────────────────────
 Section "Uninstall"
   nsExec::Exec 'sc stop "${SERVICE_NAME}"'
   Sleep 2000
@@ -105,6 +109,6 @@ Section "Uninstall"
   RMDir /r "$INSTDIR"
   RMDir /r "$SMPROGRAMS\${APP_NAME}"
 
-  ; Data in $COMMONAPPDATA\Private Media Manager is intentionally preserved
+  ; Data in ProgramData is intentionally preserved on uninstall
   DeleteRegKey HKLM "${UNINST_REG}"
 SectionEnd
