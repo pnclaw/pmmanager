@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pmm.Database;
 
@@ -10,71 +11,14 @@ using Pmm.Database;
 namespace Pmm.Database.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260326160821_RemoveCreatedByUpdatedBy")]
+    partial class RemoveCreatedByUpdatedBy
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
-
-            modelBuilder.Entity("Pmm.Database.DownloadClient", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ApiKey")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("ClientType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Host")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Password")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Port")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("UseSsl")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("DownloadClients");
-                });
 
             modelBuilder.Entity("Pmm.Database.Indexer", b =>
                 {
@@ -117,37 +61,6 @@ namespace Pmm.Database.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Indexers");
-                });
-
-            modelBuilder.Entity("Pmm.Database.IndexerApiRequest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("HttpStatusCode")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("IndexerId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("OccurredAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RequestType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("ResponseTimeMs")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("Success")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IndexerId");
-
-                    b.ToTable("IndexerApiRequests");
                 });
 
             modelBuilder.Entity("Pmm.Database.IndexerRow", b =>
@@ -221,17 +134,6 @@ namespace Pmm.Database.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Items");
-                });
-
-            modelBuilder.Entity("Pmm.Database.IndexerApiRequest", b =>
-                {
-                    b.HasOne("Pmm.Database.Indexer", "Indexer")
-                        .WithMany()
-                        .HasForeignKey("IndexerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Indexer");
                 });
 
             modelBuilder.Entity("Pmm.Database.IndexerRow", b =>

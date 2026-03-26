@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using pmm.Api.Features.DownloadClients;
+using pmm.Api.Features.Indexers.Scraping;
 using Pmm.Database;
 using Serilog;
 
@@ -23,6 +25,10 @@ builder.Host.UseSerilog((ctx, _, lc) => lc
 
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<IndexerScrapeService>();
+builder.Services.AddHostedService<IndexerScraperBackgroundService>();
+builder.Services.AddScoped<DownloadClientTester>();
+builder.Services.AddScoped<DownloadClientSender>();
 builder.Services.AddHostedService<pmm.Api.Background.SyncWorker>();
 
 // EF Core / SQLite — DB_PATH env var takes precedence over appsettings

@@ -20,4 +20,7 @@ public class CreateIndexerRequest
 
     [MaxLength(2000)]
     public string ApiKey { get; set; } = string.Empty;
+
+    [MaxLength(500)]
+    public string ApiPath { get; set; } = string.Empty;
 }
