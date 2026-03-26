@@ -61,12 +61,10 @@ jobs:
         run: choco install nsis --yes
 
       - name: Build installer
-        shell: bash
+        shell: pwsh
         run: |
-          cd installer
-          "/c/Program Files (x86)/NSIS/makensis.exe" \
-            /DAPP_VERSION=${{ env.APP_VERSION }} \
-            setup.nsi
+          Set-Location installer
+          & "C:\Program Files (x86)\NSIS\makensis.exe" "/DAPP_VERSION=${{ env.APP_VERSION }}" setup.nsi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7.0.0
