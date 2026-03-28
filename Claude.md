@@ -161,3 +161,33 @@ This project follows **Git Flow**.
 ### Commit Messages
 - Use conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`
 - Example: `feat: add user authentication`
+
+## Changelog
+
+### Files
+- `CHANGELOG.md` — active log at the repo root, **hard cap of 300 lines**
+- `docs/changelog/<year>.md` — yearly archive (e.g. `docs/changelog/2026.md`)
+
+### Rules — agent is responsible for all of these
+
+1. **Every `feature/*` or `bugfix/*` PR must include a changelog entry** in `CHANGELOG.md`. This is as mandatory as writing tests — the branch is not done without it.
+
+2. **Entry format** — prepend to `CHANGELOG.md` (newest first):
+
+   ```markdown
+   ## feature/branch-name — YYYY-MM-DD
+
+   ### Done
+   - Concise bullet per meaningful change
+
+   ### Dead Ends
+   - Describe each approach that was tried and abandoned, and *why* it failed or
+     was wrong. Be specific enough that a future session won't retry the same path.
+   - If nothing failed, write: *(none)*
+   ```
+
+3. **`### Dead Ends` is mandatory** — even if empty (`*(none)*`). Its purpose is to prevent future agent sessions from re-attempting approaches that were already ruled out.
+
+4. **300-line archive rule** — after writing a new entry, check the line count of `CHANGELOG.md`. If it exceeds 300 lines, move the **oldest complete entry block(s)** (i.e. everything from one `## feature/...` heading down to the next) into `docs/changelog/<year>.md`, prepending them there. Keep moving entries until `CHANGELOG.md` is back under 300 lines.
+
+5. The archive file for the current year must exist before archiving into it. Create it if missing, following the format of existing archive files.
