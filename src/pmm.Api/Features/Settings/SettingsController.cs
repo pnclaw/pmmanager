@@ -32,6 +32,7 @@ public class SettingsController(AppDbContext db) : ControllerBase
         settings.PrdbApiKey = request.PrdbApiKey;
         settings.PrdbApiUrl = request.PrdbApiUrl;
         settings.PreferredVideoQuality = request.PreferredVideoQuality;
+        settings.SafeForWork = request.SafeForWork;
 
         await db.SaveChangesAsync();
         return Ok(ToResponse(settings));
@@ -42,5 +43,6 @@ public class SettingsController(AppDbContext db) : ControllerBase
         PrdbApiKey = settings.PrdbApiKey,
         PrdbApiUrl = settings.PrdbApiUrl,
         PreferredVideoQuality = (int)settings.PreferredVideoQuality,
+        SafeForWork = settings.SafeForWork,
     };
 }

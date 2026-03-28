@@ -76,5 +76,18 @@
 </template>
 
 <script setup lang="ts">
-// App shell — navigation is handled by Vue Router
+import { onMounted } from 'vue'
+import { api } from './api'
+import { useSfwMode } from './composables/useSfwMode'
+
+const { sfwMode } = useSfwMode()
+
+onMounted(async () => {
+  try {
+    const settings = await api.settings.get()
+    sfwMode.value = settings.safeForWork
+  } catch {
+    // non-critical — SFW defaults to off
+  }
+})
 </script>

@@ -79,6 +79,7 @@
             aspect-ratio="16/9"
             cover
             class="rounded"
+            :style="sfwMode ? 'filter: blur(12px)' : ''"
           />
           <div
             v-else
@@ -114,6 +115,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { api, type PrdbWantedVideo, type PrdbWantedFilterOptions } from '../../api'
+import { useSfwMode } from '../../composables/useSfwMode'
+
+const { sfwMode } = useSfwMode()
 
 const videos  = ref<PrdbWantedVideo[]>([])
 const total   = ref(0)

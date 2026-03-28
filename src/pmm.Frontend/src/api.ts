@@ -42,12 +42,14 @@ export interface AppSettings {
   prdbApiKey: string
   prdbApiUrl: string
   preferredVideoQuality: VideoQuality
+  safeForWork: boolean
 }
 
 export interface UpdateSettingsRequest {
   prdbApiKey: string
   prdbApiUrl: string
   preferredVideoQuality: VideoQuality
+  safeForWork: boolean
 }
 
 export enum ClientType {

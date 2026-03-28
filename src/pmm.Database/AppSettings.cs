@@ -39,4 +39,9 @@ public class AppSettings
     /// Set at the end of each successful wanted-video sync run. Used for status display.
     /// </summary>
     public DateTime? PrdbWantedVideoLastSyncedAt { get; set; }
+
+    /// <summary>
+    /// When true, images from the prdb API are blurred in the UI.
+    /// </summary>
+    public bool SafeForWork { get; set; }
 }
