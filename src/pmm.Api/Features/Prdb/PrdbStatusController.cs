@@ -10,20 +10,26 @@ namespace pmm.Api.Features.Prdb;
 [ApiController]
 [Route("api/prdb-status")]
 [Produces("application/json")]
-public class PrdbStatusController(AppDbContext db, IHttpClientFactory httpClientFactory, PrdbActorSyncService actorSyncService) : ControllerBase
+public class PrdbStatusController(
+    AppDbContext db,
+    IHttpClientFactory httpClientFactory,
+    PrdbActorSyncService actorSyncService,
+    PrdbVideoDetailSyncService videoDetailSyncService) : ControllerBase
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     [HttpGet]
     [EndpointSummary("Get prdb status")]
-    [EndpointDescription("Returns actor backfill progress and rate limit info from the prdb API.")]
+    [EndpointDescription("Returns actor backfill progress, detail sync progress, library counts, and rate limit info.")]
     [ProducesResponseType(typeof(PrdbStatusResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(CancellationToken ct)
     {
-        var settings   = await db.AppSettings.FirstAsync(ct);
+        var settings = await db.AppSettings.FirstAsync(ct);
+
+        // ── Actor summary backfill ────────────────────────────────────────────
         var actorCount = await db.PrdbActors.CountAsync(ct);
 
-        var backfill = new ActorBackfillStatus
+        var actorBackfill = new ActorBackfillStatus
         {
             IsComplete   = settings.PrdbActorSyncPage is null,
             CurrentPage  = settings.PrdbActorSyncPage,
@@ -32,6 +38,45 @@ public class PrdbStatusController(AppDbContext db, IHttpClientFactory httpClient
             LastSyncedAt = settings.PrdbActorLastSyncedAt,
         };
 
+        // ── Actor detail sync ─────────────────────────────────────────────────
+        var actorsWithDetail  = await db.PrdbActors.CountAsync(a => a.DetailSyncedAtUtc != null, ct);
+        var favoriteActors    = await db.PrdbActors.CountAsync(a => a.IsFavorite, ct);
+
+        var actorDetailSync = new ActorDetailSyncStatus
+        {
+            ActorsWithDetail  = actorsWithDetail,
+            ActorsPending     = actorCount - actorsWithDetail,
+            TotalActors       = actorCount,
+            FavoriteActors    = favoriteActors,
+        };
+
+        // ── Video detail sync ─────────────────────────────────────────────────
+        var videoCount       = await db.PrdbVideos.CountAsync(ct);
+        var videosWithDetail = await db.PrdbVideos.CountAsync(v => v.DetailSyncedAtUtc != null, ct);
+        var videosWithCast   = await db.PrdbVideoActors.Select(va => va.VideoId).Distinct().CountAsync(ct);
+
+        var videoDetailSync = new VideoDetailSyncStatus
+        {
+            VideosWithDetail = videosWithDetail,
+            VideosPending    = videoCount - videosWithDetail,
+            TotalVideos      = videoCount,
+            VideosWithCast   = videosWithCast,
+        };
+
+        // ── Library counts ────────────────────────────────────────────────────
+        var library = new LibraryCounts
+        {
+            Networks       = await db.PrdbNetworks.CountAsync(ct),
+            Sites          = await db.PrdbSites.CountAsync(ct),
+            FavoriteSites  = await db.PrdbSites.CountAsync(s => s.IsFavorite, ct),
+            Videos         = videoCount,
+            Actors         = actorCount,
+            FavoriteActors = favoriteActors,
+            ActorImages    = await db.PrdbActorImages.CountAsync(ct),
+            VideoImages    = await db.PrdbVideoImages.CountAsync(ct),
+        };
+
+        // ── Rate limits ───────────────────────────────────────────────────────
         PrdbRateLimitStatus? rateLimit = null;
         if (!string.IsNullOrWhiteSpace(settings.PrdbApiKey))
         {
@@ -45,16 +90,33 @@ public class PrdbStatusController(AppDbContext db, IHttpClientFactory httpClient
             catch { /* rate limit unavailable — return null */ }
         }
 
-        return Ok(new PrdbStatusResponse { ActorBackfill = backfill, RateLimit = rateLimit });
+        return Ok(new PrdbStatusResponse
+        {
+            ActorBackfill   = actorBackfill,
+            ActorDetailSync = actorDetailSync,
+            VideoDetailSync = videoDetailSync,
+            Library         = library,
+            RateLimit       = rateLimit,
+        });
     }
 
     [HttpPost("backfill/run")]
     [EndpointSummary("Run actor backfill")]
-    [EndpointDescription("Manually triggers one backfill run, identical to the scheduled SyncWorker tick.")]
+    [EndpointDescription("Manually triggers one actor summary backfill run, identical to the scheduled SyncWorker tick.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RunBackfill(CancellationToken ct)
     {
         await actorSyncService.RunAsync(ct);
+        return NoContent();
+    }
+
+    [HttpPost("video-detail-sync/run")]
+    [EndpointSummary("Run video detail sync")]
+    [EndpointDescription("Manually triggers one video detail sync run, identical to the scheduled SyncWorker tick.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RunVideoDetailSync(CancellationToken ct)
+    {
+        await videoDetailSyncService.RunAsync(ct);
         return NoContent();
     }
 }
@@ -62,6 +124,9 @@ public class PrdbStatusController(AppDbContext db, IHttpClientFactory httpClient
 public class PrdbStatusResponse
 {
     public ActorBackfillStatus ActorBackfill { get; init; } = null!;
+    public ActorDetailSyncStatus ActorDetailSync { get; init; } = null!;
+    public VideoDetailSyncStatus VideoDetailSync { get; init; } = null!;
+    public LibraryCounts Library { get; init; } = null!;
     public PrdbRateLimitStatus? RateLimit { get; init; }
 }
 
@@ -72,6 +137,34 @@ public class ActorBackfillStatus
     public int? TotalActors { get; init; }
     public int ActorsInDb { get; init; }
     public DateTime? LastSyncedAt { get; init; }
+}
+
+public class ActorDetailSyncStatus
+{
+    public int ActorsWithDetail { get; init; }
+    public int ActorsPending { get; init; }
+    public int TotalActors { get; init; }
+    public int FavoriteActors { get; init; }
+}
+
+public class VideoDetailSyncStatus
+{
+    public int VideosWithDetail { get; init; }
+    public int VideosPending { get; init; }
+    public int TotalVideos { get; init; }
+    public int VideosWithCast { get; init; }
+}
+
+public class LibraryCounts
+{
+    public int Networks { get; init; }
+    public int Sites { get; init; }
+    public int FavoriteSites { get; init; }
+    public int Videos { get; init; }
+    public int Actors { get; init; }
+    public int FavoriteActors { get; init; }
+    public int ActorImages { get; init; }
+    public int VideoImages { get; init; }
 }
 
 public class PrdbRateLimitStatus
