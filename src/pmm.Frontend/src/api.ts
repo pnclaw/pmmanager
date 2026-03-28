@@ -187,7 +187,24 @@ export interface PrdbActor {
   gender: number
   nationality: number
   birthday: string | null
+  isFavorite: boolean
+  favoritedAtUtc: string | null
   aliases: string[]
+}
+
+export interface PrdbStatus {
+  actorBackfill: {
+    isComplete: boolean
+    currentPage: number | null
+    totalActors: number | null
+    actorsInDb: number
+    lastSyncedAt: string | null
+  }
+  rateLimit: {
+    isEnforced: boolean
+    hourly: { limit: number; used: number; remaining: number; resetsInSeconds: number }
+    monthly: { limit: number; used: number; remaining: number; resetsInSeconds: number }
+  } | null
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -266,16 +283,25 @@ export const api = {
       if (params?.search) q.set('search', params.search)
       return request<PrdbVideo[]>(`/prdb-sites/${id}/videos?${q}`)
     },
+    setFavorite: (id: string, favorite: boolean) =>
+      request<void>(`/prdb-sites/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' }),
   },
   prdbActors: {
-    list: (params?: { search?: string }) => {
+    list: (params?: { search?: string; favoritesOnly?: boolean }) => {
       const q = new URLSearchParams()
       if (params?.search) q.set('search', params.search)
+      if (params?.favoritesOnly) q.set('favoritesOnly', 'true')
       return request<PrdbActor[]>(`/prdb-actors?${q}`)
     },
+    setFavorite: (id: string, favorite: boolean) =>
+      request<void>(`/prdb-actors/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' }),
   },
   prdbSync: {
-    syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
+    syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; favoriteActorsSynced: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
+  },
+  prdbStatus: {
+    get: () => request<PrdbStatus>('/prdb-status'),
+    runBackfill: () => request<void>('/prdb-status/backfill/run', { method: 'POST' }),
   },
   settings: {
     get: () => request<AppSettings>('/settings'),
