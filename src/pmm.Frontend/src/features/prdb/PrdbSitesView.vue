@@ -17,11 +17,19 @@
     </v-row>
 
     <v-alert v-if="syncResult" type="success" class="mb-4" closable @click:close="syncResult = null">
-      Sync complete — {{ syncResult.sitesUpserted }} sites, {{ syncResult.networksUpserted }} networks, {{ syncResult.videosUpserted }} videos upserted.
+      Sync complete — {{ syncResult.sitesUpserted }} sites, {{ syncResult.networksUpserted }} networks, {{ syncResult.favoriteSitesSynced }} favorites, {{ syncResult.videosUpserted }} videos upserted.
     </v-alert>
 
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
+    </v-alert>
+
+    <v-alert
+      v-if="!loading && favoritesOnly && !search && sites.length === 0"
+      type="info"
+      class="mb-4"
+    >
+      No favorite sites found. Try syncing, or turn off <strong>Favorites only</strong> to see all sites.
     </v-alert>
 
     <v-row class="mb-4">
@@ -85,9 +93,9 @@ const sites      = ref<PrdbSite[]>([])
 const loading    = ref(false)
 const syncing    = ref(false)
 const error      = ref<string | null>(null)
-const syncResult = ref<{ networksUpserted: number; sitesUpserted: number; videosUpserted: number } | null>(null)
+const syncResult = ref<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; videosUpserted: number } | null>(null)
 const search     = ref('')
-const favoritesOnly = ref(false)
+const favoritesOnly = ref(true)
 
 const headers = [
   { title: '',         key: 'isFavorite',   width: 48,  sortable: false },

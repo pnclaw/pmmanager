@@ -275,7 +275,7 @@ export const api = {
     },
   },
   prdbSync: {
-    syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
+    syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
   },
   settings: {
     get: () => request<AppSettings>('/settings'),
