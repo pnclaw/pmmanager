@@ -17,7 +17,7 @@
     </v-row>
 
     <v-alert v-if="syncResult" type="success" class="mb-4" closable @click:close="syncResult = null">
-      Sync complete — {{ syncResult.sitesUpserted }} sites, {{ syncResult.networksUpserted }} networks, {{ syncResult.favoriteSitesSynced }} favorites, {{ syncResult.videosUpserted }} videos upserted.
+      Sync complete — {{ syncResult.sitesUpserted }} sites, {{ syncResult.networksUpserted }} networks, {{ syncResult.favoriteSitesSynced }} favorite sites, {{ syncResult.favoriteActorsSynced }} favorite actors, {{ syncResult.videosUpserted }} videos upserted.
     </v-alert>
 
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
@@ -93,7 +93,7 @@ const sites      = ref<PrdbSite[]>([])
 const loading    = ref(false)
 const syncing    = ref(false)
 const error      = ref<string | null>(null)
-const syncResult = ref<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; videosUpserted: number } | null>(null)
+const syncResult = ref<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; favoriteActorsSynced: number; videosUpserted: number } | null>(null)
 const search     = ref('')
 const favoritesOnly = ref(true)
 

@@ -6,4 +6,5 @@ public class PrdbSyncResult
     public int SitesUpserted { get; init; }
     public int VideosUpserted { get; init; }
     public int FavoriteSitesSynced { get; init; }
+    public int FavoriteActorsSynced { get; init; }
 }

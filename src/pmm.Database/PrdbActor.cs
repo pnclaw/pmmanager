@@ -39,6 +39,9 @@ public class PrdbActor
     [MaxLength(1000)]
     public string? Piercings { get; set; }
 
+    public bool IsFavorite { get; set; }
+    public DateTime? FavoritedAtUtc { get; set; }
+
     public DateTime PrdbCreatedAtUtc { get; set; }
     public DateTime PrdbUpdatedAtUtc { get; set; }
     public DateTime SyncedAtUtc { get; set; }

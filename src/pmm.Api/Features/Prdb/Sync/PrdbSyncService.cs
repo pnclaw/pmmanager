@@ -25,16 +25,18 @@ public class PrdbSyncService(AppDbContext db, IHttpClientFactory httpClientFacto
         http.BaseAddress = new Uri(settings.PrdbApiUrl.TrimEnd('/') + "/");
         http.DefaultRequestHeaders.Add("X-Api-Key", settings.PrdbApiKey);
 
-        var networksUpserted   = await SyncSitesAsync(http, ct);
-        var sitesUpserted      = networksUpserted.sitesUpserted;
-        var favoritesUpserted  = await SyncFavoriteSitesAsync(http, ct);
-        var videosUpserted     = await SyncVideosAsync(http, ct);
+        var networksUpserted    = await SyncSitesAsync(http, ct);
+        var sitesUpserted       = networksUpserted.sitesUpserted;
+        var favSitesUpserted    = await SyncFavoriteSitesAsync(http, ct);
+        var favActorsUpserted   = await SyncFavoriteActorsAsync(http, ct);
+        var videosUpserted      = await SyncVideosAsync(http, ct);
 
         return new PrdbSyncResult
         {
             NetworksUpserted    = networksUpserted.networksUpserted,
             SitesUpserted       = sitesUpserted,
-            FavoriteSitesSynced = favoritesUpserted,
+            FavoriteSitesSynced = favSitesUpserted,
+            FavoriteActorsSynced = favActorsUpserted,
             VideosUpserted      = videosUpserted,
         };
     }
@@ -148,6 +150,89 @@ public class PrdbSyncService(AppDbContext db, IHttpClientFactory httpClientFacto
         return apiFavorites.Count;
     }
 
+    // ── Favorite Actors ──────────────────────────────────────────────────────
+
+    private async Task<int> SyncFavoriteActorsAsync(HttpClient http, CancellationToken ct)
+    {
+        logger.LogInformation("PrdbSyncService: syncing favorite actors");
+
+        var apiFavorites = await FetchAllPagesAsync<PrdbApiFavoriteActor>(http, "favorite-actors", ct);
+        var favoriteMap  = apiFavorites.ToDictionary(f => f.Id);
+
+        var existingActors = await db.PrdbActors
+            .Include(a => a.Aliases)
+            .ToDictionaryAsync(a => a.Id, ct);
+
+        var now = DateTime.UtcNow;
+
+        // Insert favorite actors not yet in the DB
+        foreach (var fav in apiFavorites.Where(f => !existingActors.ContainsKey(f.Id)))
+        {
+            var detail = await http.GetFromJsonAsync<PrdbApiActorDetail>(
+                $"actors/{fav.Id}", JsonOptions, ct);
+
+            if (detail is null) continue;
+
+            var actor = new PrdbActor
+            {
+                Id               = detail.Id,
+                Name             = detail.Name,
+                Gender           = detail.Gender,
+                Birthday         = detail.Birthday,
+                BirthdayType     = detail.BirthdayType,
+                Deathday         = detail.Deathday,
+                Birthplace       = detail.Birthplace,
+                Haircolor        = detail.Haircolor,
+                Eyecolor         = detail.Eyecolor,
+                BreastType       = detail.BreastType,
+                Height           = detail.Height,
+                BraSize          = detail.BraSize,
+                BraSizeLabel     = detail.BraSizeLabel,
+                WaistSize        = detail.WaistSize,
+                HipSize          = detail.HipSize,
+                Nationality      = detail.Nationality,
+                Ethnicity        = detail.Ethnicity,
+                CareerStart      = detail.CareerStart,
+                CareerEnd        = detail.CareerEnd,
+                Tattoos          = detail.Tattoos,
+                Piercings        = detail.Piercings,
+                IsFavorite       = true,
+                FavoritedAtUtc   = fav.FavoritedAtUtc,
+                PrdbCreatedAtUtc = detail.CreatedAtUtc,
+                PrdbUpdatedAtUtc = detail.UpdatedAtUtc,
+                SyncedAtUtc      = now,
+                Aliases          = detail.Aliases
+                    .Select(a => new PrdbActorAlias { Name = a.Name, SiteId = a.SiteId })
+                    .ToList(),
+            };
+
+            db.PrdbActors.Add(actor);
+            existingActors[actor.Id] = actor;
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        // Update IsFavorite flag on all existing actors
+        foreach (var actor in existingActors.Values)
+        {
+            if (favoriteMap.TryGetValue(actor.Id, out var fav))
+            {
+                actor.IsFavorite     = true;
+                actor.FavoritedAtUtc = fav.FavoritedAtUtc;
+            }
+            else if (actor.IsFavorite)
+            {
+                actor.IsFavorite     = false;
+                actor.FavoritedAtUtc = null;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation("PrdbSyncService: {Count} favorite actors synced", apiFavorites.Count);
+        return apiFavorites.Count;
+    }
+
     // ── Videos ───────────────────────────────────────────────────────────────
 
     private async Task<int> SyncVideosAsync(HttpClient http, CancellationToken ct)
@@ -172,6 +257,19 @@ public class PrdbSyncService(AppDbContext db, IHttpClientFactory httpClientFacto
         {
             var siteVideos = await FetchAllPagesAsync<PrdbApiVideo>(http, $"videos?SiteId={siteId}", ct);
             foreach (var v in siteVideos)
+                allApiVideos[v.Id] = v;
+        }
+
+        // All videos for each favorite actor
+        var favoriteActorIds = await db.PrdbActors
+            .Where(a => a.IsFavorite)
+            .Select(a => a.Id)
+            .ToListAsync(ct);
+
+        foreach (var actorId in favoriteActorIds)
+        {
+            var actorVideos = await FetchAllPagesAsync<PrdbApiVideo>(http, $"videos?ActorId={actorId}", ct);
+            foreach (var v in actorVideos)
                 allApiVideos[v.Id] = v;
         }
 

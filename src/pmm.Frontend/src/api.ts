@@ -187,6 +187,8 @@ export interface PrdbActor {
   gender: number
   nationality: number
   birthday: string | null
+  isFavorite: boolean
+  favoritedAtUtc: string | null
   aliases: string[]
 }
 
@@ -268,14 +270,15 @@ export const api = {
     },
   },
   prdbActors: {
-    list: (params?: { search?: string }) => {
+    list: (params?: { search?: string; favoritesOnly?: boolean }) => {
       const q = new URLSearchParams()
       if (params?.search) q.set('search', params.search)
+      if (params?.favoritesOnly) q.set('favoritesOnly', 'true')
       return request<PrdbActor[]>(`/prdb-actors?${q}`)
     },
   },
   prdbSync: {
-    syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
+    syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; favoriteActorsSynced: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
   },
   settings: {
     get: () => request<AppSettings>('/settings'),
