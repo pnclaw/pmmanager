@@ -30,6 +30,7 @@ builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbSyncService>();
 builder.Services.AddScoped<pmm.Api.Features.Prdb.PrdbFavoritesService>();
 builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbActorSyncService>();
 builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbVideoDetailSyncService>();
+builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbWantedVideoSyncService>();
 builder.Services.AddHostedService<IndexerScraperBackgroundService>();
 builder.Services.AddScoped<DownloadClientTester>();
 builder.Services.AddScoped<DownloadClientSender>();

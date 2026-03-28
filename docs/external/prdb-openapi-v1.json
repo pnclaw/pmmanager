@@ -85,6 +85,98 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "RemoveWantedVideo"
+        ],
+        "summary": "Remove a wanted video",
+        "description": "Removes the specified video from the wanted list of the currently authenticated user. Returns 404 if the video was not on the user's wanted list. Requires API key authentication.",
+        "parameters": [
+          {
+            "name": "videoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "AddWantedVideo"
+        ],
+        "summary": "Add a wanted video",
+        "description": "Adds the specified video to the wanted list for the currently authenticated user. Returns 204 if added or already on the wanted list. Returns 404 if the video does not exist. Requires API key authentication.",
+        "parameters": [
+          {
+            "name": "videoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": { }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/wanted-videos": {
@@ -217,6 +309,62 @@
         }
       }
     },
+    "/wanted-videos/batch": {
+      "post": {
+        "tags": [
+          "AddWantedVideosBatch"
+        ],
+        "summary": "Batch add wanted videos",
+        "description": "Adds up to 50 videos to the wanted list for the currently authenticated user in a single request. Videos already on the wanted list are silently skipped. Unknown video IDs are silently omitted. Returns counts of added, already-existed, and not-found entries. Requires API key authentication.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddWantedVideosBatchRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddWantedVideosBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddWantedVideosBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/videos": {
       "get": {
         "tags": [
@@ -229,6 +377,8 @@
             "name": "Page",
             "in": "query",
             "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": [
                 "integer",
@@ -241,6 +391,8 @@
             "name": "PageSize",
             "in": "query",
             "schema": {
+              "maximum": 100,
+              "minimum": 1,
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": [
                 "integer",
@@ -270,6 +422,21 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "SortBy",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "SortDirection",
+            "in": "query",
+            "schema": {
+              "pattern": "^(?i)(asc|desc)$",
+              "type": "string"
             }
           }
         ],
@@ -361,6 +528,8 @@
             "name": "Page",
             "in": "query",
             "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": [
                 "integer",
@@ -373,6 +542,8 @@
             "name": "PageSize",
             "in": "query",
             "schema": {
+              "maximum": 100,
+              "minimum": 1,
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": [
                 "integer",
@@ -385,6 +556,21 @@
             "name": "Search",
             "in": "query",
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "SortBy",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "SortDirection",
+            "in": "query",
+            "schema": {
+              "pattern": "^(?i)(asc|desc)$",
               "type": "string"
             }
           }
@@ -909,6 +1095,8 @@
             "name": "Page",
             "in": "query",
             "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": [
                 "integer",
@@ -921,6 +1109,8 @@
             "name": "PageSize",
             "in": "query",
             "schema": {
+              "maximum": 500,
+              "minimum": 1,
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": [
                 "integer",
@@ -947,6 +1137,7 @@
             "name": "SortDirection",
             "in": "query",
             "schema": {
+              "pattern": "^(?i)(asc|desc)$",
               "type": "string"
             }
           },
@@ -1518,6 +1709,57 @@
           }
         }
       },
+      "AddWantedVideosBatchRequest": {
+        "required": [
+          "videoIds"
+        ],
+        "type": "object",
+        "properties": {
+          "videoIds": {
+            "maxItems": 50,
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "AddWantedVideosBatchResponse": {
+        "required": [
+          "added",
+          "alreadyExisted",
+          "notFound"
+        ],
+        "type": "object",
+        "properties": {
+          "added": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "alreadyExisted": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "notFound": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "FavoriteActorSummaryDto": {
         "required": [
           "id",
@@ -1829,7 +2071,9 @@
           "items",
           "totalCount",
           "page",
-          "pageSize"
+          "pageSize",
+          "sortBy",
+          "sortDirection"
         ],
         "type": "object",
         "properties": {
@@ -1862,6 +2106,12 @@
               "string"
             ],
             "format": "int32"
+          },
+          "sortBy": {
+            "type": "string"
+          },
+          "sortDirection": {
+            "type": "string"
           }
         }
       },
@@ -1870,7 +2120,9 @@
           "items",
           "totalCount",
           "page",
-          "pageSize"
+          "pageSize",
+          "sortBy",
+          "sortDirection"
         ],
         "type": "object",
         "properties": {
@@ -1903,6 +2155,12 @@
               "string"
             ],
             "format": "int32"
+          },
+          "sortBy": {
+            "type": "string"
+          },
+          "sortDirection": {
+            "type": "string"
           }
         }
       },
@@ -2591,7 +2849,16 @@
       "name": "UpdateWantedVideo"
     },
     {
+      "name": "RemoveWantedVideo"
+    },
+    {
+      "name": "AddWantedVideo"
+    },
+    {
       "name": "ListWantedVideos"
+    },
+    {
+      "name": "AddWantedVideosBatch"
     },
     {
       "name": "ListVideos"

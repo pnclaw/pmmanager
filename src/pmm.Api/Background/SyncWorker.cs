@@ -45,6 +45,9 @@ public class SyncWorker(IServiceScopeFactory scopeFactory, ILogger<SyncWorker> l
         var videoDetailSync = scope.ServiceProvider.GetRequiredService<PrdbVideoDetailSyncService>();
         await videoDetailSync.RunAsync(ct);
 
+        var wantedVideoSync = scope.ServiceProvider.GetRequiredService<PrdbWantedVideoSyncService>();
+        await wantedVideoSync.RunAsync(ct);
+
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var settings = await db.AppSettings.FirstAsync(ct);
         settings.SyncWorkerLastRunAt = DateTime.UtcNow;

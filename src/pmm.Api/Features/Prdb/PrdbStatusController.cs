@@ -14,7 +14,8 @@ public class PrdbStatusController(
     AppDbContext db,
     IHttpClientFactory httpClientFactory,
     PrdbActorSyncService actorSyncService,
-    PrdbVideoDetailSyncService videoDetailSyncService) : ControllerBase
+    PrdbVideoDetailSyncService videoDetailSyncService,
+    PrdbWantedVideoSyncService wantedVideoSyncService) : ControllerBase
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -71,6 +72,22 @@ public class PrdbStatusController(
             VideosWithCast   = videosWithCast,
         };
 
+        // ── Wanted video sync ─────────────────────────────────────────────────
+        var totalWanted     = await db.PrdbWantedVideos.CountAsync(ct);
+        var fulfilled       = await db.PrdbWantedVideos.CountAsync(w => w.IsFulfilled, ct);
+        var pendingDetail   = await db.PrdbWantedVideos
+            .Join(db.PrdbVideos, w => w.VideoId, v => v.Id, (w, v) => v.DetailSyncedAtUtc)
+            .CountAsync(d => d == null, ct);
+
+        var wantedVideoSync = new WantedVideoSyncStatus
+        {
+            Total         = totalWanted,
+            Unfulfilled   = totalWanted - fulfilled,
+            Fulfilled     = fulfilled,
+            PendingDetail = pendingDetail,
+            LastSyncedAt  = settings.PrdbWantedVideoLastSyncedAt,
+        };
+
         // ── Library counts ────────────────────────────────────────────────────
         var library = new LibraryCounts
         {
@@ -82,6 +99,7 @@ public class PrdbStatusController(
             FavoriteActors = favoriteActors,
             ActorImages    = await db.PrdbActorImages.CountAsync(ct),
             VideoImages    = await db.PrdbVideoImages.CountAsync(ct),
+            WantedVideos   = totalWanted,
         };
 
         // ── Rate limits ───────────────────────────────────────────────────────
@@ -104,6 +122,7 @@ public class PrdbStatusController(
             ActorBackfill   = actorBackfill,
             ActorDetailSync = actorDetailSync,
             VideoDetailSync = videoDetailSync,
+            WantedVideoSync = wantedVideoSync,
             Library         = library,
             RateLimit       = rateLimit,
         });
@@ -128,6 +147,16 @@ public class PrdbStatusController(
         await videoDetailSyncService.RunAsync(ct);
         return NoContent();
     }
+
+    [HttpPost("wanted-video-sync/run")]
+    [EndpointSummary("Run wanted video sync")]
+    [EndpointDescription("Manually triggers one wanted video sync run, identical to the scheduled SyncWorker tick.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RunWantedVideoSync(CancellationToken ct)
+    {
+        await wantedVideoSyncService.RunAsync(ct);
+        return NoContent();
+    }
 }
 
 public class PrdbStatusResponse
@@ -136,6 +165,7 @@ public class PrdbStatusResponse
     public ActorBackfillStatus ActorBackfill { get; init; } = null!;
     public ActorDetailSyncStatus ActorDetailSync { get; init; } = null!;
     public VideoDetailSyncStatus VideoDetailSync { get; init; } = null!;
+    public WantedVideoSyncStatus WantedVideoSync { get; init; } = null!;
     public LibraryCounts Library { get; init; } = null!;
     public PrdbRateLimitStatus? RateLimit { get; init; }
 }
@@ -172,6 +202,15 @@ public class VideoDetailSyncStatus
     public int VideosWithCast { get; init; }
 }
 
+public class WantedVideoSyncStatus
+{
+    public int Total { get; init; }
+    public int Unfulfilled { get; init; }
+    public int Fulfilled { get; init; }
+    public int PendingDetail { get; init; }
+    public DateTime? LastSyncedAt { get; init; }
+}
+
 public class LibraryCounts
 {
     public int Networks { get; init; }
@@ -182,6 +221,7 @@ public class LibraryCounts
     public int FavoriteActors { get; init; }
     public int ActorImages { get; init; }
     public int VideoImages { get; init; }
+    public int WantedVideos { get; init; }
 }
 
 public class PrdbRateLimitStatus

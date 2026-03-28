@@ -217,6 +217,13 @@ export interface PrdbStatus {
     totalVideos: number
     videosWithCast: number
   }
+  wantedVideoSync: {
+    total: number
+    unfulfilled: number
+    fulfilled: number
+    pendingDetail: number
+    lastSyncedAt: string | null
+  }
   library: {
     networks: number
     sites: number
@@ -226,6 +233,7 @@ export interface PrdbStatus {
     favoriteActors: number
     actorImages: number
     videoImages: number
+    wantedVideos: number
   }
   rateLimit: {
     isEnforced: boolean
@@ -336,6 +344,7 @@ export const api = {
     get: () => request<PrdbStatus>('/prdb-status'),
     runBackfill: () => request<void>('/prdb-status/backfill/run', { method: 'POST' }),
     runVideoDetailSync: () => request<void>('/prdb-status/video-detail-sync/run', { method: 'POST' }),
+    runWantedVideoSync: () => request<void>('/prdb-status/wanted-video-sync/run', { method: 'POST' }),
   },
   settings: {
     get: () => request<AppSettings>('/settings'),
