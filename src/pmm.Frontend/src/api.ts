@@ -193,6 +193,11 @@ export interface PrdbActor {
 }
 
 export interface PrdbStatus {
+  syncWorker: {
+    intervalMinutes: number
+    lastRunAt: string | null
+    nextRunAt: string | null
+  }
   actorBackfill: {
     isComplete: boolean
     currentPage: number | null

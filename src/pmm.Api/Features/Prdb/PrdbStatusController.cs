@@ -26,6 +26,14 @@ public class PrdbStatusController(
     {
         var settings = await db.AppSettings.FirstAsync(ct);
 
+        // ── SyncWorker schedule ───────────────────────────────────────────────
+        var syncWorker = new SyncWorkerStatus
+        {
+            IntervalMinutes = 15,
+            LastRunAt       = settings.SyncWorkerLastRunAt,
+            NextRunAt       = settings.SyncWorkerLastRunAt?.AddMinutes(15),
+        };
+
         // ── Actor summary backfill ────────────────────────────────────────────
         var actorCount = await db.PrdbActors.CountAsync(ct);
 
@@ -92,6 +100,7 @@ public class PrdbStatusController(
 
         return Ok(new PrdbStatusResponse
         {
+            SyncWorker      = syncWorker,
             ActorBackfill   = actorBackfill,
             ActorDetailSync = actorDetailSync,
             VideoDetailSync = videoDetailSync,
@@ -123,11 +132,19 @@ public class PrdbStatusController(
 
 public class PrdbStatusResponse
 {
+    public SyncWorkerStatus SyncWorker { get; init; } = null!;
     public ActorBackfillStatus ActorBackfill { get; init; } = null!;
     public ActorDetailSyncStatus ActorDetailSync { get; init; } = null!;
     public VideoDetailSyncStatus VideoDetailSync { get; init; } = null!;
     public LibraryCounts Library { get; init; } = null!;
     public PrdbRateLimitStatus? RateLimit { get; init; }
+}
+
+public class SyncWorkerStatus
+{
+    public int IntervalMinutes { get; init; }
+    public DateTime? LastRunAt { get; init; }
+    public DateTime? NextRunAt { get; init; }
 }
 
 public class ActorBackfillStatus

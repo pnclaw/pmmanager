@@ -1,10 +1,35 @@
 <template>
   <v-container>
     <v-row align="center" class="mb-4">
-      <v-col>
+      <v-col class="d-flex align-center ga-2">
         <h1 class="text-h4">prdb Status</h1>
+        <v-menu :close-on-content-click="false" max-width="360">
+          <template #activator="{ props }">
+            <v-btn icon="mdi-information-outline" variant="text" size="small" v-bind="props" />
+          </template>
+          <v-card>
+            <v-card-title class="text-body-1 font-weight-medium pt-4 pb-1">Background Sync Service</v-card-title>
+            <v-card-text class="text-body-2">
+              <p class="mb-2">A background service runs automatically every <strong>15 minutes</strong> and performs the following in order:</p>
+              <ol class="pl-4">
+                <li class="mb-1"><strong>Actor summary backfill</strong> — pages through all actors on prdb.net and inserts any not yet in the local DB (5 000 per run until complete, then checks for new actors each tick).</li>
+                <li class="mb-1"><strong>Video detail sync</strong> — fetches full detail for videos that haven't been processed yet, populating cast, images, and pre-names.</li>
+                <li><strong>Actor detail backfill</strong> — batch-fetches full actor details (50 per API call, 1 000 per run) for all actors lacking detail.</li>
+              </ol>
+              <p class="mt-2 text-medium-emphasis">Individual steps can also be triggered manually using the Run Now buttons on each card.</p>
+            </v-card-text>
+          </v-card>
+        </v-menu>
       </v-col>
-      <v-col class="text-right">
+      <v-col class="text-right d-flex align-center justify-end ga-3">
+        <span v-if="status?.syncWorker" class="text-body-2 text-medium-emphasis">
+          <template v-if="status.syncWorker.nextRunAt">
+            Next run {{ nextRunLabel }}
+          </template>
+          <template v-else>
+            Next run scheduled
+          </template>
+        </span>
         <v-btn
           prepend-icon="mdi-refresh"
           :loading="loading"
@@ -296,6 +321,17 @@ const loading              = ref(false)
 const runningBackfill      = ref(false)
 const runningVideoDetailSync = ref(false)
 const error                = ref<string | null>(null)
+
+// ── SyncWorker next run ────────────────────────────────────────────────────
+
+const nextRunLabel = computed(() => {
+  const next = status.value?.syncWorker?.nextRunAt
+  if (!next) return ''
+  const diffMs = new Date(next).getTime() - Date.now()
+  if (diffMs <= 0) return 'imminently'
+  const m = Math.ceil(diffMs / 60_000)
+  return m === 1 ? 'in ~1 minute' : `in ~${m} minutes`
+})
 
 // ── Actor summary backfill ─────────────────────────────────────────────────
 
