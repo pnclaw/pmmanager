@@ -11,7 +11,7 @@
     </v-alert>
 
     <v-alert
-      v-if="!loading && favoritesOnly && !search && actors.length === 0"
+      v-if="!loading && favoritesOnly && !search && total === 0"
       type="info"
       class="mb-4"
     >
@@ -26,7 +26,7 @@
           label="Search"
           clearable
           hide-details
-          @update:model-value="load"
+          @update:model-value="onFilterChange"
         />
       </v-col>
       <v-col cols="12" sm="4" md="3" class="d-flex align-center">
@@ -35,17 +35,22 @@
           label="Favorites only"
           hide-details
           color="primary"
-          @update:model-value="load"
+          @update:model-value="onFilterChange"
         />
       </v-col>
     </v-row>
 
-    <v-data-table
+    <v-data-table-server
+      v-model:items-per-page="pagination.pageSize"
       :headers="headers"
       :items="actors"
+      :items-length="total"
       :loading="loading"
+      :page="pagination.page"
       item-value="id"
       hover
+      @update:page="onPageChange"
+      @update:items-per-page="onPageSizeChange"
     >
       <template #item.isFavorite="{ item }">
         <v-btn
@@ -69,20 +74,23 @@
         <span v-if="item.aliases.length === 0" class="text-medium-emphasis">—</span>
         <span v-else>{{ item.aliases.join(', ') }}</span>
       </template>
-    </v-data-table>
+    </v-data-table-server>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { api, type PrdbActor } from '../../api'
 
 const actors      = ref<PrdbActor[]>([])
+const total       = ref(0)
 const loading     = ref(false)
 const error       = ref<string | null>(null)
 const search      = ref('')
 const favoritesOnly = ref(true)
 const togglingIds = ref<string[]>([])
+
+const pagination = reactive({ page: 1, pageSize: 50 })
 
 const headers = [
   { title: '',          key: 'isFavorite',  width: 48,  sortable: false },
@@ -93,6 +101,41 @@ const headers = [
   { title: 'Aliases',     key: 'aliases' },
 ]
 
+async function load() {
+  loading.value = true
+  error.value = null
+  try {
+    const result = await api.prdbActors.list({
+      search: search.value || undefined,
+      favoritesOnly: favoritesOnly.value || undefined,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+    })
+    actors.value = result.items
+    total.value = result.total
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    loading.value = false
+  }
+}
+
+function onFilterChange() {
+  pagination.page = 1
+  load()
+}
+
+function onPageChange(page: number) {
+  pagination.page = page
+  load()
+}
+
+function onPageSizeChange(size: number) {
+  pagination.pageSize = size
+  pagination.page = 1
+  load()
+}
+
 async function toggleFavorite(item: PrdbActor) {
   if (togglingIds.value.includes(item.id)) return
   togglingIds.value = [...togglingIds.value, item.id]
@@ -101,26 +144,11 @@ async function toggleFavorite(item: PrdbActor) {
     await api.prdbActors.setFavorite(item.id, newFavorite)
     item.isFavorite = newFavorite
     if (!newFavorite && favoritesOnly.value)
-      actors.value = actors.value.filter(a => a.id !== item.id)
+      await load()
   } catch (e: any) {
     error.value = e.message
   } finally {
     togglingIds.value = togglingIds.value.filter(id => id !== item.id)
-  }
-}
-
-async function load() {
-  loading.value = true
-  error.value = null
-  try {
-    actors.value = await api.prdbActors.list({
-      search: search.value || undefined,
-      favoritesOnly: favoritesOnly.value || undefined,
-    })
-  } catch (e: any) {
-    error.value = e.message
-  } finally {
-    loading.value = false
   }
 }
 

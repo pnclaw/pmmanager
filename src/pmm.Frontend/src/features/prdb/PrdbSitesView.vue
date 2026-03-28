@@ -25,7 +25,7 @@
     </v-alert>
 
     <v-alert
-      v-if="!loading && favoritesOnly && !search && sites.length === 0"
+      v-if="!loading && favoritesOnly && !search && total === 0"
       type="info"
       class="mb-4"
     >
@@ -40,7 +40,7 @@
           label="Search"
           clearable
           hide-details
-          @update:model-value="load"
+          @update:model-value="onFilterChange"
         />
       </v-col>
       <v-col cols="12" sm="4" md="3" class="d-flex align-center">
@@ -49,17 +49,22 @@
           label="Favorites only"
           hide-details
           color="primary"
-          @update:model-value="load"
+          @update:model-value="onFilterChange"
         />
       </v-col>
     </v-row>
 
-    <v-data-table
+    <v-data-table-server
+      v-model:items-per-page="pagination.pageSize"
       :headers="headers"
       :items="sites"
+      :items-length="total"
       :loading="loading"
+      :page="pagination.page"
       item-value="id"
       hover
+      @update:page="onPageChange"
+      @update:items-per-page="onPageSizeChange"
     >
       <template #item.isFavorite="{ item }">
         <v-btn
@@ -89,22 +94,25 @@
           Videos
         </v-btn>
       </template>
-    </v-data-table>
+    </v-data-table-server>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { api, type PrdbSite } from '../../api'
 
 const sites       = ref<PrdbSite[]>([])
+const total       = ref(0)
 const loading     = ref(false)
 const syncing     = ref(false)
 const error       = ref<string | null>(null)
 const togglingIds = ref<string[]>([])
-const syncResult = ref<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; favoriteActorsSynced: number; videosUpserted: number } | null>(null)
-const search     = ref('')
+const syncResult  = ref<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; favoriteActorsSynced: number; videosUpserted: number } | null>(null)
+const search      = ref('')
 const favoritesOnly = ref(true)
+
+const pagination = reactive({ page: 1, pageSize: 50 })
 
 const headers = [
   { title: '',         key: 'isFavorite',   width: 48,  sortable: false },
@@ -118,15 +126,35 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    sites.value = await api.prdbSites.list({
+    const result = await api.prdbSites.list({
       search: search.value || undefined,
       favoritesOnly: favoritesOnly.value || undefined,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     })
+    sites.value = result.items
+    total.value = result.total
   } catch (e: any) {
     error.value = e.message
   } finally {
     loading.value = false
   }
+}
+
+function onFilterChange() {
+  pagination.page = 1
+  load()
+}
+
+function onPageChange(page: number) {
+  pagination.page = page
+  load()
+}
+
+function onPageSizeChange(size: number) {
+  pagination.pageSize = size
+  pagination.page = 1
+  load()
 }
 
 async function toggleFavorite(item: PrdbSite) {
@@ -137,7 +165,7 @@ async function toggleFavorite(item: PrdbSite) {
     await api.prdbSites.setFavorite(item.id, newFavorite)
     item.isFavorite = newFavorite
     if (!newFavorite && favoritesOnly.value)
-      sites.value = sites.value.filter(s => s.id !== item.id)
+      await load()
   } catch (e: any) {
     error.value = e.message
   } finally {

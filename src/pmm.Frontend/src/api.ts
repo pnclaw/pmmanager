@@ -294,26 +294,32 @@ export const api = {
       request<void>(`/indexers/${id}/rows`, { method: 'DELETE' }),
   },
   prdbSites: {
-    list: (params?: { search?: string; favoritesOnly?: boolean }) => {
+    list: (params?: { search?: string; favoritesOnly?: boolean; page?: number; pageSize?: number }) => {
       const q = new URLSearchParams()
       if (params?.search) q.set('search', params.search)
       if (params?.favoritesOnly) q.set('favoritesOnly', 'true')
-      return request<PrdbSite[]>(`/prdb-sites?${q}`)
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.pageSize) q.set('pageSize', String(params.pageSize))
+      return request<PagedResult<PrdbSite>>(`/prdb-sites?${q}`)
     },
-    videos: (id: string, params?: { search?: string }) => {
+    videos: (id: string, params?: { search?: string; page?: number; pageSize?: number }) => {
       const q = new URLSearchParams()
       if (params?.search) q.set('search', params.search)
-      return request<PrdbVideo[]>(`/prdb-sites/${id}/videos?${q}`)
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.pageSize) q.set('pageSize', String(params.pageSize))
+      return request<PagedResult<PrdbVideo>>(`/prdb-sites/${id}/videos?${q}`)
     },
     setFavorite: (id: string, favorite: boolean) =>
       request<void>(`/prdb-sites/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' }),
   },
   prdbActors: {
-    list: (params?: { search?: string; favoritesOnly?: boolean }) => {
+    list: (params?: { search?: string; favoritesOnly?: boolean; page?: number; pageSize?: number }) => {
       const q = new URLSearchParams()
       if (params?.search) q.set('search', params.search)
       if (params?.favoritesOnly) q.set('favoritesOnly', 'true')
-      return request<PrdbActor[]>(`/prdb-actors?${q}`)
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.pageSize) q.set('pageSize', String(params.pageSize))
+      return request<PagedResult<PrdbActor>>(`/prdb-actors?${q}`)
     },
     setFavorite: (id: string, favorite: boolean) =>
       request<void>(`/prdb-actors/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' }),
