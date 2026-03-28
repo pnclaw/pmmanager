@@ -35,6 +35,15 @@ record PrdbApiFavoriteActor(
     string? ProfileImageCdnPath,
     DateTime FavoritedAtUtc);
 
+record PrdbApiActorSummary(
+    Guid Id,
+    string Name,
+    int Gender,
+    int Nationality,
+    int Ethnicity,
+    DateOnly? Birthday,
+    string? ProfileImageUrl);
+
 record PrdbApiActorDetail(
     Guid Id,
     string Name,

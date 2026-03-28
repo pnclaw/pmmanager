@@ -48,9 +48,17 @@
       hover
     >
       <template #item.isFavorite="{ item }">
-        <v-icon :color="item.isFavorite ? 'amber' : 'default'">
-          {{ item.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
-        </v-icon>
+        <v-btn
+          icon
+          size="small"
+          variant="text"
+          :loading="togglingIds.includes(item.id)"
+          @click="toggleFavorite(item)"
+        >
+          <v-icon :color="item.isFavorite ? 'amber' : 'default'">
+            {{ item.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
+          </v-icon>
+        </v-btn>
       </template>
 
       <template #item.birthday="{ item }">
@@ -74,6 +82,7 @@ const loading     = ref(false)
 const error       = ref<string | null>(null)
 const search      = ref('')
 const favoritesOnly = ref(true)
+const togglingIds = ref<string[]>([])
 
 const headers = [
   { title: '',          key: 'isFavorite',  width: 48,  sortable: false },
@@ -83,6 +92,22 @@ const headers = [
   { title: 'Birthday',    key: 'birthday',    width: 130 },
   { title: 'Aliases',     key: 'aliases' },
 ]
+
+async function toggleFavorite(item: PrdbActor) {
+  if (togglingIds.value.includes(item.id)) return
+  togglingIds.value = [...togglingIds.value, item.id]
+  const newFavorite = !item.isFavorite
+  try {
+    await api.prdbActors.setFavorite(item.id, newFavorite)
+    item.isFavorite = newFavorite
+    if (!newFavorite && favoritesOnly.value)
+      actors.value = actors.value.filter(a => a.id !== item.id)
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    togglingIds.value = togglingIds.value.filter(id => id !== item.id)
+  }
+}
 
 async function load() {
   loading.value = true

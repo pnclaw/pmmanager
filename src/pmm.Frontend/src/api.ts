@@ -192,6 +192,21 @@ export interface PrdbActor {
   aliases: string[]
 }
 
+export interface PrdbStatus {
+  actorBackfill: {
+    isComplete: boolean
+    currentPage: number | null
+    totalActors: number | null
+    actorsInDb: number
+    lastSyncedAt: string | null
+  }
+  rateLimit: {
+    isEnforced: boolean
+    hourly: { limit: number; used: number; remaining: number; resetsInSeconds: number }
+    monthly: { limit: number; used: number; remaining: number; resetsInSeconds: number }
+  } | null
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -268,6 +283,8 @@ export const api = {
       if (params?.search) q.set('search', params.search)
       return request<PrdbVideo[]>(`/prdb-sites/${id}/videos?${q}`)
     },
+    setFavorite: (id: string, favorite: boolean) =>
+      request<void>(`/prdb-sites/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' }),
   },
   prdbActors: {
     list: (params?: { search?: string; favoritesOnly?: boolean }) => {
@@ -276,9 +293,14 @@ export const api = {
       if (params?.favoritesOnly) q.set('favoritesOnly', 'true')
       return request<PrdbActor[]>(`/prdb-actors?${q}`)
     },
+    setFavorite: (id: string, favorite: boolean) =>
+      request<void>(`/prdb-actors/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' }),
   },
   prdbSync: {
     syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; favoriteActorsSynced: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
+  },
+  prdbStatus: {
+    get: () => request<PrdbStatus>('/prdb-status'),
   },
   settings: {
     get: () => request<AppSettings>('/settings'),

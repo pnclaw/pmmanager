@@ -62,9 +62,17 @@
       hover
     >
       <template #item.isFavorite="{ item }">
-        <v-icon :color="item.isFavorite ? 'amber' : 'default'">
-          {{ item.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
-        </v-icon>
+        <v-btn
+          icon
+          size="small"
+          variant="text"
+          :loading="togglingIds.includes(item.id)"
+          @click="toggleFavorite(item)"
+        >
+          <v-icon :color="item.isFavorite ? 'amber' : 'default'">
+            {{ item.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
+          </v-icon>
+        </v-btn>
       </template>
 
       <template #item.networkTitle="{ item }">
@@ -89,10 +97,11 @@
 import { ref, onMounted } from 'vue'
 import { api, type PrdbSite } from '../../api'
 
-const sites      = ref<PrdbSite[]>([])
-const loading    = ref(false)
-const syncing    = ref(false)
-const error      = ref<string | null>(null)
+const sites       = ref<PrdbSite[]>([])
+const loading     = ref(false)
+const syncing     = ref(false)
+const error       = ref<string | null>(null)
+const togglingIds = ref<string[]>([])
 const syncResult = ref<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; favoriteActorsSynced: number; videosUpserted: number } | null>(null)
 const search     = ref('')
 const favoritesOnly = ref(true)
@@ -117,6 +126,22 @@ async function load() {
     error.value = e.message
   } finally {
     loading.value = false
+  }
+}
+
+async function toggleFavorite(item: PrdbSite) {
+  if (togglingIds.value.includes(item.id)) return
+  togglingIds.value = [...togglingIds.value, item.id]
+  const newFavorite = !item.isFavorite
+  try {
+    await api.prdbSites.setFavorite(item.id, newFavorite)
+    item.isFavorite = newFavorite
+    if (!newFavorite && favoritesOnly.value)
+      sites.value = sites.value.filter(s => s.id !== item.id)
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    togglingIds.value = togglingIds.value.filter(id => id !== item.id)
   }
 }
 

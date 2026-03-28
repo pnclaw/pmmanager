@@ -7,7 +7,7 @@ namespace pmm.Api.Features.Prdb;
 [ApiController]
 [Route("api/prdb-actors")]
 [Produces("application/json")]
-public class PrdbActorsController(AppDbContext db) : ControllerBase
+public class PrdbActorsController(AppDbContext db, PrdbFavoritesService favoritesService) : ControllerBase
 {
     [HttpGet]
     [EndpointSummary("List prdb actors")]
@@ -39,6 +39,28 @@ public class PrdbActorsController(AppDbContext db) : ControllerBase
             .ToListAsync();
 
         return Ok(actors);
+    }
+
+    [HttpPost("{id:guid}/favorite")]
+    [EndpointSummary("Add a favorite actor")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddFavorite(Guid id, CancellationToken ct)
+    {
+        if (!await db.PrdbActors.AnyAsync(a => a.Id == id)) return NotFound();
+        await favoritesService.SetActorFavoriteAsync(id, true, ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}/favorite")]
+    [EndpointSummary("Remove a favorite actor")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveFavorite(Guid id, CancellationToken ct)
+    {
+        if (!await db.PrdbActors.AnyAsync(a => a.Id == id)) return NotFound();
+        await favoritesService.SetActorFavoriteAsync(id, false, ct);
+        return NoContent();
     }
 
 }

@@ -47,6 +47,12 @@
           to="/prdb/actors"
           rounded="lg"
         />
+        <v-list-item
+          prepend-icon="mdi-chart-box"
+          title="Status"
+          to="/prdb/status"
+          rounded="lg"
+        />
         <v-divider class="my-2" />
         <v-list-item
           prepend-icon="mdi-cog"

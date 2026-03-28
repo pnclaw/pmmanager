@@ -1,8 +1,8 @@
-using Pmm.Database;
+using pmm.Api.Features.Prdb.Sync;
 
 namespace pmm.Api.Background;
 
-public class SyncWorker(IServiceScopeFactory scopeFactory, IHttpClientFactory httpClientFactory, ILogger<SyncWorker> logger) : BackgroundService
+public class SyncWorker(IServiceScopeFactory scopeFactory, ILogger<SyncWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(15);
 
@@ -34,13 +34,11 @@ public class SyncWorker(IServiceScopeFactory scopeFactory, IHttpClientFactory ht
     private async Task RunAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var http = httpClientFactory.CreateClient();
 
         logger.LogInformation("SyncWorker run started at {Time}", DateTimeOffset.UtcNow);
 
-        // TODO: implement sync logic
-        await Task.CompletedTask;
+        var actorSync = scope.ServiceProvider.GetRequiredService<PrdbActorSyncService>();
+        await actorSync.RunAsync(ct);
 
         logger.LogInformation("SyncWorker run completed at {Time}", DateTimeOffset.UtcNow);
     }
