@@ -77,6 +77,21 @@ record PrdbApiActorImageDetail(Guid Id, int ImageType, string? Url);
 
 record PrdbApiBatchActorsRequest(List<Guid> Ids);
 
+record PrdbApiWantedVideoSummary(
+    Guid VideoId,
+    string VideoTitle,
+    string SiteTitle,
+    DateOnly? VideoReleaseDate,
+    DateTime? VideoCreatedAtUtc,
+    string? ImageCdnPath,
+    bool IsFulfilled,
+    DateTime? FulfilledAtUtc,
+    int? FulfilledInQuality,
+    string? FulfillmentExternalId,
+    int? FulfillmentByApp,
+    DateTime CreatedAtUtc,
+    DateTime UpdatedAtUtc);
+
 record PrdbApiVideoDetail(
     Guid Id,
     string Title,

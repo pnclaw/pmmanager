@@ -34,4 +34,9 @@ public class AppSettings
     /// Set at the end of each successful SyncWorker run. Used to calculate next scheduled run.
     /// </summary>
     public DateTime? SyncWorkerLastRunAt { get; set; }
+
+    /// <summary>
+    /// Set at the end of each successful wanted-video sync run. Used for status display.
+    /// </summary>
+    public DateTime? PrdbWantedVideoLastSyncedAt { get; set; }
 }

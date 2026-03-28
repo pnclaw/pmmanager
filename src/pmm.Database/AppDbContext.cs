@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<PrdbActorImage> PrdbActorImages => Set<PrdbActorImage>();
     public DbSet<PrdbActorAlias> PrdbActorAliases => Set<PrdbActorAlias>();
     public DbSet<PrdbVideoActor> PrdbVideoActors => Set<PrdbVideoActor>();
+    public DbSet<PrdbWantedVideo> PrdbWantedVideos => Set<PrdbWantedVideo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,6 +36,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<PrdbVideoActor>(e =>
         {
             e.HasKey(va => new { va.VideoId, va.ActorId });
+        });
+
+        modelBuilder.Entity<PrdbWantedVideo>(e =>
+        {
+            e.HasKey(w => w.VideoId);
+            e.HasOne(w => w.Video)
+             .WithMany()
+             .HasForeignKey(w => w.VideoId);
         });
     }
 }

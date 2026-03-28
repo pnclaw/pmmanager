@@ -14,7 +14,8 @@
               <ol class="pl-4">
                 <li class="mb-1"><strong>Actor summary backfill</strong> — pages through all actors on prdb.net and inserts any not yet in the local DB (5 000 per run until complete, then checks for new actors each tick).</li>
                 <li class="mb-1"><strong>Video detail sync</strong> — fetches full detail for videos that haven't been processed yet, populating cast, images, and pre-names.</li>
-                <li><strong>Actor detail backfill</strong> — batch-fetches full actor details (50 per API call, 1 000 per run) for all actors lacking detail.</li>
+                <li class="mb-1"><strong>Actor detail backfill</strong> — batch-fetches full actor details (50 per API call, 1 000 per run) for all actors lacking detail.</li>
+                <li><strong>Wanted list sync</strong> — fetches the full wanted video list from prdb.net, upserts entries, and removes any no longer on the list.</li>
               </ol>
               <p class="mt-2 text-medium-emphasis">Individual steps can also be triggered manually using the Run Now buttons on each card.</p>
             </v-card-text>
@@ -214,6 +215,56 @@
         </v-card>
       </v-col>
 
+      <!-- Wanted List Sync -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-bookmark-check</v-icon>
+            Wanted List Sync
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningWantedVideoSync"
+              @click="runWantedVideoSync"
+            >
+              Run Now
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-medium-emphasis">Total on list</td>
+                  <td>{{ status.wantedVideoSync.total.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Unfulfilled</td>
+                  <td>{{ status.wantedVideoSync.unfulfilled.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Fulfilled</td>
+                  <td>{{ status.wantedVideoSync.fulfilled.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Pending video detail</td>
+                  <td>{{ status.wantedVideoSync.pendingDetail.toLocaleString() }}</td>
+                </tr>
+                <tr v-if="status.wantedVideoSync.lastSyncedAt">
+                  <td class="text-medium-emphasis">Last synced</td>
+                  <td>{{ formatDate(status.wantedVideoSync.lastSyncedAt) }}</td>
+                </tr>
+                <tr v-else>
+                  <td class="text-medium-emphasis">Last synced</td>
+                  <td class="text-medium-emphasis">Never</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
       <!-- Library Counts -->
       <v-col cols="12" md="6">
         <v-card>
@@ -239,7 +290,12 @@
                 </tr>
                 <tr>
                   <td class="text-medium-emphasis">Videos</td>
-                  <td>{{ status.library.videos.toLocaleString() }}</td>
+                  <td>
+                    {{ status.library.videos.toLocaleString() }}
+                    <span class="text-medium-emphasis text-body-2">
+                      ({{ status.library.wantedVideos.toLocaleString() }} wanted)
+                    </span>
+                  </td>
                 </tr>
                 <tr>
                   <td class="text-medium-emphasis">Video images</td>
@@ -326,11 +382,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { api, type PrdbStatus } from '../../api'
 
-const status               = ref<PrdbStatus | null>(null)
-const loading              = ref(false)
-const runningBackfill      = ref(false)
+const status                 = ref<PrdbStatus | null>(null)
+const loading                = ref(false)
+const runningBackfill        = ref(false)
 const runningVideoDetailSync = ref(false)
-const error                = ref<string | null>(null)
+const runningWantedVideoSync = ref(false)
+const error                  = ref<string | null>(null)
 
 // ── SyncWorker next run ────────────────────────────────────────────────────
 
@@ -440,6 +497,19 @@ async function runVideoDetailSync() {
     error.value = e.message
   } finally {
     runningVideoDetailSync.value = false
+  }
+}
+
+async function runWantedVideoSync() {
+  runningWantedVideoSync.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.runWantedVideoSync()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningWantedVideoSync.value = false
   }
 }
 
