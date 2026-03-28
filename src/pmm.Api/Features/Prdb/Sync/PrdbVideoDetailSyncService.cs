@@ -260,7 +260,18 @@ public class PrdbVideoDetailSyncService(
                     actor.DetailSyncedAtUtc = now;
             }
 
-            await db.SaveChangesAsync(ct);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+            {
+                logger.LogWarning(
+                    "PrdbVideoDetailSyncService: concurrency conflict saving actor batch — {Count} entr(ies) detached, will retry next run",
+                    ex.Entries.Count);
+                foreach (var entry in ex.Entries)
+                    entry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+            }
         }
 
         logger.LogInformation("PrdbVideoDetailSyncService: synced details for {Count} actors", synced);
