@@ -5,6 +5,19 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/wanted-list-view — 2026-03-28
+
+### Done
+- Added `GET /api/prdb-wanted-videos` — paged, server-side filtered list (search, fulfilment status, site, actor); sorted newest-added first
+- Added `GET /api/prdb-wanted-videos/filter-options` — returns distinct sites and actors present in the wanted list for dropdown population
+- New **Wanted** nav item under PRDB; view shows thumbnail, site, title, release date, added date, and fulfilment status chip; defaults to unfulfilled-only filter
+- Added **Safe for work** toggle in Settings → Display; blurs all prdb-sourced images app-wide via a shared `useSfwMode` composable; persisted in `AppSettings` with EF migration
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/wanted-list-sync — 2026-03-28
 
 ### Done
