@@ -25,15 +25,17 @@ public class PrdbSyncService(AppDbContext db, IHttpClientFactory httpClientFacto
         http.BaseAddress = new Uri(settings.PrdbApiUrl.TrimEnd('/') + "/");
         http.DefaultRequestHeaders.Add("X-Api-Key", settings.PrdbApiKey);
 
-        var networksUpserted = await SyncSitesAsync(http, ct);
-        var sitesUpserted    = networksUpserted.sitesUpserted;
-        var videosUpserted   = await SyncVideosAsync(http, ct);
+        var networksUpserted   = await SyncSitesAsync(http, ct);
+        var sitesUpserted      = networksUpserted.sitesUpserted;
+        var favoritesUpserted  = await SyncFavoriteSitesAsync(http, ct);
+        var videosUpserted     = await SyncVideosAsync(http, ct);
 
         return new PrdbSyncResult
         {
-            NetworksUpserted = networksUpserted.networksUpserted,
-            SitesUpserted    = sitesUpserted,
-            VideosUpserted   = videosUpserted,
+            NetworksUpserted    = networksUpserted.networksUpserted,
+            SitesUpserted       = sitesUpserted,
+            FavoriteSitesSynced = favoritesUpserted,
+            VideosUpserted      = videosUpserted,
         };
     }
 
@@ -113,6 +115,37 @@ public class PrdbSyncService(AppDbContext db, IHttpClientFactory httpClientFacto
             networksUpserted, apiSites.Count);
 
         return (networksUpserted, apiSites.Count);
+    }
+
+    // ── Favorite Sites ───────────────────────────────────────────────────────
+
+    private async Task<int> SyncFavoriteSitesAsync(HttpClient http, CancellationToken ct)
+    {
+        logger.LogInformation("PrdbSyncService: syncing favorite sites");
+
+        var apiFavorites = await FetchAllPagesAsync<PrdbApiFavoriteSite>(http, "favorite-sites", ct);
+        var favoriteMap  = apiFavorites.ToDictionary(f => f.Id);
+
+        var allSites = await db.PrdbSites.ToListAsync(ct);
+
+        foreach (var site in allSites)
+        {
+            if (favoriteMap.TryGetValue(site.Id, out var fav))
+            {
+                site.IsFavorite      = true;
+                site.FavoritedAtUtc  = fav.FavoritedAtUtc;
+            }
+            else if (site.IsFavorite)
+            {
+                site.IsFavorite     = false;
+                site.FavoritedAtUtc = null;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation("PrdbSyncService: {Count} favorite sites synced", apiFavorites.Count);
+        return apiFavorites.Count;
     }
 
     // ── Videos ───────────────────────────────────────────────────────────────

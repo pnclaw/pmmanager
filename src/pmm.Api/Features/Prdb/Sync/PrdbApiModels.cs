@@ -17,3 +17,11 @@ record PrdbApiVideo(
     Guid SiteId,
     string SiteTitle,
     DateOnly? ReleaseDate);
+
+record PrdbApiFavoriteSite(
+    Guid Id,
+    string Title,
+    string Url,
+    Guid? NetworkId,
+    string? NetworkTitle,
+    DateTime FavoritedAtUtc);
