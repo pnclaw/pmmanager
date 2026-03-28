@@ -301,6 +301,7 @@ export const api = {
   },
   prdbStatus: {
     get: () => request<PrdbStatus>('/prdb-status'),
+    runBackfill: () => request<void>('/prdb-status/backfill/run', { method: 'POST' }),
   },
   settings: {
     get: () => request<AppSettings>('/settings'),

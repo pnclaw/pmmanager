@@ -8,7 +8,8 @@ namespace pmm.Api.Features.Prdb.Sync;
 public class PrdbActorSyncService(AppDbContext db, IHttpClientFactory httpClientFactory, ILogger<PrdbActorSyncService> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private const int PageSize = 500;
+    private const int PageSize    = 500;
+    private const int PagesPerRun = 10; // 5 000 actors per run, 10 API requests
 
     public async Task RunAsync(CancellationToken ct)
     {
@@ -28,39 +29,49 @@ public class PrdbActorSyncService(AppDbContext db, IHttpClientFactory httpClient
             await RunNewActorCheckAsync(http, settings, ct);
     }
 
-    // ── Backfill (one page per run) ──────────────────────────────────────────
+    // ── Backfill (up to PagesPerRun pages per run) ───────────────────────────
 
     private async Task RunBackfillPageAsync(HttpClient http, AppSettings settings, CancellationToken ct)
     {
-        var page = settings.PrdbActorSyncPage!.Value;
-        logger.LogInformation("PrdbActorSyncService: backfill page {Page}", page);
+        var startPage     = settings.PrdbActorSyncPage!.Value;
+        var currentPage   = startPage;
+        var totalInserted = 0;
+        var done          = false;
 
-        var url = $"actors?Page={page}&PageSize={PageSize}&SortBy=createdAtUtc&SortDirection=asc";
-        var response = await http.GetFromJsonAsync<PrdbApiPagedResult<PrdbApiActorSummary>>(url, JsonOptions, ct);
+        logger.LogInformation("PrdbActorSyncService: backfill starting at page {Page}", startPage);
 
-        if (response is null || response.Items.Count == 0)
+        for (var i = 0; i < PagesPerRun; i++)
         {
-            settings.PrdbActorSyncPage    = null;
-            settings.PrdbActorLastSyncedAt = DateTime.UtcNow;
-            await db.SaveChangesAsync(ct);
-            logger.LogInformation("PrdbActorSyncService: backfill complete");
-            return;
+            var url      = $"actors?Page={currentPage}&PageSize={PageSize}&SortBy=createdAtUtc&SortDirection=asc";
+            var response = await http.GetFromJsonAsync<PrdbApiPagedResult<PrdbApiActorSummary>>(url, JsonOptions, ct);
+
+            if (response is null || response.Items.Count == 0)
+            {
+                done = true;
+                break;
+            }
+
+            totalInserted                += await UpsertNewActorsAsync(response.Items, ct);
+            settings.PrdbActorTotalCount  = response.TotalCount;
+
+            var fetched = (long)currentPage * PageSize;
+            currentPage++;
+
+            if (fetched >= response.TotalCount)
+            {
+                done = true;
+                break;
+            }
         }
 
-        var inserted = await UpsertNewActorsAsync(response.Items, ct);
-
-        var fetched = (long)page * PageSize;
-        var done    = fetched >= response.TotalCount;
-
-        settings.PrdbActorTotalCount   = response.TotalCount;
-        settings.PrdbActorSyncPage     = done ? null : page + 1;
+        settings.PrdbActorSyncPage     = done ? null : currentPage;
         settings.PrdbActorLastSyncedAt = done ? DateTime.UtcNow : settings.PrdbActorLastSyncedAt;
 
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation(
-            "PrdbActorSyncService: backfill page {Page} — inserted {Inserted}, total known {Total}, next: {Next}",
-            page, inserted, response.TotalCount,
+            "PrdbActorSyncService: backfill pages {Start}–{End} — inserted {Inserted}, total {Total}, next: {Next}",
+            startPage, currentPage - 1, totalInserted, settings.PrdbActorTotalCount,
             settings.PrdbActorSyncPage?.ToString() ?? "done");
     }
 

@@ -26,6 +26,16 @@
           <v-card-title class="d-flex align-center ga-2">
             <v-icon>mdi-account-sync</v-icon>
             Actor Backfill
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="resetting"
+              @click="runBackfill"
+            >
+              Run Now
+            </v-btn>
           </v-card-title>
           <v-card-text>
             <div v-if="status.actorBackfill.isComplete" class="d-flex align-center ga-2 mb-3">
@@ -133,9 +143,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { api, type PrdbStatus } from '../../api'
 
-const status  = ref<PrdbStatus | null>(null)
-const loading = ref(false)
-const error   = ref<string | null>(null)
+const status    = ref<PrdbStatus | null>(null)
+const loading   = ref(false)
+const resetting = ref(false)
+const error     = ref<string | null>(null)
 
 const backfillPercent = computed(() => {
   const bf = status.value?.actorBackfill
@@ -175,6 +186,19 @@ function formatResets(seconds: number) {
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString()
+}
+
+async function runBackfill() {
+  resetting.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.runBackfill()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    resetting.value = false
+  }
 }
 
 async function load() {

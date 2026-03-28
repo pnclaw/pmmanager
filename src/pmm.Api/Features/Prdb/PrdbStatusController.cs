@@ -3,13 +3,14 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pmm.Database;
+using pmm.Api.Features.Prdb.Sync;
 
 namespace pmm.Api.Features.Prdb;
 
 [ApiController]
 [Route("api/prdb-status")]
 [Produces("application/json")]
-public class PrdbStatusController(AppDbContext db, IHttpClientFactory httpClientFactory) : ControllerBase
+public class PrdbStatusController(AppDbContext db, IHttpClientFactory httpClientFactory, PrdbActorSyncService actorSyncService) : ControllerBase
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -45,6 +46,16 @@ public class PrdbStatusController(AppDbContext db, IHttpClientFactory httpClient
         }
 
         return Ok(new PrdbStatusResponse { ActorBackfill = backfill, RateLimit = rateLimit });
+    }
+
+    [HttpPost("backfill/run")]
+    [EndpointSummary("Run actor backfill")]
+    [EndpointDescription("Manually triggers one backfill run, identical to the scheduled SyncWorker tick.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RunBackfill(CancellationToken ct)
+    {
+        await actorSyncService.RunAsync(ct);
+        return NoContent();
     }
 }
 
