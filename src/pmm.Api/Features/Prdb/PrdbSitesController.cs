@@ -7,7 +7,7 @@ namespace pmm.Api.Features.Prdb;
 [ApiController]
 [Route("api/prdb-sites")]
 [Produces("application/json")]
-public class PrdbSitesController(AppDbContext db) : ControllerBase
+public class PrdbSitesController(AppDbContext db, PrdbFavoritesService favoritesService) : ControllerBase
 {
     [HttpGet]
     [EndpointSummary("List prdb sites")]
@@ -51,6 +51,28 @@ public class PrdbSitesController(AppDbContext db) : ControllerBase
             FavoritedAtUtc = s.FavoritedAtUtc,
             VideoCount   = s.VideoCount,
         }));
+    }
+
+    [HttpPost("{id:guid}/favorite")]
+    [EndpointSummary("Add a favorite site")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddFavorite(Guid id, CancellationToken ct)
+    {
+        if (!await db.PrdbSites.AnyAsync(s => s.Id == id)) return NotFound();
+        await favoritesService.SetSiteFavoriteAsync(id, true, ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}/favorite")]
+    [EndpointSummary("Remove a favorite site")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveFavorite(Guid id, CancellationToken ct)
+    {
+        if (!await db.PrdbSites.AnyAsync(s => s.Id == id)) return NotFound();
+        await favoritesService.SetSiteFavoriteAsync(id, false, ct);
+        return NoContent();
     }
 
     [HttpGet("{id:guid}/videos")]

@@ -10,6 +10,14 @@
       {{ error }}
     </v-alert>
 
+    <v-alert
+      v-if="!loading && favoritesOnly && !search && actors.length === 0"
+      type="info"
+      class="mb-4"
+    >
+      No favorite actors found. Try syncing, or turn off <strong>Favorites only</strong> to see all actors.
+    </v-alert>
+
     <v-row class="mb-4">
       <v-col cols="12" sm="6" md="4">
         <v-text-field
@@ -18,6 +26,15 @@
           label="Search"
           clearable
           hide-details
+          @update:model-value="load"
+        />
+      </v-col>
+      <v-col cols="12" sm="4" md="3" class="d-flex align-center">
+        <v-switch
+          v-model="favoritesOnly"
+          label="Favorites only"
+          hide-details
+          color="primary"
           @update:model-value="load"
         />
       </v-col>
@@ -30,6 +47,20 @@
       item-value="id"
       hover
     >
+      <template #item.isFavorite="{ item }">
+        <v-btn
+          icon
+          size="small"
+          variant="text"
+          :loading="togglingIds.includes(item.id)"
+          @click="toggleFavorite(item)"
+        >
+          <v-icon :color="item.isFavorite ? 'amber' : 'default'">
+            {{ item.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
+          </v-icon>
+        </v-btn>
+      </template>
+
       <template #item.birthday="{ item }">
         {{ item.birthday ?? '—' }}
       </template>
@@ -46,12 +77,15 @@
 import { ref, onMounted } from 'vue'
 import { api, type PrdbActor } from '../../api'
 
-const actors  = ref<PrdbActor[]>([])
-const loading = ref(false)
-const error   = ref<string | null>(null)
-const search  = ref('')
+const actors      = ref<PrdbActor[]>([])
+const loading     = ref(false)
+const error       = ref<string | null>(null)
+const search      = ref('')
+const favoritesOnly = ref(true)
+const togglingIds = ref<string[]>([])
 
 const headers = [
+  { title: '',          key: 'isFavorite',  width: 48,  sortable: false },
   { title: 'Name',        key: 'name' },
   { title: 'Gender',      key: 'gender',      width: 100 },
   { title: 'Nationality', key: 'nationality', width: 120 },
@@ -59,12 +93,29 @@ const headers = [
   { title: 'Aliases',     key: 'aliases' },
 ]
 
+async function toggleFavorite(item: PrdbActor) {
+  if (togglingIds.value.includes(item.id)) return
+  togglingIds.value = [...togglingIds.value, item.id]
+  const newFavorite = !item.isFavorite
+  try {
+    await api.prdbActors.setFavorite(item.id, newFavorite)
+    item.isFavorite = newFavorite
+    if (!newFavorite && favoritesOnly.value)
+      actors.value = actors.value.filter(a => a.id !== item.id)
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    togglingIds.value = togglingIds.value.filter(id => id !== item.id)
+  }
+}
+
 async function load() {
   loading.value = true
   error.value = null
   try {
     actors.value = await api.prdbActors.list({
       search: search.value || undefined,
+      favoritesOnly: favoritesOnly.value || undefined,
     })
   } catch (e: any) {
     error.value = e.message
