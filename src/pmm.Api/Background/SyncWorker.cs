@@ -40,6 +40,9 @@ public class SyncWorker(IServiceScopeFactory scopeFactory, ILogger<SyncWorker> l
         var actorSync = scope.ServiceProvider.GetRequiredService<PrdbActorSyncService>();
         await actorSync.RunAsync(ct);
 
+        var videoDetailSync = scope.ServiceProvider.GetRequiredService<PrdbVideoDetailSyncService>();
+        await videoDetailSync.RunAsync(ct);
+
         logger.LogInformation("SyncWorker run completed at {Time}", DateTimeOffset.UtcNow);
     }
 }

@@ -165,45 +165,20 @@ public class PrdbSyncService(AppDbContext db, IHttpClientFactory httpClientFacto
 
         var now = DateTime.UtcNow;
 
-        // Insert favorite actors not yet in the DB
+        // Insert minimal stubs for favorite actors not yet in the DB;
+        // full detail will be populated by PrdbVideoDetailSyncService (Phase 2).
         foreach (var fav in apiFavorites.Where(f => !existingActors.ContainsKey(f.Id)))
         {
-            var detail = await http.GetFromJsonAsync<PrdbApiActorDetail>(
-                $"actors/{fav.Id}", JsonOptions, ct);
-
-            if (detail is null) continue;
-
             var actor = new PrdbActor
             {
-                Id               = detail.Id,
-                Name             = detail.Name,
-                Gender           = detail.Gender,
-                Birthday         = detail.Birthday,
-                BirthdayType     = detail.BirthdayType,
-                Deathday         = detail.Deathday,
-                Birthplace       = detail.Birthplace,
-                Haircolor        = detail.Haircolor,
-                Eyecolor         = detail.Eyecolor,
-                BreastType       = detail.BreastType,
-                Height           = detail.Height,
-                BraSize          = detail.BraSize,
-                BraSizeLabel     = detail.BraSizeLabel,
-                WaistSize        = detail.WaistSize,
-                HipSize          = detail.HipSize,
-                Nationality      = detail.Nationality,
-                Ethnicity        = detail.Ethnicity,
-                CareerStart      = detail.CareerStart,
-                CareerEnd        = detail.CareerEnd,
-                Tattoos          = detail.Tattoos,
-                Piercings        = detail.Piercings,
+                Id               = fav.Id,
+                Name             = fav.Name,
+                Gender           = 0,
                 IsFavorite       = true,
                 FavoritedAtUtc   = fav.FavoritedAtUtc,
-                PrdbCreatedAtUtc = detail.CreatedAtUtc,
-                PrdbUpdatedAtUtc = detail.UpdatedAtUtc,
+                PrdbCreatedAtUtc = now,
+                PrdbUpdatedAtUtc = now,
                 SyncedAtUtc      = now,
-                Aliases          = detail.Aliases
-                    .Select(a => new PrdbActorAlias { Name = a.Name, SiteId = a.SiteId })
-                    .ToList(),
             };
 
             db.PrdbActors.Add(actor);
