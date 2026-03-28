@@ -165,6 +165,16 @@
           <v-card-title class="d-flex align-center ga-2">
             <v-icon>mdi-video-check</v-icon>
             Video Detail Sync
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningVideoDetailSync"
+              @click="runVideoDetailSync"
+            >
+              Run Now
+            </v-btn>
           </v-card-title>
           <v-card-text>
             <div v-if="status.videoDetailSync.videosPending === 0" class="d-flex align-center ga-2 mb-3">
