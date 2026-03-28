@@ -53,6 +53,12 @@
           to="/prdb/status"
           rounded="lg"
         />
+        <v-list-item
+          prepend-icon="mdi-bookmark-multiple"
+          title="Wanted"
+          to="/prdb/wanted"
+          rounded="lg"
+        />
         <v-divider class="my-2" />
         <v-list-item
           prepend-icon="mdi-cog"
@@ -70,5 +76,18 @@
 </template>
 
 <script setup lang="ts">
-// App shell — navigation is handled by Vue Router
+import { onMounted } from 'vue'
+import { api } from './api'
+import { useSfwMode } from './composables/useSfwMode'
+
+const { sfwMode } = useSfwMode()
+
+onMounted(async () => {
+  try {
+    const settings = await api.settings.get()
+    sfwMode.value = settings.safeForWork
+  } catch {
+    // non-critical — SFW defaults to off
+  }
+})
 </script>

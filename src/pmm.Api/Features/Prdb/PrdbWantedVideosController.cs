@@ -1,0 +1,93 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Pmm.Database;
+
+namespace pmm.Api.Features.Prdb;
+
+[ApiController]
+[Route("api/prdb-wanted-videos")]
+[Produces("application/json")]
+public class PrdbWantedVideosController(AppDbContext db) : ControllerBase
+{
+    [HttpGet]
+    [EndpointSummary("List wanted videos")]
+    [EndpointDescription("Returns a paged list of wanted videos. Optionally filter by search, fulfilment status, site, or actor.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? search,
+        [FromQuery] bool? isFulfilled,
+        [FromQuery] Guid? siteId,
+        [FromQuery] Guid? actorId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        var q = db.PrdbWantedVideos.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            q = q.Where(w => EF.Functions.Like(w.Video!.Title, $"%{search}%"));
+
+        if (isFulfilled.HasValue)
+            q = q.Where(w => w.IsFulfilled == isFulfilled.Value);
+
+        if (siteId.HasValue)
+            q = q.Where(w => w.Video!.SiteId == siteId.Value);
+
+        if (actorId.HasValue)
+            q = q.Where(w => w.Video!.VideoActors.Any(va => va.ActorId == actorId.Value));
+
+        var total = await q.CountAsync();
+
+        var items = await q
+            .OrderByDescending(w => w.PrdbCreatedAtUtc)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(w => new PrdbWantedVideoResponse
+            {
+                VideoId            = w.VideoId,
+                VideoTitle         = w.Video!.Title,
+                SiteId             = w.Video!.SiteId,
+                SiteTitle          = w.Video!.Site.Title,
+                ReleaseDate        = w.Video!.ReleaseDate,
+                ThumbnailCdnPath   = w.Video!.Images.Select(i => i.CdnPath).FirstOrDefault(),
+                IsFulfilled        = w.IsFulfilled,
+                FulfilledAtUtc     = w.FulfilledAtUtc,
+                FulfilledInQuality = w.FulfilledInQuality,
+                AddedAtUtc         = w.PrdbCreatedAtUtc,
+            })
+            .ToListAsync();
+
+        return Ok(new { items, total });
+    }
+
+    [HttpGet("filter-options")]
+    [EndpointSummary("Get filter options for wanted videos")]
+    [EndpointDescription("Returns the distinct sites and actors present in the wanted list, for use in filter dropdowns.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFilterOptions()
+    {
+        var siteIds = await db.PrdbWantedVideos
+            .Select(w => w.Video!.SiteId)
+            .Distinct()
+            .ToListAsync();
+
+        var sites = await db.PrdbSites
+            .Where(s => siteIds.Contains(s.Id))
+            .OrderBy(s => s.Title)
+            .Select(s => new { s.Id, s.Title })
+            .ToListAsync();
+
+        var actorIds = await db.PrdbVideoActors
+            .Where(va => db.PrdbWantedVideos.Select(w => w.VideoId).Contains(va.VideoId))
+            .Select(va => va.ActorId)
+            .Distinct()
+            .ToListAsync();
+
+        var actors = await db.PrdbActors
+            .Where(a => actorIds.Contains(a.Id))
+            .OrderBy(a => a.Name)
+            .Select(a => new { a.Id, a.Name })
+            .ToListAsync();
+
+        return Ok(new { sites, actors });
+    }
+}

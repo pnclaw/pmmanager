@@ -10,6 +10,7 @@ import PrdbSitesView from '../features/prdb/PrdbSitesView.vue'
 import PrdbSiteVideosView from '../features/prdb/PrdbSiteVideosView.vue'
 import PrdbActorsView from '../features/prdb/PrdbActorsView.vue'
 import PrdbStatusView from '../features/prdb/PrdbStatusView.vue'
+import PrdbWantedVideosView from '../features/prdb/PrdbWantedVideosView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -26,6 +27,7 @@ const router = createRouter({
     { path: '/prdb/sites/:id/videos', component: PrdbSiteVideosView, meta: { title: 'PRDB Site Videos' } },
     { path: '/prdb/actors', component: PrdbActorsView, meta: { title: 'PRDB Actors' } },
     { path: '/prdb/status', component: PrdbStatusView, meta: { title: 'PRDB Status' } },
+    { path: '/prdb/wanted', component: PrdbWantedVideosView, meta: { title: 'Wanted' } },
   ],
 })
 

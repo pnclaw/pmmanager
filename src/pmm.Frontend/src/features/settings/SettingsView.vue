@@ -40,6 +40,19 @@
         </v-card-text>
       </v-card>
 
+      <v-card class="mb-6">
+        <v-card-title>Display</v-card-title>
+        <v-card-text>
+          <v-switch
+            v-model="form.safeForWork"
+            label="Safe for work"
+            hint="Blurs all images from the prdb API"
+            persistent-hint
+            color="primary"
+          />
+        </v-card-text>
+      </v-card>
+
       <div class="text-right">
         <v-btn type="submit" color="primary" :loading="saving">Save</v-btn>
       </div>
@@ -50,6 +63,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { api, VideoQuality, VideoQualityLabels, type UpdateSettingsRequest } from '../../api'
+import { useSfwMode } from '../../composables/useSfwMode'
+
+const { sfwMode } = useSfwMode()
 
 const loading = ref(true)
 const saving  = ref(false)
@@ -61,6 +77,7 @@ const form = ref<UpdateSettingsRequest>({
   prdbApiKey: '',
   prdbApiUrl: '',
   preferredVideoQuality: VideoQuality.P2160,
+  safeForWork: false,
 })
 
 const qualityItems = Object.values(VideoQuality)
@@ -76,6 +93,7 @@ onMounted(async () => {
       prdbApiKey: settings.prdbApiKey,
       prdbApiUrl: settings.prdbApiUrl,
       preferredVideoQuality: settings.preferredVideoQuality,
+      safeForWork: settings.safeForWork,
     }
   } catch (e: any) {
     error.value = e.message
@@ -93,6 +111,7 @@ async function submit() {
   saved.value = false
   try {
     await api.settings.update(form.value)
+    sfwMode.value = form.value.safeForWork
     saved.value = true
   } catch (e: any) {
     error.value = e.message
