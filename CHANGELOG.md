@@ -5,6 +5,26 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/video-sync — 2026-03-28
+
+### Done
+- Synced favorite sites from prdb `/favorite-sites`; `IsFavorite`/`FavoritedAtUtc` on `PrdbSite` now populated
+- Synced favorite actors from prdb `/favorite-actors`; missing favorite actors fetched via `/actors/{id}` and inserted automatically
+- Video sync extended to fetch all videos per favorite actor via `?ActorId=`
+- Add/remove favorites via `POST`/`DELETE /api/prdb-sites/{id}/favorite` and `…/prdb-actors/{id}/favorite`, proxied to prdb API
+- Clickable star toggle in sites and actors tables; row removed immediately on un-favorite in favorites-only view
+- Sites and actors views default to favorites-only filter with empty-state alert
+- Actor backfill via `SyncWorker`: 5 000 actors per 15-min run (oldest-first), switches to `CreatedAfter`-based new-actor check on completion
+- New `/prdb/status` page with Actor Backfill progress card (Run Now button) and Rate Limits card (hourly/monthly from prdb `/rate-limit`)
+- Added `PrdbActorSyncPage`, `PrdbActorLastSyncedAt`, `PrdbActorTotalCount` to `AppSettings` with migrations
+
+### Dead Ends
+- Initial approach had no `/favorite-actors` endpoint in the OpenAPI spec — spec was updated and implementation followed
+- `/videos` originally lacked `ActorId` filter — spec updated and actor video fetching added
+- Backfill originally processed 500 actors (1 page) per run — raised to 5 000 (10 pages) after confirming rate limit headroom
+
+---
+
 ## feature/changelog — 2026-03-28
 
 ### Done
