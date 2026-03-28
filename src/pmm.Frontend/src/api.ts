@@ -193,12 +193,39 @@ export interface PrdbActor {
 }
 
 export interface PrdbStatus {
+  syncWorker: {
+    intervalMinutes: number
+    lastRunAt: string | null
+    nextRunAt: string | null
+  }
   actorBackfill: {
     isComplete: boolean
     currentPage: number | null
     totalActors: number | null
     actorsInDb: number
     lastSyncedAt: string | null
+  }
+  actorDetailSync: {
+    actorsWithDetail: number
+    actorsPending: number
+    totalActors: number
+    favoriteActors: number
+  }
+  videoDetailSync: {
+    videosWithDetail: number
+    videosPending: number
+    totalVideos: number
+    videosWithCast: number
+  }
+  library: {
+    networks: number
+    sites: number
+    favoriteSites: number
+    videos: number
+    actors: number
+    favoriteActors: number
+    actorImages: number
+    videoImages: number
   }
   rateLimit: {
     isEnforced: boolean
@@ -272,26 +299,32 @@ export const api = {
       request<void>(`/indexers/${id}/rows`, { method: 'DELETE' }),
   },
   prdbSites: {
-    list: (params?: { search?: string; favoritesOnly?: boolean }) => {
+    list: (params?: { search?: string; favoritesOnly?: boolean; page?: number; pageSize?: number }) => {
       const q = new URLSearchParams()
       if (params?.search) q.set('search', params.search)
       if (params?.favoritesOnly) q.set('favoritesOnly', 'true')
-      return request<PrdbSite[]>(`/prdb-sites?${q}`)
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.pageSize) q.set('pageSize', String(params.pageSize))
+      return request<PagedResult<PrdbSite>>(`/prdb-sites?${q}`)
     },
-    videos: (id: string, params?: { search?: string }) => {
+    videos: (id: string, params?: { search?: string; page?: number; pageSize?: number }) => {
       const q = new URLSearchParams()
       if (params?.search) q.set('search', params.search)
-      return request<PrdbVideo[]>(`/prdb-sites/${id}/videos?${q}`)
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.pageSize) q.set('pageSize', String(params.pageSize))
+      return request<PagedResult<PrdbVideo>>(`/prdb-sites/${id}/videos?${q}`)
     },
     setFavorite: (id: string, favorite: boolean) =>
       request<void>(`/prdb-sites/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' }),
   },
   prdbActors: {
-    list: (params?: { search?: string; favoritesOnly?: boolean }) => {
+    list: (params?: { search?: string; favoritesOnly?: boolean; page?: number; pageSize?: number }) => {
       const q = new URLSearchParams()
       if (params?.search) q.set('search', params.search)
       if (params?.favoritesOnly) q.set('favoritesOnly', 'true')
-      return request<PrdbActor[]>(`/prdb-actors?${q}`)
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.pageSize) q.set('pageSize', String(params.pageSize))
+      return request<PagedResult<PrdbActor>>(`/prdb-actors?${q}`)
     },
     setFavorite: (id: string, favorite: boolean) =>
       request<void>(`/prdb-actors/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' }),
@@ -302,6 +335,7 @@ export const api = {
   prdbStatus: {
     get: () => request<PrdbStatus>('/prdb-status'),
     runBackfill: () => request<void>('/prdb-status/backfill/run', { method: 'POST' }),
+    runVideoDetailSync: () => request<void>('/prdb-status/video-detail-sync/run', { method: 'POST' }),
   },
   settings: {
     get: () => request<AppSettings>('/settings'),

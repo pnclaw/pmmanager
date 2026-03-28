@@ -11,9 +11,13 @@ public class PrdbSitesController(AppDbContext db, PrdbFavoritesService favorites
 {
     [HttpGet]
     [EndpointSummary("List prdb sites")]
-    [EndpointDescription("Returns all synced prdb sites with video counts. Optionally filter by search term or favorites.")]
-    [ProducesResponseType(typeof(IEnumerable<PrdbSiteResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] bool? favoritesOnly)
+    [EndpointDescription("Returns a paged list of synced prdb sites with video counts. Optionally filter by search term or favorites.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? search,
+        [FromQuery] bool? favoritesOnly,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
         var q = db.PrdbSites
             .Include(s => s.Network)
@@ -25,32 +29,26 @@ public class PrdbSitesController(AppDbContext db, PrdbFavoritesService favorites
         if (favoritesOnly == true)
             q = q.Where(s => s.IsFavorite);
 
-        var sites = await q
+        var total = await q.CountAsync();
+
+        var items = await q
             .OrderBy(s => s.Title)
-            .Select(s => new
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(s => new PrdbSiteResponse
             {
-                s.Id,
-                s.Title,
-                s.Url,
-                s.NetworkId,
-                NetworkTitle = s.Network != null ? s.Network.Title : null,
-                s.IsFavorite,
-                s.FavoritedAtUtc,
-                VideoCount = s.Videos.Count,
+                Id             = s.Id,
+                Title          = s.Title,
+                Url            = s.Url,
+                NetworkId      = s.NetworkId,
+                NetworkTitle   = s.Network != null ? s.Network.Title : null,
+                IsFavorite     = s.IsFavorite,
+                FavoritedAtUtc = s.FavoritedAtUtc,
+                VideoCount     = s.Videos.Count,
             })
             .ToListAsync();
 
-        return Ok(sites.Select(s => new PrdbSiteResponse
-        {
-            Id           = s.Id,
-            Title        = s.Title,
-            Url          = s.Url,
-            NetworkId    = s.NetworkId,
-            NetworkTitle = s.NetworkTitle,
-            IsFavorite   = s.IsFavorite,
-            FavoritedAtUtc = s.FavoritedAtUtc,
-            VideoCount   = s.VideoCount,
-        }));
+        return Ok(new { items, total });
     }
 
     [HttpPost("{id:guid}/favorite")]
@@ -77,10 +75,14 @@ public class PrdbSitesController(AppDbContext db, PrdbFavoritesService favorites
 
     [HttpGet("{id:guid}/videos")]
     [EndpointSummary("List videos for a site")]
-    [EndpointDescription("Returns all synced videos for the given site including pre-names and actor count.")]
-    [ProducesResponseType(typeof(IEnumerable<PrdbVideoResponse>), StatusCodes.Status200OK)]
+    [EndpointDescription("Returns a paged list of synced videos for the given site including pre-names and actor count.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetVideos(Guid id, [FromQuery] string? search)
+    public async Task<IActionResult> GetVideos(
+        Guid id,
+        [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
         if (!await db.PrdbSites.AnyAsync(s => s.Id == id)) return NotFound();
 
@@ -91,8 +93,12 @@ public class PrdbSitesController(AppDbContext db, PrdbFavoritesService favorites
         if (!string.IsNullOrWhiteSpace(search))
             q = q.Where(v => EF.Functions.Like(v.Title, $"%{search}%"));
 
-        var videos = await q
+        var total = await q.CountAsync();
+
+        var items = await q
             .OrderByDescending(v => v.ReleaseDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(v => new PrdbVideoResponse
             {
                 Id          = v.Id,
@@ -105,7 +111,6 @@ public class PrdbSitesController(AppDbContext db, PrdbFavoritesService favorites
             })
             .ToListAsync();
 
-        return Ok(videos);
+        return Ok(new { items, total });
     }
-
 }

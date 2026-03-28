@@ -29,4 +29,9 @@ public class AppSettings
     /// Total actor count on prdb as of last backfill page. Used for progress display.
     /// </summary>
     public int? PrdbActorTotalCount { get; set; }
+
+    /// <summary>
+    /// Set at the end of each successful SyncWorker run. Used to calculate next scheduled run.
+    /// </summary>
+    public DateTime? SyncWorkerLastRunAt { get; set; }
 }

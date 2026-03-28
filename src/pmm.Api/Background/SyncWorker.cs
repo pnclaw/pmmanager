@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using pmm.Api.Features.Prdb.Sync;
+using Pmm.Database;
 
 namespace pmm.Api.Background;
 
@@ -39,6 +41,14 @@ public class SyncWorker(IServiceScopeFactory scopeFactory, ILogger<SyncWorker> l
 
         var actorSync = scope.ServiceProvider.GetRequiredService<PrdbActorSyncService>();
         await actorSync.RunAsync(ct);
+
+        var videoDetailSync = scope.ServiceProvider.GetRequiredService<PrdbVideoDetailSyncService>();
+        await videoDetailSync.RunAsync(ct);
+
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var settings = await db.AppSettings.FirstAsync(ct);
+        settings.SyncWorkerLastRunAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
 
         logger.LogInformation("SyncWorker run completed at {Time}", DateTimeOffset.UtcNow);
     }

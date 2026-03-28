@@ -45,6 +45,7 @@ public class PrdbActor
     public DateTime PrdbCreatedAtUtc { get; set; }
     public DateTime PrdbUpdatedAtUtc { get; set; }
     public DateTime SyncedAtUtc { get; set; }
+    public DateTime? DetailSyncedAtUtc { get; set; }
 
     public ICollection<PrdbActorImage> Images { get; set; } = [];
     public ICollection<PrdbActorAlias> Aliases { get; set; } = [];

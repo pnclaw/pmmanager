@@ -27,18 +27,23 @@
           label="Search"
           clearable
           hide-details
-          @update:model-value="load"
+          @update:model-value="onFilterChange"
         />
       </v-col>
     </v-row>
 
-    <v-data-table
+    <v-data-table-server
+      v-model:items-per-page="pagination.pageSize"
       :headers="headers"
       :items="videos"
+      :items-length="total"
       :loading="loading"
+      :page="pagination.page"
       item-value="id"
       show-expand
       hover
+      @update:page="onPageChange"
+      @update:items-per-page="onPageSizeChange"
     >
       <template #item.releaseDate="{ item }">
         {{ item.releaseDate ?? '—' }}
@@ -60,12 +65,12 @@
           </td>
         </tr>
       </template>
-    </v-data-table>
+    </v-data-table-server>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { api, type PrdbVideo } from '../../api'
 
@@ -73,9 +78,12 @@ const route  = useRoute()
 const siteId = route.params.id as string
 
 const videos  = ref<PrdbVideo[]>([])
+const total   = ref(0)
 const loading = ref(false)
 const error   = ref<string | null>(null)
 const search  = ref('')
+
+const pagination = reactive({ page: 1, pageSize: 50 })
 
 const headers = [
   { title: 'Title',        key: 'title' },
@@ -89,14 +97,34 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    videos.value = await api.prdbSites.videos(siteId, {
+    const result = await api.prdbSites.videos(siteId, {
       search: search.value || undefined,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
     })
+    videos.value = result.items
+    total.value = result.total
   } catch (e: any) {
     error.value = e.message
   } finally {
     loading.value = false
   }
+}
+
+function onFilterChange() {
+  pagination.page = 1
+  load()
+}
+
+function onPageChange(page: number) {
+  pagination.page = page
+  load()
+}
+
+function onPageSizeChange(size: number) {
+  pagination.pageSize = size
+  pagination.page = 1
+  load()
 }
 
 onMounted(load)

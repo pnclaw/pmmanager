@@ -66,8 +66,40 @@ record PrdbApiActorDetail(
     int? CareerEnd,
     string? Tattoos,
     string? Piercings,
+    List<PrdbApiActorImageDetail> Images,
     List<PrdbApiActorAliasDetail> Aliases,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc);
 
 record PrdbApiActorAliasDetail(string Name, Guid? SiteId);
+
+record PrdbApiActorImageDetail(Guid Id, int ImageType, string? Url);
+
+record PrdbApiBatchActorsRequest(List<Guid> Ids);
+
+record PrdbApiVideoDetail(
+    Guid Id,
+    string Title,
+    DateOnly? ReleaseDate,
+    DateTime CreatedAtUtc,
+    DateTime UpdatedAtUtc,
+    PrdbApiVideoDetailSite Site,
+    List<PrdbApiVideoDetailImage> Images,
+    List<PrdbApiVideoDetailPreName> PreNames,
+    List<PrdbApiVideoDetailActor> Actors);
+
+record PrdbApiVideoDetailSite(Guid Id, string Title, string Url);
+
+record PrdbApiVideoDetailImage(Guid Id, string? CdnPath);
+
+record PrdbApiVideoDetailPreName(Guid Id, string Title);
+
+record PrdbApiVideoDetailActor(
+    Guid Id,
+    string Name,
+    int Gender,
+    DateOnly? Birthday,
+    int Nationality,
+    List<PrdbApiVideoDetailActorImage> Images);
+
+record PrdbApiVideoDetailActorImage(Guid Id, string? CdnPath, int ImageType);
