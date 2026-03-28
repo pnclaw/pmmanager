@@ -5,6 +5,20 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/wanted-list-sync — 2026-03-28
+
+### Done
+- Added `PrdbWantedVideo` entity (VideoId as PK/FK, full fulfilment fields) with EF migration
+- Added `PrdbWantedVideoSyncService`: full-replace sync every 15 min — fetches all wanted videos from prdb, creates `PrdbVideo`/`PrdbSite` stubs for unknown videos (≤50/run), upserts entries, deletes removed ones
+- Extended prdb Status page with a Wanted List Sync card (total/unfulfilled/fulfilled/pending detail, last synced, Run Now button)
+- Added `WantedVideos` count to Library section of status page
+- Fixed `DbUpdateConcurrencyException` in actor detail sync batch — conflicting entries are now detached and retried on the next run
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/video-sync — 2026-03-28
 
 ### Done
