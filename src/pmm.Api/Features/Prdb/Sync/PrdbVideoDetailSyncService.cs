@@ -11,7 +11,8 @@ public class PrdbVideoDetailSyncService(
     ILogger<PrdbVideoDetailSyncService> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private const int ActorBatchSize = 50;
+    private const int ActorBatchSize    = 50;
+    private const int ActorBatchesPerRun = 20; // 1 000 actors per run, 20 API requests
 
     public async Task RunAsync(CancellationToken ct = default)
     {
@@ -151,10 +152,13 @@ public class PrdbVideoDetailSyncService(
 
     private async Task SyncActorDetailsAsync(HttpClient http, CancellationToken ct)
     {
+        var limit = ActorBatchSize * ActorBatchesPerRun;
+
         var actorIds = await db.PrdbActors
-            .Where(a => a.DetailSyncedAtUtc == null &&
-                        (a.IsFavorite || db.PrdbVideoActors.Any(va => va.ActorId == a.Id)))
+            .Where(a => a.DetailSyncedAtUtc == null)
+            .OrderBy(a => a.SyncedAtUtc)
             .Select(a => a.Id)
+            .Take(limit)
             .ToListAsync(ct);
 
         if (actorIds.Count == 0)
@@ -163,8 +167,10 @@ public class PrdbVideoDetailSyncService(
             return;
         }
 
-        logger.LogInformation("PrdbVideoDetailSyncService: syncing details for {Count} actors in batches of {BatchSize}",
-            actorIds.Count, ActorBatchSize);
+        var totalPending = await db.PrdbActors.CountAsync(a => a.DetailSyncedAtUtc == null, ct);
+        logger.LogInformation(
+            "PrdbVideoDetailSyncService: syncing details for {Count} actors this run ({Pending} total pending), batches of {BatchSize}",
+            actorIds.Count, totalPending, ActorBatchSize);
 
         var synced = 0;
 
