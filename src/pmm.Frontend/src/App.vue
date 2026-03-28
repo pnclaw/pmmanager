@@ -53,6 +53,12 @@
           to="/prdb/status"
           rounded="lg"
         />
+        <v-list-item
+          prepend-icon="mdi-bookmark-multiple"
+          title="Wanted"
+          to="/prdb/wanted"
+          rounded="lg"
+        />
         <v-divider class="my-2" />
         <v-list-item
           prepend-icon="mdi-cog"

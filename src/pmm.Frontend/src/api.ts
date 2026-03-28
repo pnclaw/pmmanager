@@ -192,6 +192,24 @@ export interface PrdbActor {
   aliases: string[]
 }
 
+export interface PrdbWantedVideo {
+  videoId: string
+  videoTitle: string
+  siteId: string
+  siteTitle: string
+  releaseDate: string | null
+  thumbnailCdnPath: string | null
+  isFulfilled: boolean
+  fulfilledAtUtc: string | null
+  fulfilledInQuality: number | null
+  addedAtUtc: string
+}
+
+export interface PrdbWantedFilterOptions {
+  sites: { id: string; title: string }[]
+  actors: { id: string; name: string }[]
+}
+
 export interface PrdbStatus {
   syncWorker: {
     intervalMinutes: number
@@ -336,6 +354,19 @@ export const api = {
     },
     setFavorite: (id: string, favorite: boolean) =>
       request<void>(`/prdb-actors/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' }),
+  },
+  prdbWantedVideos: {
+    list: (params?: { search?: string; isFulfilled?: boolean; siteId?: string; actorId?: string; page?: number; pageSize?: number }) => {
+      const q = new URLSearchParams()
+      if (params?.search) q.set('search', params.search)
+      if (params?.isFulfilled !== undefined) q.set('isFulfilled', String(params.isFulfilled))
+      if (params?.siteId) q.set('siteId', params.siteId)
+      if (params?.actorId) q.set('actorId', params.actorId)
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.pageSize) q.set('pageSize', String(params.pageSize))
+      return request<PagedResult<PrdbWantedVideo>>(`/prdb-wanted-videos?${q}`)
+    },
+    filterOptions: () => request<PrdbWantedFilterOptions>('/prdb-wanted-videos/filter-options'),
   },
   prdbSync: {
     syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; favoriteActorsSynced: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
