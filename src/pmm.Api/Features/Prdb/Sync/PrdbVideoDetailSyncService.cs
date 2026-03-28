@@ -11,8 +11,9 @@ public class PrdbVideoDetailSyncService(
     ILogger<PrdbVideoDetailSyncService> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private const int ActorBatchSize    = 50;
-    private const int ActorBatchesPerRun = 20; // 1 000 actors per run, 20 API requests
+    private const int VideosPerRun       = 200; // 200 API requests per run
+    private const int ActorBatchSize     = 50;
+    private const int ActorBatchesPerRun = 20;  // 1 000 actors per run, 20 API requests
 
     public async Task RunAsync(CancellationToken ct = default)
     {
@@ -36,18 +37,24 @@ public class PrdbVideoDetailSyncService(
 
     private async Task SyncVideoDetailsAsync(HttpClient http, CancellationToken ct)
     {
-        var videoIds = await db.PrdbVideos
-            .Where(v => v.DetailSyncedAtUtc == null)
-            .Select(v => v.Id)
-            .ToListAsync(ct);
+        var totalPending = await db.PrdbVideos.CountAsync(v => v.DetailSyncedAtUtc == null, ct);
 
-        if (videoIds.Count == 0)
+        if (totalPending == 0)
         {
             logger.LogInformation("PrdbVideoDetailSyncService: no videos pending detail sync");
             return;
         }
 
-        logger.LogInformation("PrdbVideoDetailSyncService: syncing details for {Count} videos", videoIds.Count);
+        var videoIds = await db.PrdbVideos
+            .Where(v => v.DetailSyncedAtUtc == null)
+            .OrderBy(v => v.SyncedAtUtc)
+            .Select(v => v.Id)
+            .Take(VideosPerRun)
+            .ToListAsync(ct);
+
+        logger.LogInformation(
+            "PrdbVideoDetailSyncService: syncing details for {Count} videos this run ({Pending} total pending)",
+            videoIds.Count, totalPending);
 
         var existingActorIds = await db.PrdbActors
             .Select(a => a.Id)
