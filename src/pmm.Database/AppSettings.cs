@@ -44,4 +44,9 @@ public class AppSettings
     /// When true, images from the prdb API are blurred in the UI.
     /// </summary>
     public bool SafeForWork { get; set; }
+
+    /// <summary>
+    /// Set at the end of each successful indexer-row match run. Used for status display.
+    /// </summary>
+    public DateTime? IndexerRowMatchLastRunAt { get; set; }
 }
