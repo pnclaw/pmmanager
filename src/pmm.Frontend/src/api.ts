@@ -287,6 +287,19 @@ export interface PrdbStatus {
   } | null
 }
 
+export interface FolderMapping {
+  id: string
+  originalFolder: string
+  mappedToFolder: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FolderMappingRequest {
+  originalFolder: string
+  mappedToFolder: string
+}
+
 export interface IndexerRowMatchDebugResult {
   rowsChecked: number
   rows: {
@@ -429,6 +442,15 @@ export const api = {
     get: () => request<AppSettings>('/settings'),
     update: (data: UpdateSettingsRequest) =>
       request<AppSettings>('/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  },
+  folderMappings: {
+    list: () => request<FolderMapping[]>('/folder-mappings'),
+    create: (data: FolderMappingRequest) =>
+      request<FolderMapping>('/folder-mappings', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: FolderMappingRequest) =>
+      request<FolderMapping>(`/folder-mappings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<void>(`/folder-mappings/${id}`, { method: 'DELETE' }),
   },
   downloadClients: {
     list: () => request<DownloadClient[]>('/download-clients'),

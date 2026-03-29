@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<PrdbVideoActor> PrdbVideoActors => Set<PrdbVideoActor>();
     public DbSet<PrdbWantedVideo> PrdbWantedVideos => Set<PrdbWantedVideo>();
     public DbSet<IndexerRowMatch> IndexerRowMatches => Set<IndexerRowMatch>();
+    public DbSet<FolderMapping> FolderMappings => Set<FolderMapping>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,6 +51,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<IndexerRowMatch>(e =>
         {
             e.HasIndex(m => m.IndexerRowId).IsUnique();
+        });
+
+        modelBuilder.Entity<FolderMapping>(e =>
+        {
+            e.HasIndex(f => f.OriginalFolder).IsUnique();
+            e.HasIndex(f => f.MappedToFolder).IsUnique();
         });
     }
 }
