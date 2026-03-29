@@ -69,7 +69,7 @@
       hover
       @update:page="onPageChange"
       @update:items-per-page="onPageSizeChange"
-      @click:row="(_, { item }) => router.push(`/prdb/videos/${item.videoId}`)"
+      @click:row="onRowClick"
     >
       <template #item.thumbnail="{ item }">
         <div class="py-2">
@@ -224,6 +224,10 @@ function onPageSizeChange(size: number) {
   pagination.pageSize = size
   pagination.page = 1
   load()
+}
+
+function onRowClick(_: MouseEvent, { item }: { item: PrdbWantedVideo }) {
+  router.push(`/prdb/videos/${item.videoId}`)
 }
 
 async function remove(videoId: string) {

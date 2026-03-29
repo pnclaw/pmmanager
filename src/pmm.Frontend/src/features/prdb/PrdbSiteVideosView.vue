@@ -44,7 +44,7 @@
       hover
       @update:page="onPageChange"
       @update:items-per-page="onPageSizeChange"
-      @click:row="(_, { item }) => router.push(`/prdb/videos/${item.id}`)"
+      @click:row="onRowClick"
     >
       <template #item.releaseDate="{ item }">
         {{ item.releaseDate ?? '—' }}
@@ -111,6 +111,10 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function onRowClick(_: MouseEvent, { item }: { item: PrdbVideo }) {
+  router.push(`/prdb/videos/${item.id}`)
 }
 
 function onFilterChange() {
