@@ -69,6 +69,7 @@
       hover
       @update:page="onPageChange"
       @update:items-per-page="onPageSizeChange"
+      @click:row="(_, { item }) => router.push(`/prdb/videos/${item.videoId}`)"
     >
       <template #item.thumbnail="{ item }">
         <div class="py-2">
@@ -133,11 +134,13 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useDisplay } from 'vuetify'
+import { useRouter } from 'vue-router'
 import { api, type PrdbWantedVideo, type PrdbWantedFilterOptions } from '../../api'
 import { useSfwMode } from '../../composables/useSfwMode'
 
 const { sfwMode } = useSfwMode()
 const { mdAndUp } = useDisplay()
+const router = useRouter()
 
 const videos   = ref<PrdbWantedVideo[]>([])
 const total    = ref(0)
