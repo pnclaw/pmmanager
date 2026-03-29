@@ -5,6 +5,19 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/claud-commands-improvement — 2026-03-29
+
+### Done
+- `start-feature` command no longer asks for branch name confirmation — proceeds immediately after slugifying the argument
+- `start-feature` generates a random 3-word slug when invoked with no argument
+- `start-feature` safety check now compares against `origin/develop` (was `origin/HEAD`) to avoid false positives
+- `finish-feature` command now writes and commits a changelog entry automatically when none exists, instead of stopping to ask the user
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/sync-improvements — 2026-03-29
 
 ### Done
