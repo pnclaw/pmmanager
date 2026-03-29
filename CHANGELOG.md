@@ -5,6 +5,20 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/prenames-sync-with-indexer-data — 2026-03-29
+
+### Done
+- Added `IndexerRowMatch` entity linking `IndexerRow` to `PrdbVideo`/`PrdbVideoPreName`, with EF migration and unique index on `IndexerRowId`
+- New `IndexerRowMatchService`: runs each SyncWorker tick, checks IndexerRows from the last 7 days against all `PrdbVideoPreName` titles (exact case-insensitive match); stores single matches, logs a warning and skips rows with multiple candidates
+- Added `IndexerRowMatchLastRunAt` to `AppSettings` to track last run time
+- Extended prdb Status page with an Indexer Row Match card (total matches, last run, Run Now button)
+- Added debug endpoint (`POST /api/prdb-status/indexer-row-match/debug`) and UI button: prompts for a multi-word search string, filters all IndexerRows by every word, returns per-row match status without writing to the database
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/wanted-list-improvements — 2026-03-29
 
 ### Done

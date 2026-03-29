@@ -22,6 +22,7 @@ public class AppDbContext : DbContext
     public DbSet<PrdbActorAlias> PrdbActorAliases => Set<PrdbActorAlias>();
     public DbSet<PrdbVideoActor> PrdbVideoActors => Set<PrdbVideoActor>();
     public DbSet<PrdbWantedVideo> PrdbWantedVideos => Set<PrdbWantedVideo>();
+    public DbSet<IndexerRowMatch> IndexerRowMatches => Set<IndexerRowMatch>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +45,11 @@ public class AppDbContext : DbContext
             e.HasOne(w => w.Video)
              .WithMany()
              .HasForeignKey(w => w.VideoId);
+        });
+
+        modelBuilder.Entity<IndexerRowMatch>(e =>
+        {
+            e.HasIndex(m => m.IndexerRowId).IsUnique();
         });
     }
 }

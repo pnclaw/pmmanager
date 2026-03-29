@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pmm.Database;
+using pmm.Api.Features.Indexers.Matching;
 using pmm.Api.Features.Prdb.Sync;
 
 namespace pmm.Api.Features.Prdb;
@@ -15,7 +16,8 @@ public class PrdbStatusController(
     IHttpClientFactory httpClientFactory,
     PrdbActorSyncService actorSyncService,
     PrdbVideoDetailSyncService videoDetailSyncService,
-    PrdbWantedVideoSyncService wantedVideoSyncService) : ControllerBase
+    PrdbWantedVideoSyncService wantedVideoSyncService,
+    IndexerRowMatchService indexerRowMatchService) : ControllerBase
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -102,6 +104,15 @@ public class PrdbStatusController(
             WantedVideos   = totalWanted,
         };
 
+        // ── Indexer row match sync ────────────────────────────────────────────
+        var totalMatches = await db.IndexerRowMatches.CountAsync(ct);
+
+        var indexerRowMatchSync = new IndexerRowMatchSyncStatus
+        {
+            TotalMatches = totalMatches,
+            LastRunAt    = settings.IndexerRowMatchLastRunAt,
+        };
+
         // ── Rate limits ───────────────────────────────────────────────────────
         PrdbRateLimitStatus? rateLimit = null;
         if (!string.IsNullOrWhiteSpace(settings.PrdbApiKey))
@@ -118,13 +129,14 @@ public class PrdbStatusController(
 
         return Ok(new PrdbStatusResponse
         {
-            SyncWorker      = syncWorker,
-            ActorBackfill   = actorBackfill,
-            ActorDetailSync = actorDetailSync,
-            VideoDetailSync = videoDetailSync,
-            WantedVideoSync = wantedVideoSync,
-            Library         = library,
-            RateLimit       = rateLimit,
+            SyncWorker           = syncWorker,
+            ActorBackfill        = actorBackfill,
+            ActorDetailSync      = actorDetailSync,
+            VideoDetailSync      = videoDetailSync,
+            WantedVideoSync      = wantedVideoSync,
+            IndexerRowMatchSync  = indexerRowMatchSync,
+            Library              = library,
+            RateLimit            = rateLimit,
         });
     }
 
@@ -157,6 +169,32 @@ public class PrdbStatusController(
         await wantedVideoSyncService.RunAsync(ct);
         return NoContent();
     }
+
+    [HttpPost("indexer-row-match/run")]
+    [EndpointSummary("Run indexer row match sync")]
+    [EndpointDescription("Manually triggers one indexer row match run, identical to the scheduled SyncWorker tick.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RunIndexerRowMatch(CancellationToken ct)
+    {
+        await indexerRowMatchService.RunAsync(ct);
+        return NoContent();
+    }
+
+    [HttpPost("indexer-row-match/debug")]
+    [EndpointSummary("Debug indexer row match")]
+    [EndpointDescription("Read-only diagnostic run filtered by a search string. Returns match status for every matching row without writing to the database.")]
+    [ProducesResponseType(typeof(IndexerRowMatchDebugResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> DebugIndexerRowMatch(
+        [FromBody] IndexerRowMatchDebugRequest request, CancellationToken ct)
+    {
+        var result = await indexerRowMatchService.RunDebugAsync(request.Search, ct);
+        return Ok(result);
+    }
+}
+
+public class IndexerRowMatchDebugRequest
+{
+    public string Search { get; init; } = string.Empty;
 }
 
 public class PrdbStatusResponse
@@ -166,6 +204,7 @@ public class PrdbStatusResponse
     public ActorDetailSyncStatus ActorDetailSync { get; init; } = null!;
     public VideoDetailSyncStatus VideoDetailSync { get; init; } = null!;
     public WantedVideoSyncStatus WantedVideoSync { get; init; } = null!;
+    public IndexerRowMatchSyncStatus IndexerRowMatchSync { get; init; } = null!;
     public LibraryCounts Library { get; init; } = null!;
     public PrdbRateLimitStatus? RateLimit { get; init; }
 }
@@ -209,6 +248,12 @@ public class WantedVideoSyncStatus
     public int Fulfilled { get; init; }
     public int PendingDetail { get; init; }
     public DateTime? LastSyncedAt { get; init; }
+}
+
+public class IndexerRowMatchSyncStatus
+{
+    public int TotalMatches { get; init; }
+    public DateTime? LastRunAt { get; init; }
 }
 
 public class LibraryCounts

@@ -257,6 +257,10 @@ export interface PrdbStatus {
     pendingDetail: number
     lastSyncedAt: string | null
   }
+  indexerRowMatchSync: {
+    totalMatches: number
+    lastRunAt: string | null
+  }
   library: {
     networks: number
     sites: number
@@ -273,6 +277,17 @@ export interface PrdbStatus {
     hourly: { limit: number; used: number; remaining: number; resetsInSeconds: number }
     monthly: { limit: number; used: number; remaining: number; resetsInSeconds: number }
   } | null
+}
+
+export interface IndexerRowMatchDebugResult {
+  rowsChecked: number
+  rows: {
+    rowId: string
+    title: string
+    matchStatus: 'Matched' | 'AlreadyMatched' | 'MultipleMatches' | 'NoMatch'
+    candidatePreNames: string[]
+    matchedVideoTitle: string | null
+  }[]
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -397,6 +412,8 @@ export const api = {
     runBackfill: () => request<void>('/prdb-status/backfill/run', { method: 'POST' }),
     runVideoDetailSync: () => request<void>('/prdb-status/video-detail-sync/run', { method: 'POST' }),
     runWantedVideoSync: () => request<void>('/prdb-status/wanted-video-sync/run', { method: 'POST' }),
+    runIndexerRowMatch: () => request<void>('/prdb-status/indexer-row-match/run', { method: 'POST' }),
+    debugIndexerRowMatch: (search: string) => request<IndexerRowMatchDebugResult>('/prdb-status/indexer-row-match/debug', { method: 'POST', body: JSON.stringify({ search }) }),
   },
   settings: {
     get: () => request<AppSettings>('/settings'),

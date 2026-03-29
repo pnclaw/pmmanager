@@ -15,7 +15,8 @@
                 <li class="mb-1"><strong>Actor summary backfill</strong> — pages through all actors on prdb.net and inserts any not yet in the local DB (5 000 per run until complete, then checks for new actors each tick).</li>
                 <li class="mb-1"><strong>Video detail sync</strong> — fetches full detail for videos that haven't been processed yet, populating cast, images, and pre-names.</li>
                 <li class="mb-1"><strong>Actor detail backfill</strong> — batch-fetches full actor details (50 per API call, 1 000 per run) for all actors lacking detail.</li>
-                <li><strong>Wanted list sync</strong> — fetches the full wanted video list from prdb.net, upserts entries, and removes any no longer on the list.</li>
+                <li class="mb-1"><strong>Wanted list sync</strong> — fetches the full wanted video list from prdb.net, upserts entries, and removes any no longer on the list.</li>
+                <li><strong>Indexer row match</strong> — checks NZB titles from the last 7 days against known video prenames and links any exact (case-insensitive) matches.</li>
               </ol>
               <p class="mt-2 text-medium-emphasis">Individual steps can also be triggered manually using the Run Now buttons on each card.</p>
             </v-card-text>
@@ -265,6 +266,53 @@
         </v-card>
       </v-col>
 
+      <!-- Indexer Row Match Sync -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-link-variant</v-icon>
+            Indexer Row Match
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-bug"
+              :loading="runningDebug"
+              @click="runDebug"
+            >
+              Debug
+            </v-btn>
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningIndexerRowMatch"
+              @click="runIndexerRowMatch"
+            >
+              Run Now
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-medium-emphasis">Total matches</td>
+                  <td>{{ status.indexerRowMatchSync.totalMatches.toLocaleString() }}</td>
+                </tr>
+                <tr v-if="status.indexerRowMatchSync.lastRunAt">
+                  <td class="text-medium-emphasis">Last run</td>
+                  <td>{{ formatDate(status.indexerRowMatchSync.lastRunAt) }}</td>
+                </tr>
+                <tr v-else>
+                  <td class="text-medium-emphasis">Last run</td>
+                  <td class="text-medium-emphasis">Never</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
       <!-- Library Counts -->
       <v-col cols="12" md="6">
         <v-card>
@@ -375,19 +423,77 @@
         </v-card>
       </v-col>
     </v-row>
+    <!-- Debug results dialog -->
+    <v-dialog v-model="debugDialog" max-width="960" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center ga-2 pt-4">
+          <v-icon>mdi-bug</v-icon>
+          Indexer Row Match — Debug Results
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="debugDialog = false" />
+        </v-card-title>
+        <v-card-subtitle class="pb-2">
+          Search: <strong>{{ debugSearch }}</strong> — {{ debugResult?.rowsChecked ?? 0 }} row(s) checked
+        </v-card-subtitle>
+        <v-card-text>
+          <div v-if="!debugResult?.rows.length" class="text-medium-emphasis">
+            No indexer rows matched the search string.
+          </div>
+          <v-table v-else density="compact">
+            <thead>
+              <tr>
+                <th>Indexer Title</th>
+                <th>Status</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in debugResult.rows" :key="entry.rowId">
+                <td class="text-body-2 py-2" style="word-break: break-all">{{ entry.title }}</td>
+                <td class="py-2">
+                  <v-chip size="small" :color="debugStatusColor(entry.matchStatus)">
+                    {{ entry.matchStatus }}
+                  </v-chip>
+                </td>
+                <td class="text-body-2 py-2">
+                  <template v-if="entry.matchedVideoTitle">
+                    {{ entry.matchedVideoTitle }}
+                    <span v-if="entry.candidatePreNames.length" class="text-medium-emphasis">
+                      ({{ entry.candidatePreNames[0] }})
+                    </span>
+                  </template>
+                  <template v-else-if="entry.candidatePreNames.length">
+                    {{ entry.candidatePreNames.join(' · ') }}
+                  </template>
+                  <template v-else>—</template>
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card-text>
+        <v-card-actions class="justify-end pb-4 pr-4">
+          <v-btn variant="tonal" @click="debugDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { api, type PrdbStatus } from '../../api'
+import { api, type PrdbStatus, type IndexerRowMatchDebugResult } from '../../api'
 
-const status                 = ref<PrdbStatus | null>(null)
-const loading                = ref(false)
-const runningBackfill        = ref(false)
-const runningVideoDetailSync = ref(false)
-const runningWantedVideoSync = ref(false)
-const error                  = ref<string | null>(null)
+const status                   = ref<PrdbStatus | null>(null)
+const loading                  = ref(false)
+const runningBackfill          = ref(false)
+const runningVideoDetailSync   = ref(false)
+const runningWantedVideoSync   = ref(false)
+const runningIndexerRowMatch   = ref(false)
+const runningDebug             = ref(false)
+const debugDialog              = ref(false)
+const debugSearch              = ref('')
+const debugResult              = ref<IndexerRowMatchDebugResult | null>(null)
+const error                    = ref<string | null>(null)
 
 // ── SyncWorker next run ────────────────────────────────────────────────────
 
@@ -510,6 +616,45 @@ async function runWantedVideoSync() {
     error.value = e.message
   } finally {
     runningWantedVideoSync.value = false
+  }
+}
+
+function debugStatusColor(status: string) {
+  switch (status) {
+    case 'Matched':        return 'success'
+    case 'AlreadyMatched': return 'info'
+    case 'MultipleMatches': return 'warning'
+    default:               return undefined
+  }
+}
+
+async function runDebug() {
+  const search = window.prompt('Enter search string (words separated by spaces — all must appear in the title):')
+  if (!search?.trim()) return
+
+  debugSearch.value = search.trim()
+  runningDebug.value = true
+  error.value = null
+  try {
+    debugResult.value = await api.prdbStatus.debugIndexerRowMatch(debugSearch.value)
+    debugDialog.value = true
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningDebug.value = false
+  }
+}
+
+async function runIndexerRowMatch() {
+  runningIndexerRowMatch.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.runIndexerRowMatch()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningIndexerRowMatch.value = false
   }
 }
 
