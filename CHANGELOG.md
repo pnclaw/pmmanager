@@ -5,6 +5,21 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/sync-improvements — 2026-03-29
+
+### Done
+- Reorganised the Settings page into three tabs: **General** (preferred video quality, safe-for-work toggle), **PRDB.net** (API key and URL), and **Folder Mapping** (new); the Save button is hidden on the Folder Mapping tab since that tab manages its own API calls
+- Added **Folder Mapping** feature: `FolderMapping` entity with unique indexes on both `OriginalFolder` and `MappedToFolder`, EF migration, full CRUD API (`GET`/`POST`/`PUT`/`DELETE /api/folder-mappings`), and a tab UI with add/edit/delete dialog and a collapsible info panel explaining when mappings are needed (download client on Docker/remote with different mount paths)
+- Added **Download Log** tracking: `DownloadLog` entity (`DownloadStatus` enum, progress fields, storage path, filenames, error message), EF migration; `DownloadClientSender` now captures the SABnzbd `nzo_id` and NZBGet NZBID as `ClientItemId`; the send endpoint creates a `DownloadLog` on success when `IndexerRowId` is provided
+- Added `DownloadPollingWorker` background service: 5-second initial delay then 20-second polling interval; `SabnzbdPoller` checks queue then history, maps statuses, and best-effort extracts filenames from stage_log; `NzbgetPoller` mirrors this via JSON-RPC (`listgroups` + `history`); both share a common `DownloadPollResult` type
+- When a download reaches `Completed`, the worker automatically marks the linked `PrdbWantedVideo` as fulfilled via the `IndexerRowMatch` chain
+- Added **Downloads** view (`/downloads`): table with status chips, progress bars with byte counts, started/completed timestamps; filters for search, status, and an active-only toggle; clicking a row opens a detail dialog with storage path, file list, and error; auto-refreshes every 20 seconds while the view is mounted
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/improve-prenames-sync — 2026-03-29
 
 ### Done
