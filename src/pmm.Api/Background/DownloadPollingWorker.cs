@@ -45,8 +45,9 @@ public class DownloadPollingWorker(
     private async Task PollAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var poller = scope.ServiceProvider.GetRequiredService<SabnzbdPoller>();
+        var db             = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var sabnzbdPoller  = scope.ServiceProvider.GetRequiredService<SabnzbdPoller>();
+        var nzbgetPoller   = scope.ServiceProvider.GetRequiredService<NzbgetPoller>();
 
         var pendingLogs = await db.DownloadLogs
             .Include(l => l.DownloadClient)
@@ -65,9 +66,13 @@ public class DownloadPollingWorker(
         foreach (var group in byClient)
         {
             var client = group.First().DownloadClient;
-            if (client.ClientType != ClientType.Sabnzbd) continue;
 
-            var results = await poller.PollAsync(client, group, ct);
+            List<DownloadPollResult> results = client.ClientType switch
+            {
+                ClientType.Sabnzbd => await sabnzbdPoller.PollAsync(client, group, ct),
+                ClientType.Nzbget  => await nzbgetPoller.PollAsync(client, group, ct),
+                _                  => [],
+            };
 
             foreach (var result in results)
             {
@@ -87,7 +92,7 @@ public class DownloadPollingWorker(
             await FulfillWantedVideosAsync(db, completed, ct);
     }
 
-    private static void ApplyResult(DownloadLog log, SabnzbdPollResult result)
+    private static void ApplyResult(DownloadLog log, DownloadPollResult result)
     {
         log.Status         = result.Status;
         log.TotalSizeBytes = result.TotalSizeBytes ?? log.TotalSizeBytes;

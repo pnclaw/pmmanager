@@ -97,8 +97,12 @@ public class DownloadClientSender(IHttpClientFactory httpClientFactory)
             if (root.TryGetProperty("error", out _))
                 return (false, "NZBGet returned an error", null);
 
-            if (root.TryGetProperty("result", out var resultEl) && resultEl.GetInt32() > 0)
-                return (true, $"Sent to NZBGet ({client.Title})", null);
+            if (root.TryGetProperty("result", out var resultEl))
+            {
+                var nzbId = resultEl.GetInt32();
+                if (nzbId > 0)
+                    return (true, $"Sent to NZBGet ({client.Title})", nzbId.ToString());
+            }
 
             return (false, "NZBGet rejected the download (result=0)", null);
         }

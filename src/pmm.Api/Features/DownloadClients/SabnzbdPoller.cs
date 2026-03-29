@@ -10,10 +10,10 @@ public class SabnzbdPoller(IHttpClientFactory httpClientFactory, ILogger<Sabnzbd
     /// Polls the SABnzbd queue and history for the supplied logs and returns updated snapshots.
     /// Items found in the queue are in progress; items not in the queue are looked up in history.
     /// </summary>
-    public async Task<List<SabnzbdPollResult>> PollAsync(
+    public async Task<List<DownloadPollResult>> PollAsync(
         DownloadClient client, IEnumerable<DownloadLog> logs, CancellationToken ct)
     {
-        var results = new List<SabnzbdPollResult>();
+        var results = new List<DownloadPollResult>();
 
         var pendingById = logs
             .Where(l => l.ClientItemId != null)
@@ -40,10 +40,10 @@ public class SabnzbdPoller(IHttpClientFactory httpClientFactory, ILogger<Sabnzbd
         return results;
     }
 
-    private async Task<List<SabnzbdPollResult>> PollQueueAsync(
+    private async Task<List<DownloadPollResult>> PollQueueAsync(
         DownloadClient client, IEnumerable<string> nzoIds, CancellationToken ct)
     {
-        var results = new List<SabnzbdPollResult>();
+        var results = new List<DownloadPollResult>();
         var scheme = client.UseSsl ? "https" : "http";
         var url = $"{scheme}://{client.Host}:{client.Port}/api?mode=queue&output=json&apikey={client.ApiKey}";
 
@@ -82,11 +82,11 @@ public class SabnzbdPoller(IHttpClientFactory httpClientFactory, ILogger<Sabnzbd
                     downloaded = total.Value - (long)(leftMb * 1024 * 1024);
                 }
 
-                results.Add(new SabnzbdPollResult
+                results.Add(new DownloadPollResult
                 {
-                    ClientItemId   = nzoId,
-                    Status         = status,
-                    TotalSizeBytes = total,
+                    ClientItemId    = nzoId,
+                    Status          = status,
+                    TotalSizeBytes  = total,
                     DownloadedBytes = downloaded,
                 });
             }
@@ -99,7 +99,7 @@ public class SabnzbdPoller(IHttpClientFactory httpClientFactory, ILogger<Sabnzbd
         return results;
     }
 
-    private async Task<SabnzbdPollResult?> PollHistoryAsync(
+    private async Task<DownloadPollResult?> PollHistoryAsync(
         DownloadClient client, string nzoId, CancellationToken ct)
     {
         var scheme = client.UseSsl ? "https" : "http";
@@ -120,8 +120,8 @@ public class SabnzbdPoller(IHttpClientFactory httpClientFactory, ILogger<Sabnzbd
                 var id = slot.TryGetProperty("nzo_id", out var idEl) ? idEl.GetString() : null;
                 if (id != nzoId) continue;
 
-                var sabStatus = slot.TryGetProperty("status", out var stEl) ? stEl.GetString() : null;
-                var status = MapHistoryStatus(sabStatus);
+                var status = MapHistoryStatus(
+                    slot.TryGetProperty("status", out var stEl) ? stEl.GetString() : null);
 
                 long? totalBytes = slot.TryGetProperty("bytes", out var bytesEl)
                     ? bytesEl.GetInt64()
@@ -144,7 +144,7 @@ public class SabnzbdPoller(IHttpClientFactory httpClientFactory, ILogger<Sabnzbd
                 if (status == DownloadStatus.Completed)
                     fileNames = ExtractFileNames(slot);
 
-                return new SabnzbdPollResult
+                return new DownloadPollResult
                 {
                     ClientItemId    = nzoId,
                     Status          = status,
@@ -224,15 +224,4 @@ public class SabnzbdPoller(IHttpClientFactory httpClientFactory, ILogger<Sabnzbd
         http.Timeout = TimeSpan.FromSeconds(10);
         return http;
     }
-}
-
-public class SabnzbdPollResult
-{
-    public string ClientItemId { get; init; } = string.Empty;
-    public DownloadStatus Status { get; init; }
-    public long? TotalSizeBytes { get; init; }
-    public long? DownloadedBytes { get; init; }
-    public string? StoragePath { get; init; }
-    public List<string>? FileNames { get; init; }
-    public string? ErrorMessage { get; init; }
 }
