@@ -20,14 +20,22 @@
     <template v-if="video">
       <v-row class="mb-6">
         <v-col cols="12" md="5" lg="4">
-          <v-img
+          <v-carousel
             v-if="video.imageCdnPaths.length > 0"
-            :src="video.imageCdnPaths[0]"
-            aspect-ratio="16/9"
-            cover
+            :show-arrows="video.imageCdnPaths.length > 1"
+            :hide-delimiters="video.imageCdnPaths.length <= 1"
+            height="auto"
             class="rounded"
             :style="sfwMode ? 'filter: blur(12px)' : ''"
-          />
+          >
+            <v-carousel-item
+              v-for="path in video.imageCdnPaths"
+              :key="path"
+              :src="path"
+              aspect-ratio="16/9"
+              cover
+            />
+          </v-carousel>
           <div
             v-else
             class="bg-surface-variant rounded d-flex align-center justify-center"
