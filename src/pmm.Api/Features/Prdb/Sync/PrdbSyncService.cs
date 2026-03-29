@@ -8,7 +8,7 @@ namespace pmm.Api.Features.Prdb.Sync;
 public class PrdbSyncService(AppDbContext db, IHttpClientFactory httpClientFactory, ILogger<PrdbSyncService> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private const int PageSize = 500;
+    private const int PageSize = 100;
     private const int LatestVideosLimit = 1500;
 
     public async Task<PrdbSyncResult> SyncAsync(CancellationToken ct = default)
@@ -248,6 +248,37 @@ public class PrdbSyncService(AppDbContext db, IHttpClientFactory httpClientFacto
                 allApiVideos[v.Id] = v;
         }
 
+        return await UpsertVideosAsync(allApiVideos, ct);
+    }
+
+    public async Task SyncSiteVideosAsync(Guid siteId, CancellationToken ct = default)
+    {
+        var settings = await db.AppSettings.FirstAsync(ct);
+        if (string.IsNullOrWhiteSpace(settings.PrdbApiKey))
+        {
+            logger.LogWarning("PrdbSyncService: PrdbApiKey is not configured — skipping site video sync");
+            return;
+        }
+
+        var http = httpClientFactory.CreateClient();
+        http.BaseAddress = new Uri(settings.PrdbApiUrl.TrimEnd('/') + "/");
+        http.DefaultRequestHeaders.Add("X-Api-Key", settings.PrdbApiKey);
+
+        logger.LogInformation("PrdbSyncService: syncing videos for newly-favorited site {SiteId}", siteId);
+
+        var siteVideos = await FetchAllPagesAsync<PrdbApiVideo>(http, $"videos?SiteId={siteId}", ct);
+        if (siteVideos.Count == 0)
+        {
+            logger.LogInformation("PrdbSyncService: no videos found for site {SiteId}", siteId);
+            return;
+        }
+
+        var allApiVideos = siteVideos.ToDictionary(v => v.Id);
+        await UpsertVideosAsync(allApiVideos, ct);
+    }
+
+    private async Task<int> UpsertVideosAsync(Dictionary<Guid, PrdbApiVideo> allApiVideos, CancellationToken ct)
+    {
         if (allApiVideos.Count == 0)
         {
             logger.LogInformation("PrdbSyncService: no videos to sync");

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using pmm.Api.Features.Prdb.Sync;
 using Pmm.Database;
 
 namespace pmm.Api.Features.Prdb;
@@ -7,7 +8,7 @@ namespace pmm.Api.Features.Prdb;
 [ApiController]
 [Route("api/prdb-sites")]
 [Produces("application/json")]
-public class PrdbSitesController(AppDbContext db, PrdbFavoritesService favoritesService) : ControllerBase
+public class PrdbSitesController(AppDbContext db, PrdbFavoritesService favoritesService, IServiceScopeFactory scopeFactory) : ControllerBase
 {
     [HttpGet]
     [EndpointSummary("List prdb sites")]
@@ -59,6 +60,14 @@ public class PrdbSitesController(AppDbContext db, PrdbFavoritesService favorites
     {
         if (!await db.PrdbSites.AnyAsync(s => s.Id == id)) return NotFound();
         await favoritesService.SetSiteFavoriteAsync(id, true, ct);
+
+        _ = Task.Run(async () =>
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var sync = scope.ServiceProvider.GetRequiredService<PrdbSyncService>();
+            await sync.SyncSiteVideosAsync(id);
+        });
+
         return NoContent();
     }
 

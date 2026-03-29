@@ -11,7 +11,8 @@ public class PrdbVideoDetailSyncService(
     ILogger<PrdbVideoDetailSyncService> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private const int VideosPerRun       = 200; // 200 API requests per run
+    private const int VideosPerRun          = 200; // 200 API requests per run
+    private const int DetailResyncDays      = 30;  // re-sync video details after this many days
     private const int ActorBatchSize     = 50;
     private const int ActorBatchesPerRun = 20;  // 1 000 actors per run, 20 API requests
 
@@ -37,7 +38,9 @@ public class PrdbVideoDetailSyncService(
 
     private async Task SyncVideoDetailsAsync(HttpClient http, CancellationToken ct)
     {
-        var totalPending = await db.PrdbVideos.CountAsync(v => v.DetailSyncedAtUtc == null, ct);
+        var resyncBefore = DateTime.UtcNow.AddDays(-DetailResyncDays);
+        var totalPending = await db.PrdbVideos
+            .CountAsync(v => v.DetailSyncedAtUtc == null || v.DetailSyncedAtUtc < resyncBefore, ct);
 
         if (totalPending == 0)
         {
@@ -46,8 +49,8 @@ public class PrdbVideoDetailSyncService(
         }
 
         var videoIds = await db.PrdbVideos
-            .Where(v => v.DetailSyncedAtUtc == null)
-            .OrderBy(v => v.SyncedAtUtc)
+            .Where(v => v.DetailSyncedAtUtc == null || v.DetailSyncedAtUtc < resyncBefore)
+            .OrderBy(v => v.DetailSyncedAtUtc)
             .Select(v => v.Id)
             .Take(VideosPerRun)
             .ToListAsync(ct);
@@ -196,11 +199,19 @@ public class PrdbVideoDetailSyncService(
             var ids    = batch.ToHashSet();
             var actors = await db.PrdbActors
                 .Include(a => a.Aliases)
-                .Include(a => a.Images)
                 .Where(a => ids.Contains(a.Id))
                 .ToListAsync(ct);
 
             var actorMap = actors.ToDictionary(a => a.Id);
+
+            // Load existing image IDs for the whole batch upfront to avoid the identity
+            // map issue where two actors sharing the same image ID in one batch would
+            // cause EF Core to flip the entity from Added → Modified, producing an UPDATE
+            // against a non-existent row.
+            var seenImageIds = await db.PrdbActorImages
+                .Where(i => ids.Contains(i.ActorId))
+                .Select(i => i.Id)
+                .ToHashSetAsync(ct);
 
             foreach (var detail in details)
             {
@@ -237,11 +248,11 @@ public class PrdbVideoDetailSyncService(
                     actor.Aliases.Add(new PrdbActorAlias { Name = alias.Name, SiteId = alias.SiteId });
                 }
 
-                // Upsert images
-                var existingImageIds = actor.Images.Select(i => i.Id).ToHashSet();
-                foreach (var img in detail.Images.Where(i => !existingImageIds.Contains(i.Id)))
+                // Upsert images — use db.Add directly and a batch-level seen set to avoid
+                // identity map collisions when the same image ID appears for multiple actors.
+                foreach (var img in detail.Images.Where(i => seenImageIds.Add(i.Id)))
                 {
-                    actor.Images.Add(new PrdbActorImage
+                    db.PrdbActorImages.Add(new PrdbActorImage
                     {
                         Id        = img.Id,
                         ImageType = img.ImageType,
@@ -266,11 +277,14 @@ public class PrdbVideoDetailSyncService(
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
             {
-                logger.LogWarning(
-                    "PrdbVideoDetailSyncService: concurrency conflict saving actor batch — {Count} entr(ies) detached, will retry next run",
-                    ex.Entries.Count);
                 foreach (var entry in ex.Entries)
-                    entry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                {
+                    var id = entry.Properties.FirstOrDefault(p => p.Metadata.IsPrimaryKey())?.CurrentValue;
+                    logger.LogWarning(
+                        "PrdbVideoDetailSyncService: concurrency conflict on {EntityType} {Id} (expected 1 row, got 0) — clearing change tracker, will retry next run",
+                        entry.Entity.GetType().Name, id);
+                }
+                db.ChangeTracker.Clear();
             }
         }
 

@@ -5,6 +5,20 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/wanted-videos-next-steps — 2026-03-29
+
+### Done
+- Trigger immediate background video sync when a site is favorited so videos appear straight away rather than waiting up to 15 min for the next SyncWorker tick
+- Fixed `PageSize` constant from 500 → 100 to respect the `/videos` API maximum, preventing truncated results on all paginated video fetches
+- Video detail sync now re-syncs details every 30 days (oldest-synced first) so pre-names added after initial sync are eventually picked up
+- Fixed `DbUpdateConcurrencyException` in `UpsertWantedVideosAsync` caused by stale Modified actors leaking between services — each SyncWorker service now runs in its own DI scope with a fresh `DbContext`
+- Fixed actor detail sync never making progress: two actors in the same batch sharing an image ID caused EF Core to flip the image entity from Added → Modified, generating an UPDATE against a non-existent row; fixed by pre-loading existing image IDs per batch and using `db.PrdbActorImages.Add()` directly
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/wanted-list-view — 2026-03-28
 
 ### Done
