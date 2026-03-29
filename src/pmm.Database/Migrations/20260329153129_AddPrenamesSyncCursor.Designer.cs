@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pmm.Database;
 
@@ -10,9 +11,11 @@ using Pmm.Database;
 namespace Pmm.Database.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260329153129_AddPrenamesSyncCursor")]
+    partial class AddPrenamesSyncCursor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
@@ -49,12 +52,6 @@ namespace Pmm.Database.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("PreferredVideoQuality")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("PrenamesBackfillPage")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("PrenamesBackfillTotalCount")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("PrenamesSyncCursorUtc")

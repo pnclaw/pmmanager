@@ -40,6 +40,7 @@ public class SyncWorker(IServiceScopeFactory scopeFactory, ILogger<SyncWorker> l
 
         await RunServiceAsync<PrdbActorSyncService>(s => s.RunAsync(ct), ct);
         await RunServiceAsync<PrdbVideoDetailSyncService>(s => s.RunAsync(ct), ct);
+        await RunServiceAsync<PrdbLatestPreNameSyncService>(s => s.RunAsync(ct), ct);
         await RunServiceAsync<PrdbWantedVideoSyncService>(s => s.RunAsync(ct), ct);
         await RunServiceAsync<IndexerRowMatchService>(s => s.RunAsync(ct), ct);
 

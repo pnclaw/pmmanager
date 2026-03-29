@@ -216,6 +216,62 @@
         </v-card>
       </v-col>
 
+      <!-- Prename Sync -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-alphabetical-variant</v-icon>
+            Prename Sync
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-restore"
+              :loading="resettingPreNameCursor"
+              @click="resetPreNameCursor"
+            >
+              Reset Cursor
+            </v-btn>
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningPreNameSync"
+              @click="runPreNameSync"
+            >
+              Run Now
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-medium-emphasis">Total in DB</td>
+                  <td>{{ status.preNameSync.totalPreNames.toLocaleString() }}</td>
+                </tr>
+                <template v-if="status.preNameSync.isBackfilling">
+                  <tr>
+                    <td class="text-medium-emphasis">Status</td>
+                    <td class="text-warning">
+                      Backfill in progress — page {{ status.preNameSync.backfillPage ?? 1 }}
+                      <template v-if="status.preNameSync.backfillTotalCount">
+                        of {{ Math.ceil(status.preNameSync.backfillTotalCount / 500) }}
+                      </template>
+                    </td>
+                  </tr>
+                </template>
+                <template v-else>
+                  <tr v-if="status.preNameSync.lastSyncedAt">
+                    <td class="text-medium-emphasis">Next sync fetches from</td>
+                    <td>{{ formatDate(status.preNameSync.lastSyncedAt) }}</td>
+                  </tr>
+                </template>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
       <!-- Wanted List Sync -->
       <v-col cols="12" md="6">
         <v-card>
@@ -344,6 +400,10 @@
                       ({{ status.library.wantedVideos.toLocaleString() }} wanted)
                     </span>
                   </td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Pre-names</td>
+                  <td>{{ status.library.preNames.toLocaleString() }}</td>
                 </tr>
                 <tr>
                   <td class="text-medium-emphasis">Video images</td>
@@ -487,6 +547,8 @@ const status                   = ref<PrdbStatus | null>(null)
 const loading                  = ref(false)
 const runningBackfill          = ref(false)
 const runningVideoDetailSync   = ref(false)
+const runningPreNameSync       = ref(false)
+const resettingPreNameCursor   = ref(false)
 const runningWantedVideoSync   = ref(false)
 const runningIndexerRowMatch   = ref(false)
 const runningDebug             = ref(false)
@@ -603,6 +665,32 @@ async function runVideoDetailSync() {
     error.value = e.message
   } finally {
     runningVideoDetailSync.value = false
+  }
+}
+
+async function resetPreNameCursor() {
+  resettingPreNameCursor.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.resetPreNameCursor()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    resettingPreNameCursor.value = false
+  }
+}
+
+async function runPreNameSync() {
+  runningPreNameSync.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.runPreNameSync()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningPreNameSync.value = false
   }
 }
 

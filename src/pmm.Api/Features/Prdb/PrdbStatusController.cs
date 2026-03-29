@@ -16,6 +16,7 @@ public class PrdbStatusController(
     IHttpClientFactory httpClientFactory,
     PrdbActorSyncService actorSyncService,
     PrdbVideoDetailSyncService videoDetailSyncService,
+    PrdbLatestPreNameSyncService latestPreNameSyncService,
     PrdbWantedVideoSyncService wantedVideoSyncService,
     IndexerRowMatchService indexerRowMatchService) : ControllerBase
 {
@@ -90,6 +91,18 @@ public class PrdbStatusController(
             LastSyncedAt  = settings.PrdbWantedVideoLastSyncedAt,
         };
 
+        // ── Prename sync ──────────────────────────────────────────────────────
+        var totalPreNames = await db.PrdbVideoPreNames.CountAsync(ct);
+
+        var preNameSync = new PreNameSyncStatus
+        {
+            TotalPreNames       = totalPreNames,
+            IsBackfilling       = settings.PrenamesBackfillPage is not null || settings.PrenamesSyncCursorUtc is null,
+            BackfillPage        = settings.PrenamesBackfillPage,
+            BackfillTotalCount  = settings.PrenamesBackfillTotalCount,
+            LastSyncedAt        = settings.PrenamesSyncCursorUtc,
+        };
+
         // ── Library counts ────────────────────────────────────────────────────
         var library = new LibraryCounts
         {
@@ -97,6 +110,7 @@ public class PrdbStatusController(
             Sites          = await db.PrdbSites.CountAsync(ct),
             FavoriteSites  = await db.PrdbSites.CountAsync(s => s.IsFavorite, ct),
             Videos         = videoCount,
+            PreNames       = totalPreNames,
             Actors         = actorCount,
             FavoriteActors = favoriteActors,
             ActorImages    = await db.PrdbActorImages.CountAsync(ct),
@@ -133,6 +147,7 @@ public class PrdbStatusController(
             ActorBackfill        = actorBackfill,
             ActorDetailSync      = actorDetailSync,
             VideoDetailSync      = videoDetailSync,
+            PreNameSync          = preNameSync,
             WantedVideoSync      = wantedVideoSync,
             IndexerRowMatchSync  = indexerRowMatchSync,
             Library              = library,
@@ -157,6 +172,29 @@ public class PrdbStatusController(
     public async Task<IActionResult> RunVideoDetailSync(CancellationToken ct)
     {
         await videoDetailSyncService.RunAsync(ct);
+        return NoContent();
+    }
+
+    [HttpPost("prename-sync/run")]
+    [EndpointSummary("Run prename sync")]
+    [EndpointDescription("Manually triggers one incremental prename sync run, identical to the scheduled SyncWorker tick.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RunPreNameSync(CancellationToken ct)
+    {
+        await latestPreNameSyncService.RunAsync(ct);
+        return NoContent();
+    }
+
+    [HttpPost("prename-sync/reset-cursor")]
+    [EndpointSummary("Reset prename sync cursor")]
+    [EndpointDescription("Clears the prename sync cursor so the next run performs a full backfill from the beginning.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ResetPreNameCursor(CancellationToken ct)
+    {
+        var settings = await db.AppSettings.FirstAsync(ct);
+        settings.PrenamesSyncCursorUtc = null;
+        settings.PrenamesBackfillPage  = null;
+        await db.SaveChangesAsync(ct);
         return NoContent();
     }
 
@@ -203,6 +241,7 @@ public class PrdbStatusResponse
     public ActorBackfillStatus ActorBackfill { get; init; } = null!;
     public ActorDetailSyncStatus ActorDetailSync { get; init; } = null!;
     public VideoDetailSyncStatus VideoDetailSync { get; init; } = null!;
+    public PreNameSyncStatus PreNameSync { get; init; } = null!;
     public WantedVideoSyncStatus WantedVideoSync { get; init; } = null!;
     public IndexerRowMatchSyncStatus IndexerRowMatchSync { get; init; } = null!;
     public LibraryCounts Library { get; init; } = null!;
@@ -256,12 +295,22 @@ public class IndexerRowMatchSyncStatus
     public DateTime? LastRunAt { get; init; }
 }
 
+public class PreNameSyncStatus
+{
+    public int TotalPreNames { get; init; }
+    public bool IsBackfilling { get; init; }
+    public int? BackfillPage { get; init; }
+    public int? BackfillTotalCount { get; init; }
+    public DateTime? LastSyncedAt { get; init; }
+}
+
 public class LibraryCounts
 {
     public int Networks { get; init; }
     public int Sites { get; init; }
     public int FavoriteSites { get; init; }
     public int Videos { get; init; }
+    public int PreNames { get; init; }
     public int Actors { get; init; }
     public int FavoriteActors { get; init; }
     public int ActorImages { get; init; }

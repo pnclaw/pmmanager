@@ -5,6 +5,22 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/improve-prenames-sync — 2026-03-29
+
+### Done
+- Replaced the per-video prename upsert in `PrdbVideoDetailSyncService` with a new `PrdbLatestPreNameSyncService` that uses the `GET /prenames/latest` API endpoint
+- Backfill runs up to 5,000 prenames per SyncWorker tick (10 pages × 500); a `PrenamesBackfillPage` cursor in `AppSettings` advances each tick until all historical prenames are fetched
+- Once backfill is complete, each tick fetches only prenames created since `PrenamesSyncCursorUtc` (incremental sync)
+- Added three new `AppSettings` columns: `PrenamesBackfillPage`, `PrenamesBackfillTotalCount`, `PrenamesSyncCursorUtc` — each with its own EF migration
+- New **Prename Sync** card on the PRDB Status page: shows total prenames in DB, backfill progress ("page X of Y"), incremental cursor ("Next sync fetches from"), Run Now button, and Reset Cursor button to restart the backfill
+- Added **Pre-names** count row to the Library card on the PRDB Status page
+- Added `shims-vue.d.ts` to fix pre-existing TypeScript errors when running plain `tsc` on the frontend
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/prenames-sync-with-indexer-data — 2026-03-29
 
 ### Done

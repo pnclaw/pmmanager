@@ -109,6 +109,10 @@ record PrdbApiVideoDetailImage(Guid Id, string? CdnPath);
 
 record PrdbApiVideoDetailPreName(Guid Id, string Title);
 
+record PrdbApiLatestPreNameSite(Guid Id, string Title);
+record PrdbApiLatestPreNameVideo(Guid Id, string Title, DateOnly? ReleaseDate, PrdbApiLatestPreNameSite Site);
+record PrdbApiLatestPreNameItem(Guid Id, string Title, DateTime CreatedAtUtc, PrdbApiLatestPreNameVideo Video);
+
 record PrdbApiVideoDetailActor(
     Guid Id,
     string Name,
