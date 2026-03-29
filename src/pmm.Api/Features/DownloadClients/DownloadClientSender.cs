@@ -8,18 +8,18 @@ namespace pmm.Api.Features.DownloadClients;
 
 public class DownloadClientSender(IHttpClientFactory httpClientFactory)
 {
-    public async Task<(bool Success, string Message)> SendAsync(
+    public async Task<(bool Success, string Message, string? ClientItemId)> SendAsync(
         DownloadClient client, string nzbUrl, string name, CancellationToken ct = default)
     {
         return client.ClientType switch
         {
             ClientType.Sabnzbd => await SendToSabnzbdAsync(client, nzbUrl, name, ct),
             ClientType.Nzbget  => await SendToNzbgetAsync(client, nzbUrl, name, ct),
-            _                  => (false, $"Unsupported client type: {client.ClientType}"),
+            _                  => (false, $"Unsupported client type: {client.ClientType}", null),
         };
     }
 
-    private async Task<(bool, string)> SendToSabnzbdAsync(
+    private async Task<(bool, string, string?)> SendToSabnzbdAsync(
         DownloadClient client, string nzbUrl, string name, CancellationToken ct)
     {
         var scheme = client.UseSsl ? "https" : "http";
@@ -38,19 +38,27 @@ public class DownloadClientSender(IHttpClientFactory httpClientFactory)
             var root = doc.RootElement;
 
             if (root.TryGetProperty("error", out var errEl))
-                return (false, $"SABnzbd: {errEl.GetString()}");
+                return (false, $"SABnzbd: {errEl.GetString()}", null);
 
             if (root.TryGetProperty("status", out var statusEl) && !statusEl.GetBoolean())
-                return (false, "SABnzbd rejected the download");
+                return (false, "SABnzbd rejected the download", null);
 
-            return (true, $"Sent to SABnzbd ({client.Title})");
+            string? nzoId = null;
+            if (root.TryGetProperty("nzo_ids", out var nzoIdsEl) &&
+                nzoIdsEl.ValueKind == JsonValueKind.Array &&
+                nzoIdsEl.GetArrayLength() > 0)
+            {
+                nzoId = nzoIdsEl[0].GetString();
+            }
+
+            return (true, $"Sent to SABnzbd ({client.Title})", nzoId);
         }
-        catch (TaskCanceledException) { return (false, "Request timed out"); }
-        catch (HttpRequestException ex) { return (false, $"Connection failed: {ex.Message}"); }
-        catch (Exception ex) { return (false, $"Error: {ex.Message}"); }
+        catch (TaskCanceledException) { return (false, "Request timed out", null); }
+        catch (HttpRequestException ex) { return (false, $"Connection failed: {ex.Message}", null); }
+        catch (Exception ex) { return (false, $"Error: {ex.Message}", null); }
     }
 
-    private async Task<(bool, string)> SendToNzbgetAsync(
+    private async Task<(bool, string, string?)> SendToNzbgetAsync(
         DownloadClient client, string nzbUrl, string name, CancellationToken ct)
     {
         var scheme = client.UseSsl ? "https" : "http";
@@ -80,23 +88,23 @@ public class DownloadClientSender(IHttpClientFactory httpClientFactory)
             var httpResponse = await http.PostAsync(url, content, ct);
 
             if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                return (false, "NZBGet: invalid username or password");
+                return (false, "NZBGet: invalid username or password", null);
 
             var responseBody = await httpResponse.Content.ReadAsStringAsync(ct);
             using var doc = JsonDocument.Parse(responseBody);
             var root = doc.RootElement;
 
             if (root.TryGetProperty("error", out _))
-                return (false, "NZBGet returned an error");
+                return (false, "NZBGet returned an error", null);
 
             if (root.TryGetProperty("result", out var resultEl) && resultEl.GetInt32() > 0)
-                return (true, $"Sent to NZBGet ({client.Title})");
+                return (true, $"Sent to NZBGet ({client.Title})", null);
 
-            return (false, "NZBGet rejected the download (result=0)");
+            return (false, "NZBGet rejected the download (result=0)", null);
         }
-        catch (TaskCanceledException) { return (false, "Request timed out"); }
-        catch (HttpRequestException ex) { return (false, $"Connection failed: {ex.Message}"); }
-        catch (Exception ex) { return (false, $"Error: {ex.Message}"); }
+        catch (TaskCanceledException) { return (false, "Request timed out", null); }
+        catch (HttpRequestException ex) { return (false, $"Connection failed: {ex.Message}", null); }
+        catch (Exception ex) { return (false, $"Error: {ex.Message}", null); }
     }
 
     private HttpClient CreateClient()

@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<PrdbWantedVideo> PrdbWantedVideos => Set<PrdbWantedVideo>();
     public DbSet<IndexerRowMatch> IndexerRowMatches => Set<IndexerRowMatch>();
     public DbSet<FolderMapping> FolderMappings => Set<FolderMapping>();
+    public DbSet<DownloadLog> DownloadLogs => Set<DownloadLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

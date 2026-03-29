@@ -36,7 +36,9 @@ builder.Services.AddScoped<pmm.Api.Features.Indexers.Matching.IndexerRowMatchSer
 builder.Services.AddHostedService<IndexerScraperBackgroundService>();
 builder.Services.AddScoped<DownloadClientTester>();
 builder.Services.AddScoped<DownloadClientSender>();
+builder.Services.AddScoped<pmm.Api.Features.DownloadClients.SabnzbdPoller>();
 builder.Services.AddHostedService<pmm.Api.Background.SyncWorker>();
+builder.Services.AddHostedService<pmm.Api.Background.DownloadPollingWorker>();
 
 // EF Core / SQLite — DB_PATH env var takes precedence over appsettings
 var dbPath = Path.GetFullPath(
