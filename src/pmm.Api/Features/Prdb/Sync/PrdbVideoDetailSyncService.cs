@@ -96,22 +96,6 @@ public class PrdbVideoDetailSyncService(
                 });
             }
 
-            // Upsert pre-names
-            var existingPreNameIds = await db.PrdbVideoPreNames
-                .Where(p => p.VideoId == videoId)
-                .Select(p => p.Id)
-                .ToHashSetAsync(ct);
-
-            foreach (var preName in detail.PreNames.Where(p => !existingPreNameIds.Contains(p.Id)))
-            {
-                db.PrdbVideoPreNames.Add(new PrdbVideoPreName
-                {
-                    Id      = preName.Id,
-                    Title   = preName.Title,
-                    VideoId = videoId,
-                });
-            }
-
             // Upsert VideoActor join entries; insert actor stubs for unknown actors
             var existingVideoActorIds = await db.PrdbVideoActors
                 .Where(va => va.VideoId == videoId)

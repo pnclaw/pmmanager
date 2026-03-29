@@ -250,6 +250,13 @@ export interface PrdbStatus {
     totalVideos: number
     videosWithCast: number
   }
+  preNameSync: {
+    totalPreNames: number
+    isBackfilling: boolean
+    backfillPage: number | null
+    backfillTotalCount: number | null
+    lastSyncedAt: string | null
+  }
   wantedVideoSync: {
     total: number
     unfulfilled: number
@@ -266,6 +273,7 @@ export interface PrdbStatus {
     sites: number
     favoriteSites: number
     videos: number
+    preNames: number
     actors: number
     favoriteActors: number
     actorImages: number
@@ -412,6 +420,8 @@ export const api = {
     runBackfill: () => request<void>('/prdb-status/backfill/run', { method: 'POST' }),
     runVideoDetailSync: () => request<void>('/prdb-status/video-detail-sync/run', { method: 'POST' }),
     runWantedVideoSync: () => request<void>('/prdb-status/wanted-video-sync/run', { method: 'POST' }),
+    runPreNameSync: () => request<void>('/prdb-status/prename-sync/run', { method: 'POST' }),
+    resetPreNameCursor: () => request<void>('/prdb-status/prename-sync/reset-cursor', { method: 'POST' }),
     runIndexerRowMatch: () => request<void>('/prdb-status/indexer-row-match/run', { method: 'POST' }),
     debugIndexerRowMatch: (search: string) => request<IndexerRowMatchDebugResult>('/prdb-status/indexer-row-match/debug', { method: 'POST', body: JSON.stringify({ search }) }),
   },
