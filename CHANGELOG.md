@@ -5,6 +5,21 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/wanted-list-improvements — 2026-03-29
+
+### Done
+- Wanted list UI overhaul: larger thumbnails (240×135 px, fixed height for uniform rows), site and title stacked in a single column, fulfilled/unfulfilled status as an overlay banner on the thumbnail, "Added" column hidden on narrow viewports
+- Added edit dialog (pencil button) per row: shows site, title, added date, a one-click toggle button for fulfilled state, and a "Remove from wanted list" action — both synced to prdb and local DB
+- New `PATCH /api/prdb-wanted-videos/{videoId}` endpoint to update fulfilment state; new `DELETE /api/prdb-wanted-videos/{videoId}` endpoint to remove from prdb and local DB
+- New video detail page at `/prdb/videos/:id`: image carousel, cast chips, alternative titles, wanted/fulfilled status badge; reachable by clicking any row in the wanted list or site videos list
+- New `GET /api/prdb-videos/{id}` endpoint returning full video detail (images, cast, pre-names, wanted status)
+- Release date column now formatted consistently (was raw string in wanted list)
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/wanted-videos-next-steps — 2026-03-29
 
 ### Done
