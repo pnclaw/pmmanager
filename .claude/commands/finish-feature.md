@@ -6,7 +6,7 @@ Follow these steps in order:
 
 2. Run `git status --short` to check for uncommitted changes. If there are any, stop and tell the user to commit or stash them first.
 
-3. Read `CHANGELOG.md` and check that it contains an entry that appears to relate to this branch's work. If you cannot find one, stop and ask the user to add a CHANGELOG entry before continuing.
+3. Read `CHANGELOG.md` and check that it contains an entry that appears to relate to this branch's work. If you cannot find one, write an appropriate entry yourself based on the commits on this branch, then commit it with the message `docs: update changelog for <branch-name>` before continuing.
 
 4. Run `git log origin/develop..HEAD --oneline` to list commits on this branch. If there are no commits ahead of develop, stop and say so.
 
