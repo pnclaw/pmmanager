@@ -1,0 +1,14 @@
+using Pmm.Database.Enums;
+
+namespace pmm.Api.Features.DownloadClients;
+
+public class DownloadPollResult
+{
+    public string ClientItemId { get; init; } = string.Empty;
+    public DownloadStatus Status { get; init; }
+    public long? TotalSizeBytes { get; init; }
+    public long? DownloadedBytes { get; init; }
+    public string? StoragePath { get; init; }
+    public List<string>? FileNames { get; init; }
+    public string? ErrorMessage { get; init; }
+}

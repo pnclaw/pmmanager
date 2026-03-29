@@ -33,6 +33,12 @@
           to="/download-clients"
           rounded="lg"
         />
+        <v-list-item
+          prepend-icon="mdi-download"
+          title="Downloads"
+          to="/downloads"
+          rounded="lg"
+        />
         <v-divider class="my-2" />
         <v-list-subheader>PRDB</v-list-subheader>
         <v-list-item

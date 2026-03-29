@@ -5,6 +5,7 @@ import IndexersView from '../features/indexers/IndexersView.vue'
 import IndexerRowsView from '../features/indexers/IndexerRowsView.vue'
 import IndexerStatsView from '../features/indexers/IndexerStatsView.vue'
 import DownloadClientsView from '../features/download-clients/DownloadClientsView.vue'
+import DownloadsView from '../features/downloads/DownloadsView.vue'
 import SettingsView from '../features/settings/SettingsView.vue'
 import PrdbSitesView from '../features/prdb/PrdbSitesView.vue'
 import PrdbSiteVideosView from '../features/prdb/PrdbSiteVideosView.vue'
@@ -23,6 +24,7 @@ const router = createRouter({
     { path: '/indexers/:id/rows', component: IndexerRowsView, meta: { title: 'Indexer Rows' } },
     { path: '/indexers/:id/stats', component: IndexerStatsView, meta: { title: 'Indexer Stats' } },
     { path: '/download-clients', component: DownloadClientsView, meta: { title: 'Download Clients' } },
+    { path: '/downloads', component: DownloadsView, meta: { title: 'Downloads' } },
     { path: '/settings', component: SettingsView, meta: { title: 'Settings' } },
     { path: '/prdb/sites', component: PrdbSitesView, meta: { title: 'PRDB Sites' } },
     { path: '/prdb/sites/:id/videos', component: PrdbSiteVideosView, meta: { title: 'PRDB Site Videos' } },

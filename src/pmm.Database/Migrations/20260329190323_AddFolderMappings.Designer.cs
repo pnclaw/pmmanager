@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pmm.Database;
 
@@ -10,9 +11,11 @@ using Pmm.Database;
 namespace Pmm.Database.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260329190323_AddFolderMappings")]
+    partial class AddFolderMappings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
@@ -139,73 +142,6 @@ namespace Pmm.Database.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("DownloadClients");
-                });
-
-            modelBuilder.Entity("Pmm.Database.DownloadLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ClientItemId")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("DownloadClientId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<long?>("DownloadedBytes")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FileNames")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("IndexerRowId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("LastPolledAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("NzbName")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("NzbUrl")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("StoragePath")
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<long?>("TotalSizeBytes")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DownloadClientId");
-
-                    b.HasIndex("IndexerRowId");
-
-                    b.ToTable("DownloadLogs");
                 });
 
             modelBuilder.Entity("Pmm.Database.FolderMapping", b =>
@@ -749,25 +685,6 @@ namespace Pmm.Database.Migrations
                     b.HasKey("VideoId");
 
                     b.ToTable("PrdbWantedVideos");
-                });
-
-            modelBuilder.Entity("Pmm.Database.DownloadLog", b =>
-                {
-                    b.HasOne("Pmm.Database.DownloadClient", "DownloadClient")
-                        .WithMany()
-                        .HasForeignKey("DownloadClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Pmm.Database.IndexerRow", "IndexerRow")
-                        .WithMany()
-                        .HasForeignKey("IndexerRowId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("DownloadClient");
-
-                    b.Navigation("IndexerRow");
                 });
 
             modelBuilder.Entity("Pmm.Database.IndexerApiRequest", b =>

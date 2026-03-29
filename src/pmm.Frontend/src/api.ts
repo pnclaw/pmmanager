@@ -287,6 +287,55 @@ export interface PrdbStatus {
   } | null
 }
 
+export enum DownloadStatus {
+  Queued         = 0,
+  Downloading    = 1,
+  PostProcessing = 2,
+  Completed      = 3,
+  Failed         = 4,
+}
+
+export const DownloadStatusLabels: Record<DownloadStatus, string> = {
+  [DownloadStatus.Queued]:         'Queued',
+  [DownloadStatus.Downloading]:    'Downloading',
+  [DownloadStatus.PostProcessing]: 'Post-processing',
+  [DownloadStatus.Completed]:      'Completed',
+  [DownloadStatus.Failed]:         'Failed',
+}
+
+export interface DownloadLog {
+  id: string
+  indexerRowId: string
+  downloadClientId: string
+  downloadClientTitle: string
+  nzbName: string
+  nzbUrl: string
+  clientItemId: string | null
+  status: DownloadStatus
+  storagePath: string | null
+  fileNames: string[] | null
+  totalSizeBytes: number | null
+  downloadedBytes: number | null
+  errorMessage: string | null
+  lastPolledAt: string | null
+  completedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FolderMapping {
+  id: string
+  originalFolder: string
+  mappedToFolder: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FolderMappingRequest {
+  originalFolder: string
+  mappedToFolder: string
+}
+
 export interface IndexerRowMatchDebugResult {
   rowsChecked: number
   rows: {
@@ -430,6 +479,19 @@ export const api = {
     update: (data: UpdateSettingsRequest) =>
       request<AppSettings>('/settings', { method: 'PUT', body: JSON.stringify(data) }),
   },
+  downloadLogs: {
+    list: () => request<DownloadLog[]>('/download-logs'),
+    get: (id: string) => request<DownloadLog>(`/download-logs/${id}`),
+  },
+  folderMappings: {
+    list: () => request<FolderMapping[]>('/folder-mappings'),
+    create: (data: FolderMappingRequest) =>
+      request<FolderMapping>('/folder-mappings', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: FolderMappingRequest) =>
+      request<FolderMapping>(`/folder-mappings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<void>(`/folder-mappings/${id}`, { method: 'DELETE' }),
+  },
   downloadClients: {
     list: () => request<DownloadClient[]>('/download-clients'),
     get: (id: string) => request<DownloadClient>(`/download-clients/${id}`),
@@ -441,10 +503,10 @@ export const api = {
       request<void>(`/download-clients/${id}`, { method: 'DELETE' }),
     test: (data: { clientType: ClientType; host: string; port: number; useSsl: boolean; apiKey: string; username: string; password: string }) =>
       request<{ success: boolean; message: string }>('/download-clients/test', { method: 'POST', body: JSON.stringify(data) }),
-    send: (id: string, nzbUrl: string, name: string, indexerId: string) =>
-      request<{ success: boolean; message: string }>(`/download-clients/${id}/send`, {
+    send: (id: string, nzbUrl: string, name: string, indexerId: string, indexerRowId?: string) =>
+      request<{ success: boolean; message: string; downloadLogId: string | null }>(`/download-clients/${id}/send`, {
         method: 'POST',
-        body: JSON.stringify({ nzbUrl, name, indexerId }),
+        body: JSON.stringify({ nzbUrl, name, indexerId, indexerRowId }),
       }),
   },
 }
