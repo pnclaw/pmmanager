@@ -92,7 +92,7 @@
       </template>
 
       <template #item.releaseDate="{ item }">
-        {{ item.releaseDate ?? '—' }}
+        {{ item.releaseDate ? formatDate(item.releaseDate) : '—' }}
       </template>
 
       <template #item.addedAtUtc="{ item }">
