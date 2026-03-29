@@ -119,15 +119,53 @@
 
       <template #item.actions="{ item }">
         <v-btn
-          icon="mdi-delete"
+          icon="mdi-pencil"
           size="small"
           variant="text"
-          color="error"
-          :loading="removing === item.videoId"
-          @click="remove(item.videoId)"
+          @click.stop="openDialog(item)"
         />
       </template>
     </v-data-table-server>
+
+    <!-- Edit dialog -->
+    <v-dialog v-model="dialogOpen" max-width="400">
+      <v-card v-if="dialogItem">
+        <v-card-title class="pt-4">Edit wanted entry</v-card-title>
+        <v-card-subtitle class="pb-2">{{ dialogItem.videoTitle }}</v-card-subtitle>
+
+        <v-card-text>
+          <v-switch
+            v-model="dialogFulfilled"
+            :label="dialogFulfilled ? 'Fulfilled' : 'Unfulfilled'"
+            color="success"
+            hide-details
+          />
+        </v-card-text>
+
+        <v-card-actions class="px-4 pb-4 flex-column align-stretch ga-2">
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="saving"
+            :disabled="removing !== null"
+            block
+            @click="save"
+          >
+            Save
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="tonal"
+            :loading="removing !== null"
+            :disabled="saving"
+            block
+            @click="removeFromDialog"
+          >
+            Remove from wanted list
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -147,6 +185,11 @@ const total    = ref(0)
 const loading  = ref(false)
 const error    = ref<string | null>(null)
 const removing = ref<string | null>(null)
+const saving   = ref(false)
+
+const dialogOpen      = ref(false)
+const dialogItem      = ref<PrdbWantedVideo | null>(null)
+const dialogFulfilled = ref(false)
 
 const search          = ref('')
 const statusFilter    = ref<'unfulfilled' | 'fulfilled' | 'all'>('unfulfilled')
@@ -230,12 +273,36 @@ function onRowClick(_: MouseEvent, { item }: { item: PrdbWantedVideo }) {
   router.push(`/prdb/videos/${item.videoId}`)
 }
 
-async function remove(videoId: string) {
+function openDialog(item: PrdbWantedVideo) {
+  dialogItem.value      = item
+  dialogFulfilled.value = item.isFulfilled
+  dialogOpen.value      = true
+}
+
+async function save() {
+  if (!dialogItem.value) return
+  saving.value = true
+  try {
+    await api.prdbWantedVideos.update(dialogItem.value.videoId, { isFulfilled: dialogFulfilled.value })
+    const row = videos.value.find(v => v.videoId === dialogItem.value!.videoId)
+    if (row) row.isFulfilled = dialogFulfilled.value
+    dialogOpen.value = false
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    saving.value = false
+  }
+}
+
+async function removeFromDialog() {
+  if (!dialogItem.value) return
+  const videoId = dialogItem.value.videoId
   removing.value = videoId
   try {
     await api.prdbWantedVideos.remove(videoId)
     videos.value = videos.value.filter(v => v.videoId !== videoId)
     total.value--
+    dialogOpen.value = false
   } catch (e: any) {
     error.value = e.message
   } finally {

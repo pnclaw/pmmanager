@@ -382,6 +382,8 @@ export const api = {
       return request<PagedResult<PrdbWantedVideo>>(`/prdb-wanted-videos?${q}`)
     },
     filterOptions: () => request<PrdbWantedFilterOptions>('/prdb-wanted-videos/filter-options'),
+    update: (videoId: string, data: { isFulfilled: boolean }) =>
+      request<void>(`/prdb-wanted-videos/${videoId}`, { method: 'PATCH', body: JSON.stringify(data) }),
     remove: (videoId: string) => request<void>(`/prdb-wanted-videos/${videoId}`, { method: 'DELETE' }),
   },
   prdbVideos: {
