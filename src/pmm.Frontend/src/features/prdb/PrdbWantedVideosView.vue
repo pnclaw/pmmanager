@@ -130,28 +130,24 @@
     <!-- Edit dialog -->
     <v-dialog v-model="dialogOpen" max-width="400">
       <v-card v-if="dialogItem">
-        <v-card-title class="pt-4">Edit wanted entry</v-card-title>
+        <v-card-title class="pt-4">Wanted Video</v-card-title>
+        <v-card-subtitle>{{ dialogItem.siteTitle }}</v-card-subtitle>
         <v-card-subtitle class="pb-2">{{ dialogItem.videoTitle }}</v-card-subtitle>
 
-        <v-card-text>
-          <v-switch
-            v-model="dialogFulfilled"
-            :label="dialogFulfilled ? 'Fulfilled' : 'Unfulfilled'"
-            color="success"
-            hide-details
-          />
+        <v-card-text class="text-body-2 text-medium-emphasis pb-2">
+          Added {{ formatDate(dialogItem.addedAtUtc) }}
         </v-card-text>
 
         <v-card-actions class="px-4 pb-4 flex-column align-stretch ga-2">
           <v-btn
-            color="primary"
-            variant="flat"
+            :color="dialogItem.isFulfilled ? 'warning' : 'success'"
+            variant="tonal"
             :loading="saving"
             :disabled="removing !== null"
             block
-            @click="save"
+            @click="toggleFulfilled"
           >
-            Save
+            {{ dialogItem.isFulfilled ? 'Mark as unfulfilled' : 'Mark as fulfilled' }}
           </v-btn>
           <v-btn
             color="error"
@@ -187,9 +183,8 @@ const error    = ref<string | null>(null)
 const removing = ref<string | null>(null)
 const saving   = ref(false)
 
-const dialogOpen      = ref(false)
-const dialogItem      = ref<PrdbWantedVideo | null>(null)
-const dialogFulfilled = ref(false)
+const dialogOpen = ref(false)
+const dialogItem = ref<PrdbWantedVideo | null>(null)
 
 const search          = ref('')
 const statusFilter    = ref<'unfulfilled' | 'fulfilled' | 'all'>('unfulfilled')
@@ -274,19 +269,17 @@ function onRowClick(_: MouseEvent, { item }: { item: PrdbWantedVideo }) {
 }
 
 function openDialog(item: PrdbWantedVideo) {
-  dialogItem.value      = item
-  dialogFulfilled.value = item.isFulfilled
-  dialogOpen.value      = true
+  dialogItem.value = item
+  dialogOpen.value = true
 }
 
-async function save() {
+async function toggleFulfilled() {
   if (!dialogItem.value) return
+  const newValue = !dialogItem.value.isFulfilled
   saving.value = true
   try {
-    await api.prdbWantedVideos.update(dialogItem.value.videoId, { isFulfilled: dialogFulfilled.value })
-    const row = videos.value.find(v => v.videoId === dialogItem.value!.videoId)
-    if (row) row.isFulfilled = dialogFulfilled.value
-    dialogOpen.value = false
+    await api.prdbWantedVideos.update(dialogItem.value.videoId, { isFulfilled: newValue })
+    dialogItem.value.isFulfilled = newValue
   } catch (e: any) {
     error.value = e.message
   } finally {
