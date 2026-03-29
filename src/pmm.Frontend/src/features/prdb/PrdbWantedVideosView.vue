@@ -69,60 +69,122 @@
       hover
       @update:page="onPageChange"
       @update:items-per-page="onPageSizeChange"
+      @click:row="onRowClick"
     >
       <template #item.thumbnail="{ item }">
-        <div class="py-1">
-          <v-img
-            v-if="item.thumbnailCdnPath"
-            :src="item.thumbnailCdnPath"
-            width="80"
-            aspect-ratio="16/9"
-            cover
-            class="rounded"
-            :style="sfwMode ? 'filter: blur(12px)' : ''"
-          />
-          <div
-            v-else
-            class="bg-surface-variant rounded d-flex align-center justify-center"
-            style="width: 80px; aspect-ratio: 16/9"
-          >
-            <v-icon size="small" color="medium-emphasis">mdi-image-off</v-icon>
+        <div class="py-2">
+          <div class="position-relative rounded overflow-hidden" style="width: 240px; height: 135px">
+            <v-img
+              v-if="item.thumbnailCdnPath"
+              :src="item.thumbnailCdnPath"
+              width="240"
+              height="135"
+              cover
+              :style="sfwMode ? 'filter: blur(12px)' : ''"
+            />
+            <div
+              v-else
+              class="bg-surface-variant d-flex align-center justify-center"
+              style="width: 240px; height: 135px"
+            >
+              <v-icon size="small" color="medium-emphasis">mdi-image-off</v-icon>
+            </div>
+            <div
+              class="position-absolute text-caption font-weight-bold px-2 py-1"
+              style="top: 0; left: 0; border-bottom-right-radius: 6px"
+              :style="item.isFulfilled
+                ? 'background: rgba(var(--v-theme-success), 0.85); color: rgb(var(--v-theme-on-success))'
+                : 'background: rgba(var(--v-theme-warning), 0.85); color: rgb(var(--v-theme-on-warning))'"
+            >
+              {{ item.isFulfilled ? 'Fulfilled' : 'Unfulfilled' }}
+            </div>
           </div>
         </div>
       </template>
 
+      <template #item.videoInfo="{ item }">
+        <div>
+          <div class="text-caption text-medium-emphasis">{{ item.siteTitle }}</div>
+          <div>{{ item.videoTitle }}</div>
+        </div>
+      </template>
+
       <template #item.releaseDate="{ item }">
-        {{ item.releaseDate ?? '—' }}
+        {{ item.releaseDate ? formatDate(item.releaseDate) : '—' }}
       </template>
 
       <template #item.addedAtUtc="{ item }">
         {{ formatDate(item.addedAtUtc) }}
       </template>
 
-      <template #item.isFulfilled="{ item }">
-        <v-chip
-          :color="item.isFulfilled ? 'success' : 'warning'"
+      <template #item.actions="{ item }">
+        <v-btn
+          icon="mdi-pencil"
           size="small"
-          variant="tonal"
-        >
-          {{ item.isFulfilled ? 'Fulfilled' : 'Unfulfilled' }}
-        </v-chip>
+          variant="text"
+          @click.stop="openDialog(item)"
+        />
       </template>
     </v-data-table-server>
+
+    <!-- Edit dialog -->
+    <v-dialog v-model="dialogOpen" max-width="400">
+      <v-card v-if="dialogItem">
+        <v-card-title class="pt-4">Wanted Video</v-card-title>
+        <v-card-subtitle>{{ dialogItem.siteTitle }}</v-card-subtitle>
+        <v-card-subtitle class="pb-2">{{ dialogItem.videoTitle }}</v-card-subtitle>
+
+        <v-card-text class="text-body-2 text-medium-emphasis pb-2">
+          Added {{ formatDate(dialogItem.addedAtUtc) }}
+        </v-card-text>
+
+        <v-card-actions class="px-4 pb-4 flex-column align-stretch ga-2">
+          <v-btn
+            :color="dialogItem.isFulfilled ? 'warning' : 'success'"
+            variant="tonal"
+            :loading="saving"
+            :disabled="removing !== null"
+            block
+            @click="toggleFulfilled"
+          >
+            {{ dialogItem.isFulfilled ? 'Mark as unfulfilled' : 'Mark as fulfilled' }}
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="tonal"
+            :loading="removing !== null"
+            :disabled="saving"
+            block
+            @click="removeFromDialog"
+          >
+            Remove from wanted list
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useDisplay } from 'vuetify'
+import { useRouter } from 'vue-router'
 import { api, type PrdbWantedVideo, type PrdbWantedFilterOptions } from '../../api'
 import { useSfwMode } from '../../composables/useSfwMode'
 
 const { sfwMode } = useSfwMode()
+const { mdAndUp } = useDisplay()
+const router = useRouter()
 
-const videos  = ref<PrdbWantedVideo[]>([])
-const total   = ref(0)
-const loading = ref(false)
-const error   = ref<string | null>(null)
+const videos   = ref<PrdbWantedVideo[]>([])
+const total    = ref(0)
+const loading  = ref(false)
+const error    = ref<string | null>(null)
+const removing = ref<string | null>(null)
+const saving   = ref(false)
+
+const dialogOpen = ref(false)
+const dialogItem = ref<PrdbWantedVideo | null>(null)
 
 const search          = ref('')
 const statusFilter    = ref<'unfulfilled' | 'fulfilled' | 'all'>('unfulfilled')
@@ -140,14 +202,13 @@ const statusOptions = [
   { title: 'All',         value: 'all' },
 ]
 
-const headers = [
-  { title: '',           key: 'thumbnail',  width: 100, sortable: false },
-  { title: 'Site',       key: 'siteTitle',  sortable: false, width: 200 },
-  { title: 'Title',      key: 'videoTitle', sortable: false },
-  { title: 'Released',   key: 'releaseDate', sortable: false, width: 120 },
-  { title: 'Added',      key: 'addedAtUtc',  sortable: false, width: 130 },
-  { title: 'Status',     key: 'isFulfilled', sortable: false, width: 120 },
-]
+const headers = computed(() => [
+  { title: '',         key: 'thumbnail',   width: 260, sortable: false },
+  { title: 'Video',    key: 'videoInfo',   sortable: false },
+  { title: 'Released', key: 'releaseDate', sortable: false, width: 120 },
+  ...(mdAndUp.value ? [{ title: 'Added', key: 'addedAtUtc', sortable: false, width: 130 }] : []),
+  { title: '',         key: 'actions',     sortable: false, width: 60 },
+])
 
 function isFulfilledParam(): boolean | undefined {
   if (statusFilter.value === 'unfulfilled') return false
@@ -201,6 +262,45 @@ function onPageSizeChange(size: number) {
   pagination.pageSize = size
   pagination.page = 1
   load()
+}
+
+function onRowClick(_: MouseEvent, { item }: { item: PrdbWantedVideo }) {
+  router.push(`/prdb/videos/${item.videoId}`)
+}
+
+function openDialog(item: PrdbWantedVideo) {
+  dialogItem.value = item
+  dialogOpen.value = true
+}
+
+async function toggleFulfilled() {
+  if (!dialogItem.value) return
+  const newValue = !dialogItem.value.isFulfilled
+  saving.value = true
+  try {
+    await api.prdbWantedVideos.update(dialogItem.value.videoId, { isFulfilled: newValue })
+    dialogItem.value.isFulfilled = newValue
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    saving.value = false
+  }
+}
+
+async function removeFromDialog() {
+  if (!dialogItem.value) return
+  const videoId = dialogItem.value.videoId
+  removing.value = videoId
+  try {
+    await api.prdbWantedVideos.remove(videoId)
+    videos.value = videos.value.filter(v => v.videoId !== videoId)
+    total.value--
+    dialogOpen.value = false
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    removing.value = null
+  }
 }
 
 function formatDate(iso: string): string {

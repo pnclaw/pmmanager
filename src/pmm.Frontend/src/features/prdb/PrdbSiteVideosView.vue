@@ -44,6 +44,7 @@
       hover
       @update:page="onPageChange"
       @update:items-per-page="onPageSizeChange"
+      @click:row="onRowClick"
     >
       <template #item.releaseDate="{ item }">
         {{ item.releaseDate ?? '—' }}
@@ -71,10 +72,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { api, type PrdbVideo } from '../../api'
 
 const route  = useRoute()
+const router = useRouter()
 const siteId = route.params.id as string
 
 const videos  = ref<PrdbVideo[]>([])
@@ -109,6 +111,10 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function onRowClick(_: MouseEvent, { item }: { item: PrdbVideo }) {
+  router.push(`/prdb/videos/${item.id}`)
 }
 
 function onFilterChange() {

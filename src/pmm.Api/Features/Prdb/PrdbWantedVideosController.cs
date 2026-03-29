@@ -1,13 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pmm.Database;
+using System.Net;
+using System.Net.Http.Json;
 
 namespace pmm.Api.Features.Prdb;
 
 [ApiController]
 [Route("api/prdb-wanted-videos")]
 [Produces("application/json")]
-public class PrdbWantedVideosController(AppDbContext db) : ControllerBase
+public class PrdbWantedVideosController(AppDbContext db, IHttpClientFactory httpClientFactory) : ControllerBase
 {
     [HttpGet]
     [EndpointSummary("List wanted videos")]
@@ -90,4 +92,60 @@ public class PrdbWantedVideosController(AppDbContext db) : ControllerBase
 
         return Ok(new { sites, actors });
     }
+
+    [HttpPatch("{videoId:guid}")]
+    [EndpointSummary("Update a wanted video")]
+    [EndpointDescription("Updates the fulfilment state of a wanted video in both prdb and the local database.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid videoId, [FromBody] UpdateWantedVideoRequest request, CancellationToken ct)
+    {
+        var entry = await db.PrdbWantedVideos.FindAsync([videoId], ct);
+        if (entry is null) return NotFound();
+
+        var settings = await db.AppSettings.FirstAsync(ct);
+        var http = httpClientFactory.CreateClient();
+        http.BaseAddress = new Uri(settings.PrdbApiUrl.TrimEnd('/') + "/");
+        http.DefaultRequestHeaders.Add("X-Api-Key", settings.PrdbApiKey);
+
+        var prdbRequest = new HttpRequestMessage(HttpMethod.Put, $"wanted-videos/{videoId}")
+        {
+            Content = JsonContent.Create(new { request.IsFulfilled }),
+        };
+        (await http.SendAsync(prdbRequest, ct)).EnsureSuccessStatusCode();
+
+        entry.IsFulfilled   = request.IsFulfilled;
+        entry.FulfilledAtUtc = request.IsFulfilled ? entry.FulfilledAtUtc ?? DateTime.UtcNow : null;
+        await db.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
+
+    [HttpDelete("{videoId:guid}")]
+    [EndpointSummary("Remove a wanted video")]
+    [EndpointDescription("Removes the video from the prdb wanted list and from the local database.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(Guid videoId, CancellationToken ct)
+    {
+        var settings = await db.AppSettings.FirstAsync(ct);
+        var http = httpClientFactory.CreateClient();
+        http.BaseAddress = new Uri(settings.PrdbApiUrl.TrimEnd('/') + "/");
+        http.DefaultRequestHeaders.Add("X-Api-Key", settings.PrdbApiKey);
+
+        var prdbResponse = await http.SendAsync(new HttpRequestMessage(HttpMethod.Delete, $"wanted-videos/{videoId}"), ct);
+        if (prdbResponse.StatusCode != HttpStatusCode.NotFound)
+            prdbResponse.EnsureSuccessStatusCode();
+
+        var entry = await db.PrdbWantedVideos.FindAsync([videoId], ct);
+        if (entry is not null)
+        {
+            db.PrdbWantedVideos.Remove(entry);
+            await db.SaveChangesAsync(ct);
+        }
+
+        return NoContent();
+    }
 }
+
+public record UpdateWantedVideoRequest(bool IsFulfilled);
