@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pmm.Database;
+using System.Net;
 
 namespace pmm.Api.Features.Prdb;
 
 [ApiController]
 [Route("api/prdb-wanted-videos")]
 [Produces("application/json")]
-public class PrdbWantedVideosController(AppDbContext db) : ControllerBase
+public class PrdbWantedVideosController(AppDbContext db, IHttpClientFactory httpClientFactory) : ControllerBase
 {
     [HttpGet]
     [EndpointSummary("List wanted videos")]
@@ -89,5 +90,31 @@ public class PrdbWantedVideosController(AppDbContext db) : ControllerBase
             .ToListAsync();
 
         return Ok(new { sites, actors });
+    }
+
+    [HttpDelete("{videoId:guid}")]
+    [EndpointSummary("Remove a wanted video")]
+    [EndpointDescription("Removes the video from the prdb wanted list and from the local database.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(Guid videoId, CancellationToken ct)
+    {
+        var settings = await db.AppSettings.FirstAsync(ct);
+        var http = httpClientFactory.CreateClient();
+        http.BaseAddress = new Uri(settings.PrdbApiUrl.TrimEnd('/') + "/");
+        http.DefaultRequestHeaders.Add("X-Api-Key", settings.PrdbApiKey);
+
+        var prdbResponse = await http.SendAsync(new HttpRequestMessage(HttpMethod.Delete, $"wanted-videos/{videoId}"), ct);
+        if (prdbResponse.StatusCode != HttpStatusCode.NotFound)
+            prdbResponse.EnsureSuccessStatusCode();
+
+        var entry = await db.PrdbWantedVideos.FindAsync([videoId], ct);
+        if (entry is not null)
+        {
+            db.PrdbWantedVideos.Remove(entry);
+            await db.SaveChangesAsync(ct);
+        }
+
+        return NoContent();
     }
 }

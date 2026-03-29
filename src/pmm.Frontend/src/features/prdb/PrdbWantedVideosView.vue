@@ -71,23 +71,40 @@
       @update:items-per-page="onPageSizeChange"
     >
       <template #item.thumbnail="{ item }">
-        <div class="py-1">
-          <v-img
-            v-if="item.thumbnailCdnPath"
-            :src="item.thumbnailCdnPath"
-            width="80"
-            aspect-ratio="16/9"
-            cover
-            class="rounded"
-            :style="sfwMode ? 'filter: blur(12px)' : ''"
-          />
-          <div
-            v-else
-            class="bg-surface-variant rounded d-flex align-center justify-center"
-            style="width: 80px; aspect-ratio: 16/9"
-          >
-            <v-icon size="small" color="medium-emphasis">mdi-image-off</v-icon>
+        <div class="py-2">
+          <div class="position-relative rounded overflow-hidden" style="width: 240px; height: 135px">
+            <v-img
+              v-if="item.thumbnailCdnPath"
+              :src="item.thumbnailCdnPath"
+              width="240"
+              height="135"
+              cover
+              :style="sfwMode ? 'filter: blur(12px)' : ''"
+            />
+            <div
+              v-else
+              class="bg-surface-variant d-flex align-center justify-center"
+              style="width: 240px; height: 135px"
+            >
+              <v-icon size="small" color="medium-emphasis">mdi-image-off</v-icon>
+            </div>
+            <div
+              class="position-absolute text-caption font-weight-bold px-2 py-1"
+              style="top: 0; left: 0; border-bottom-right-radius: 6px"
+              :style="item.isFulfilled
+                ? 'background: rgba(var(--v-theme-success), 0.85); color: rgb(var(--v-theme-on-success))'
+                : 'background: rgba(var(--v-theme-warning), 0.85); color: rgb(var(--v-theme-on-warning))'"
+            >
+              {{ item.isFulfilled ? 'Fulfilled' : 'Unfulfilled' }}
+            </div>
           </div>
+        </div>
+      </template>
+
+      <template #item.videoInfo="{ item }">
+        <div>
+          <div class="text-caption text-medium-emphasis">{{ item.siteTitle }}</div>
+          <div>{{ item.videoTitle }}</div>
         </div>
       </template>
 
@@ -99,30 +116,34 @@
         {{ formatDate(item.addedAtUtc) }}
       </template>
 
-      <template #item.isFulfilled="{ item }">
-        <v-chip
-          :color="item.isFulfilled ? 'success' : 'warning'"
+      <template #item.actions="{ item }">
+        <v-btn
+          icon="mdi-delete"
           size="small"
-          variant="tonal"
-        >
-          {{ item.isFulfilled ? 'Fulfilled' : 'Unfulfilled' }}
-        </v-chip>
+          variant="text"
+          color="error"
+          :loading="removing === item.videoId"
+          @click="remove(item.videoId)"
+        />
       </template>
     </v-data-table-server>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useDisplay } from 'vuetify'
 import { api, type PrdbWantedVideo, type PrdbWantedFilterOptions } from '../../api'
 import { useSfwMode } from '../../composables/useSfwMode'
 
 const { sfwMode } = useSfwMode()
+const { mdAndUp } = useDisplay()
 
-const videos  = ref<PrdbWantedVideo[]>([])
-const total   = ref(0)
-const loading = ref(false)
-const error   = ref<string | null>(null)
+const videos   = ref<PrdbWantedVideo[]>([])
+const total    = ref(0)
+const loading  = ref(false)
+const error    = ref<string | null>(null)
+const removing = ref<string | null>(null)
 
 const search          = ref('')
 const statusFilter    = ref<'unfulfilled' | 'fulfilled' | 'all'>('unfulfilled')
@@ -140,14 +161,13 @@ const statusOptions = [
   { title: 'All',         value: 'all' },
 ]
 
-const headers = [
-  { title: '',           key: 'thumbnail',  width: 100, sortable: false },
-  { title: 'Site',       key: 'siteTitle',  sortable: false, width: 200 },
-  { title: 'Title',      key: 'videoTitle', sortable: false },
-  { title: 'Released',   key: 'releaseDate', sortable: false, width: 120 },
-  { title: 'Added',      key: 'addedAtUtc',  sortable: false, width: 130 },
-  { title: 'Status',     key: 'isFulfilled', sortable: false, width: 120 },
-]
+const headers = computed(() => [
+  { title: '',         key: 'thumbnail',   width: 260, sortable: false },
+  { title: 'Video',    key: 'videoInfo',   sortable: false },
+  { title: 'Released', key: 'releaseDate', sortable: false, width: 120 },
+  ...(mdAndUp.value ? [{ title: 'Added', key: 'addedAtUtc', sortable: false, width: 130 }] : []),
+  { title: '',         key: 'actions',     sortable: false, width: 60 },
+])
 
 function isFulfilledParam(): boolean | undefined {
   if (statusFilter.value === 'unfulfilled') return false
@@ -201,6 +221,19 @@ function onPageSizeChange(size: number) {
   pagination.pageSize = size
   pagination.page = 1
   load()
+}
+
+async function remove(videoId: string) {
+  removing.value = videoId
+  try {
+    await api.prdbWantedVideos.remove(videoId)
+    videos.value = videos.value.filter(v => v.videoId !== videoId)
+    total.value--
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    removing.value = null
+  }
 }
 
 function formatDate(iso: string): string {

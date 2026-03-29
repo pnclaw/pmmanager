@@ -369,6 +369,7 @@ export const api = {
       return request<PagedResult<PrdbWantedVideo>>(`/prdb-wanted-videos?${q}`)
     },
     filterOptions: () => request<PrdbWantedFilterOptions>('/prdb-wanted-videos/filter-options'),
+    remove: (videoId: string) => request<void>(`/prdb-wanted-videos/${videoId}`, { method: 'DELETE' }),
   },
   prdbSync: {
     syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; favoriteActorsSynced: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
