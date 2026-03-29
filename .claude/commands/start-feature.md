@@ -3,13 +3,14 @@ You are helping the user start a new feature branch from a topic they provide: $
 Follow these steps in order:
 
 1. Derive a branch name:
-   - Slugify the topic: lowercase, replace spaces/punctuation with hyphens, collapse repeated hyphens, strip leading/trailing hyphens.
+   - If no argument was given (empty or whitespace), generate a random slug of exactly three common English words joined by hyphens (e.g. `silver-fox-rain`). Pick words randomly — do not reuse the same combination.
+   - Otherwise, slugify the argument: lowercase, replace spaces/punctuation with hyphens, collapse repeated hyphens, strip leading/trailing hyphens.
    - Prefix with `feature/`.
-   - Show the proposed name to the user and ask them to confirm or suggest an alternative before proceeding.
+   - Proceed immediately — do NOT ask the user to confirm the name.
 
 2. Safety check — before switching branches:
    - Run `git status --short`. If there are any uncommitted changes, stop and tell the user to commit or stash them first.
-   - Run `git log origin/HEAD..HEAD --oneline`. If there are unpushed commits on the current branch, stop and warn the user.
+   - Run `git log origin/develop..HEAD --oneline`. If there are unpushed commits on the current branch, stop and warn the user.
 
 3. Reset local develop to match remote:
    - Run `git checkout develop`
