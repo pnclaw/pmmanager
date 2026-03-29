@@ -35,24 +35,25 @@ public class SyncWorker(IServiceScopeFactory scopeFactory, ILogger<SyncWorker> l
 
     private async Task RunAsync(CancellationToken ct)
     {
-        using var scope = scopeFactory.CreateScope();
-
         logger.LogInformation("SyncWorker run started at {Time}", DateTimeOffset.UtcNow);
 
-        var actorSync = scope.ServiceProvider.GetRequiredService<PrdbActorSyncService>();
-        await actorSync.RunAsync(ct);
+        await RunServiceAsync<PrdbActorSyncService>(s => s.RunAsync(ct), ct);
+        await RunServiceAsync<PrdbVideoDetailSyncService>(s => s.RunAsync(ct), ct);
+        await RunServiceAsync<PrdbWantedVideoSyncService>(s => s.RunAsync(ct), ct);
 
-        var videoDetailSync = scope.ServiceProvider.GetRequiredService<PrdbVideoDetailSyncService>();
-        await videoDetailSync.RunAsync(ct);
-
-        var wantedVideoSync = scope.ServiceProvider.GetRequiredService<PrdbWantedVideoSyncService>();
-        await wantedVideoSync.RunAsync(ct);
-
+        using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var settings = await db.AppSettings.FirstAsync(ct);
         settings.SyncWorkerLastRunAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("SyncWorker run completed at {Time}", DateTimeOffset.UtcNow);
+    }
+
+    private async Task RunServiceAsync<T>(Func<T, Task> run, CancellationToken ct) where T : notnull
+    {
+        using var scope = scopeFactory.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<T>();
+        await run(service);
     }
 }

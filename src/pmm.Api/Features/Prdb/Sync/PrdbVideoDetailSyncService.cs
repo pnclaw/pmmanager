@@ -11,7 +11,8 @@ public class PrdbVideoDetailSyncService(
     ILogger<PrdbVideoDetailSyncService> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private const int VideosPerRun       = 200; // 200 API requests per run
+    private const int VideosPerRun          = 200; // 200 API requests per run
+    private const int DetailResyncDays      = 30;  // re-sync video details after this many days
     private const int ActorBatchSize     = 50;
     private const int ActorBatchesPerRun = 20;  // 1 000 actors per run, 20 API requests
 
@@ -37,7 +38,9 @@ public class PrdbVideoDetailSyncService(
 
     private async Task SyncVideoDetailsAsync(HttpClient http, CancellationToken ct)
     {
-        var totalPending = await db.PrdbVideos.CountAsync(v => v.DetailSyncedAtUtc == null, ct);
+        var resyncBefore = DateTime.UtcNow.AddDays(-DetailResyncDays);
+        var totalPending = await db.PrdbVideos
+            .CountAsync(v => v.DetailSyncedAtUtc == null || v.DetailSyncedAtUtc < resyncBefore, ct);
 
         if (totalPending == 0)
         {
@@ -46,8 +49,8 @@ public class PrdbVideoDetailSyncService(
         }
 
         var videoIds = await db.PrdbVideos
-            .Where(v => v.DetailSyncedAtUtc == null)
-            .OrderBy(v => v.SyncedAtUtc)
+            .Where(v => v.DetailSyncedAtUtc == null || v.DetailSyncedAtUtc < resyncBefore)
+            .OrderBy(v => v.DetailSyncedAtUtc)
             .Select(v => v.Id)
             .Take(VideosPerRun)
             .ToListAsync(ct);
