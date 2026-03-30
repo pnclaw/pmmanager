@@ -14,25 +14,7 @@
 
     <v-navigation-drawer v-model="drawer">
       <v-list>
-        <v-list-item
-          prepend-icon="mdi-movie-open"
-          title="PMManager"
-          subtitle="Media Manager"
-          class="py-4"
-        />
-        <v-divider />
-        <v-list-item
-          prepend-icon="mdi-heart-pulse"
-          title="Health"
-          to="/health"
-          rounded="lg"
-        />
-        <v-list-item
-          prepend-icon="mdi-format-list-bulleted"
-          title="Items"
-          to="/items"
-          rounded="lg"
-        />
+        <v-list-subheader>Usenet</v-list-subheader>
         <v-list-item
           prepend-icon="mdi-database-search"
           title="Indexers"
@@ -82,6 +64,12 @@
           prepend-icon="mdi-cog"
           title="Settings"
           to="/settings"
+          rounded="lg"
+        />
+        <v-list-item
+          prepend-icon="mdi-heart-pulse"
+          title="Health"
+          to="/health"
           rounded="lg"
         />
       </v-list>
