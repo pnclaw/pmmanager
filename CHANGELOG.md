@@ -5,6 +5,19 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/video-view — 2026-03-30
+
+### Done
+- Added **Videos** nav item and `/prdb/videos` route with a new `PrdbVideosView` — responsive card grid (1/2/3/4 cols) showing thumbnail, site title, release date, actor count, and a Wanted/Fulfilled badge overlay
+- Added `GET /api/prdb-videos` list endpoint (filters: search, siteId; ordered by release date desc) and `GET /api/prdb-videos/filter-options` for the site dropdown; `PrdbVideoListResponse` includes `IsWanted` and `IsFulfilled` via correlated subqueries
+- Added `POST /api/prdb-wanted-videos/{videoId}` to add a video to the wanted list (calls prdb.net then upserts locally; idempotent)
+- Replaced card navigation with a tap-to-open **action overlay** on both the Videos and Wanted views; overlay buttons: Show details, Mark as fulfilled/unfulfilled (Wanted view) / Add or Remove wanted (Videos view), Filter by site (Videos view), Remove wanted
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/wanted-list-mobile-friendly — 2026-03-30
 
 ### Done

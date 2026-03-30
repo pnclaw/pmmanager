@@ -6,7 +6,7 @@
 
     <v-expand-transition>
       <v-row v-if="!mobile || filterPanelOpen" class="mb-4">
-        <v-col cols="12" sm="6" md="3">
+        <v-col cols="12" sm="6" md="4">
           <v-text-field
             v-model="search"
             prepend-inner-icon="mdi-magnify"
@@ -16,35 +16,13 @@
             @update:model-value="onFilterChange"
           />
         </v-col>
-        <v-col cols="12" sm="6" md="2">
-          <v-select
-            v-model="statusFilter"
-            :items="statusOptions"
-            label="Status"
-            hide-details
-            @update:model-value="onFilterChange"
-          />
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
+        <v-col cols="12" sm="6" md="4">
           <v-autocomplete
             v-model="selectedSiteId"
             :items="filterOptions.sites"
             item-value="id"
             item-title="title"
             label="Site"
-            clearable
-            hide-details
-            :loading="loadingOptions"
-            @update:model-value="onFilterChange"
-          />
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-autocomplete
-            v-model="selectedActorId"
-            :items="filterOptions.actors"
-            item-value="id"
-            item-title="name"
-            label="Actor"
             clearable
             hide-details
             :loading="loadingOptions"
@@ -60,12 +38,12 @@
 
     <template v-else>
       <v-row v-if="videos.length">
-        <v-col v-for="item in videos" :key="item.videoId" cols="12" sm="6" md="4" lg="3">
-          <v-card class="position-relative overflow-hidden" @click="activeOverlayId = item.videoId">
+        <v-col v-for="item in videos" :key="item.id" cols="12" sm="6" md="4" lg="3">
+          <v-card class="position-relative overflow-hidden" @click="activeOverlayId = item.id">
 
             <!-- Card action overlay -->
             <div
-              v-if="activeOverlayId === item.videoId"
+              v-if="activeOverlayId === item.id"
               class="position-absolute d-flex flex-column align-center justify-center ga-3"
               style="inset: 0; z-index: 2; background: rgba(0,0,0,0.75)"
               @click.stop="activeOverlayId = null"
@@ -74,34 +52,43 @@
                 prepend-icon="mdi-play-circle-outline"
                 variant="tonal"
                 color="white"
-                width="200"
-                @click.stop="router.push(`/prdb/videos/${item.videoId}`)"
+                width="180"
+                @click.stop="router.push(`/prdb/videos/${item.id}`)"
               >
                 Show details
               </v-btn>
               <v-btn
-                :prepend-icon="item.isFulfilled ? 'mdi-bookmark-remove-outline' : 'mdi-bookmark-check-outline'"
+                prepend-icon="mdi-web"
                 variant="tonal"
-                :color="item.isFulfilled ? 'warning' : 'success'"
-                :loading="saving === item.videoId"
-                width="200"
-                @click.stop="toggleFulfilled(item)"
+                color="white"
+                width="180"
+                @click.stop="filterBySite(item)"
               >
-                {{ item.isFulfilled ? 'Mark as unfulfilled' : 'Mark as fulfilled' }}
+                Filter by site
               </v-btn>
               <v-btn
-                prepend-icon="mdi-bookmark-remove-outline"
+                :prepend-icon="item.isWanted ? 'mdi-bookmark-remove-outline' : 'mdi-bookmark-plus-outline'"
                 variant="tonal"
-                color="error"
-                :loading="removing === item.videoId"
-                width="200"
-                @click.stop="remove(item)"
+                :color="item.isWanted ? 'error' : 'white'"
+                :loading="togglingWanted === item.id"
+                width="180"
+                @click.stop="toggleWanted(item)"
               >
-                Remove wanted
+                {{ item.isWanted ? 'Remove wanted' : 'Add to wanted' }}
               </v-btn>
             </div>
 
             <div class="position-relative">
+              <div
+                v-if="item.isWanted"
+                class="position-absolute text-caption font-weight-bold px-2 py-1"
+                style="top: 0; left: 0; z-index: 1; border-bottom-right-radius: 6px"
+                :style="item.isFulfilled
+                  ? 'background: rgba(var(--v-theme-success), 0.85); color: rgb(var(--v-theme-on-success))'
+                  : 'background: rgba(var(--v-theme-warning), 0.85); color: rgb(var(--v-theme-on-warning))'"
+              >
+                {{ item.isFulfilled ? 'Fulfilled' : 'Wanted' }}
+              </div>
               <v-img
                 v-if="item.thumbnailCdnPath"
                 :src="item.thumbnailCdnPath"
@@ -116,23 +103,14 @@
               >
                 <v-icon size="large" color="medium-emphasis">mdi-image-off</v-icon>
               </div>
-
-              <div
-                class="position-absolute text-caption font-weight-bold px-2 py-1"
-                style="top: 0; left: 0; border-bottom-right-radius: 6px"
-                :style="item.isFulfilled
-                  ? 'background: rgba(var(--v-theme-success), 0.85); color: rgb(var(--v-theme-on-success))'
-                  : 'background: rgba(var(--v-theme-warning), 0.85); color: rgb(var(--v-theme-on-warning))'"
-              >
-                {{ item.isFulfilled ? 'Fulfilled' : 'Wanted' }}
-              </div>
             </div>
 
             <v-card-text class="pb-3">
               <div class="text-caption text-medium-emphasis">{{ item.siteTitle }}</div>
-              <div class="text-body-2 font-weight-medium">{{ item.videoTitle }}</div>
+              <div class="text-body-2 font-weight-medium">{{ item.title }}</div>
               <div class="text-caption text-medium-emphasis mt-1">
-                {{ item.releaseDate ? 'Released ' + formatDate(item.releaseDate) : 'Release date unknown' }}
+                {{ item.releaseDate ? formatDate(item.releaseDate) : 'Release date unknown' }}
+                <span v-if="item.actorCount"> · {{ item.actorCount }} {{ item.actorCount === 1 ? 'actor' : 'actors' }}</span>
               </div>
             </v-card-text>
           </v-card>
@@ -159,7 +137,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useRouter } from 'vue-router'
-import { api, type PrdbWantedVideo, type PrdbWantedFilterOptions } from '../../api'
+import { api, type PrdbVideoListItem, type PrdbVideoFilterOptions } from '../../api'
 import { useSfwMode } from '../../composables/useSfwMode'
 import { usePageAction } from '../../composables/usePageAction'
 import { useFilterPanel } from '../../composables/useFilterPanel'
@@ -170,49 +148,31 @@ const { setActions, clearAction } = usePageAction()
 const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
 const router = useRouter()
 
-const videos          = ref<PrdbWantedVideo[]>([])
+const videos          = ref<PrdbVideoListItem[]>([])
 const total           = ref(0)
 const loading         = ref(false)
 const error           = ref<string | null>(null)
-const saving          = ref<string | null>(null)
-const removing        = ref<string | null>(null)
+const togglingWanted  = ref<string | null>(null)
 const activeOverlayId = ref<string | null>(null)
+const loadingOptions  = ref(false)
+const filterOptions   = ref<PrdbVideoFilterOptions>({ sites: [] })
 
-const search          = ref('')
-const statusFilter    = ref<'unfulfilled' | 'fulfilled' | 'all'>('unfulfilled')
-const selectedSiteId  = ref<string | null>(null)
-const selectedActorId = ref<string | null>(null)
-
-const loadingOptions = ref(false)
-const filterOptions  = ref<PrdbWantedFilterOptions>({ sites: [], actors: [] })
+const search         = ref('')
+const selectedSiteId = ref<string | null>(null)
 
 const pagination = reactive({ page: 1, pageSize: 24 })
 
 const totalPages = computed(() => Math.ceil(total.value / pagination.pageSize))
 
-const statusOptions = [
-  { title: 'Unfulfilled', value: 'unfulfilled' },
-  { title: 'Fulfilled',   value: 'fulfilled' },
-  { title: 'All',         value: 'all' },
-]
-
-function isFulfilledParam(): boolean | undefined {
-  if (statusFilter.value === 'unfulfilled') return false
-  if (statusFilter.value === 'fulfilled')   return true
-  return undefined
-}
-
 async function load() {
   loading.value = true
   error.value = null
   try {
-    const result = await api.prdbWantedVideos.list({
-      search:      search.value || undefined,
-      isFulfilled: isFulfilledParam(),
-      siteId:      selectedSiteId.value  ?? undefined,
-      actorId:     selectedActorId.value ?? undefined,
-      page:        pagination.page,
-      pageSize:    pagination.pageSize,
+    const result = await api.prdbVideos.list({
+      search:   search.value || undefined,
+      siteId:   selectedSiteId.value ?? undefined,
+      page:     pagination.page,
+      pageSize: pagination.pageSize,
     })
     videos.value = result.items
     total.value  = result.total
@@ -226,9 +186,9 @@ async function load() {
 async function loadFilterOptions() {
   loadingOptions.value = true
   try {
-    filterOptions.value = await api.prdbWantedVideos.filterOptions()
+    filterOptions.value = await api.prdbVideos.filterOptions()
   } catch {
-    // non-critical — dropdowns just stay empty
+    // non-critical — dropdown stays empty
   } finally {
     loadingOptions.value = false
   }
@@ -239,46 +199,42 @@ function onFilterChange() {
   load()
 }
 
-function onPageChange(page: number) {
-  pagination.page = page
+async function toggleWanted(item: PrdbVideoListItem) {
+  togglingWanted.value = item.id
+  try {
+    if (item.isWanted) {
+      await api.prdbWantedVideos.remove(item.id)
+      item.isWanted = false
+      item.isFulfilled = null
+    } else {
+      await api.prdbWantedVideos.add(item.id)
+      item.isWanted = true
+      item.isFulfilled = false
+    }
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    togglingWanted.value = null
+  }
+}
+
+function filterBySite(item: PrdbVideoListItem) {
+  activeOverlayId.value = null
+  selectedSiteId.value = item.siteId
+  pagination.page = 1
   load()
 }
 
-async function toggleFulfilled(item: PrdbWantedVideo) {
-  const newValue = !item.isFulfilled
-  saving.value = item.videoId
-  try {
-    await api.prdbWantedVideos.update(item.videoId, { isFulfilled: newValue })
-    item.isFulfilled = newValue
-    activeOverlayId.value = null
-  } catch (e: any) {
-    error.value = e.message
-  } finally {
-    saving.value = null
-  }
-}
-
-async function remove(item: PrdbWantedVideo) {
-  removing.value = item.videoId
-  try {
-    await api.prdbWantedVideos.remove(item.videoId)
-    videos.value = videos.value.filter(v => v.videoId !== item.videoId)
-    total.value--
-    activeOverlayId.value = null
-  } catch (e: any) {
-    error.value = e.message
-  } finally {
-    removing.value = null
-  }
+function onPageChange(page: number) {
+  pagination.page = page
+  load()
 }
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-const filtersActive = computed(() =>
-  !!search.value || statusFilter.value !== 'unfulfilled' || !!selectedSiteId.value || !!selectedActorId.value
-)
+const filtersActive = computed(() => !!search.value || !!selectedSiteId.value)
 
 onMounted(() => {
   loadFilterOptions()

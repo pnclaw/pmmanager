@@ -93,6 +93,40 @@ public class PrdbWantedVideosController(AppDbContext db, IHttpClientFactory http
         return Ok(new { sites, actors });
     }
 
+    [HttpPost("{videoId:guid}")]
+    [EndpointSummary("Add a wanted video")]
+    [EndpointDescription("Adds the video to the prdb wanted list and upserts the local record. Idempotent — safe to call if already wanted.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Add(Guid videoId, CancellationToken ct)
+    {
+        var settings = await db.AppSettings.FirstAsync(ct);
+        var http = httpClientFactory.CreateClient();
+        http.BaseAddress = new Uri(settings.PrdbApiUrl.TrimEnd('/') + "/");
+        http.DefaultRequestHeaders.Add("X-Api-Key", settings.PrdbApiKey);
+
+        var prdbResponse = await http.SendAsync(new HttpRequestMessage(HttpMethod.Post, $"wanted-videos/{videoId}"), ct);
+        if (prdbResponse.StatusCode == System.Net.HttpStatusCode.NotFound) return NotFound();
+        prdbResponse.EnsureSuccessStatusCode();
+
+        var existing = await db.PrdbWantedVideos.FindAsync([videoId], ct);
+        if (existing is null)
+        {
+            var now = DateTime.UtcNow;
+            db.PrdbWantedVideos.Add(new PrdbWantedVideo
+            {
+                VideoId            = videoId,
+                IsFulfilled        = false,
+                PrdbCreatedAtUtc   = now,
+                PrdbUpdatedAtUtc   = now,
+                SyncedAtUtc        = now,
+            });
+            await db.SaveChangesAsync(ct);
+        }
+
+        return NoContent();
+    }
+
     [HttpPatch("{videoId:guid}")]
     [EndpointSummary("Update a wanted video")]
     [EndpointDescription("Updates the fulfilment state of a wanted video in both prdb and the local database.")]
