@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container style="max-width: 900px">
     <v-alert v-if="syncResult" type="success" class="mb-4" closable @click:close="syncResult = null">
       Sync complete — {{ syncResult.sitesUpserted }} sites, {{ syncResult.networksUpserted }} networks, {{ syncResult.favoriteSitesSynced }} favorite sites, {{ syncResult.favoriteActorsSynced }} favorite actors, {{ syncResult.videosUpserted }} videos upserted.
     </v-alert>
@@ -40,47 +40,60 @@
       </v-row>
     </v-expand-transition>
 
-    <v-data-table-server
-      v-model:items-per-page="pagination.pageSize"
-      :headers="headers"
-      :items="sites"
-      :items-length="total"
-      :loading="loading"
-      :page="pagination.page"
-      item-value="id"
-      hover
-      @update:page="onPageChange"
-      @update:items-per-page="onPageSizeChange"
-    >
-      <template #item.isFavorite="{ item }">
-        <v-btn
-          icon
-          size="small"
-          variant="text"
-          :loading="togglingIds.includes(item.id)"
-          @click="toggleFavorite(item)"
-        >
-          <v-icon :color="item.isFavorite ? 'amber' : 'default'">
-            {{ item.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
-          </v-icon>
-        </v-btn>
-      </template>
+    <div v-if="loading" class="text-center py-8">
+      <v-progress-circular indeterminate color="primary" />
+    </div>
 
-      <template #item.networkTitle="{ item }">
-        {{ item.networkTitle ?? '—' }}
-      </template>
+    <div v-else-if="sites.length === 0" class="text-center py-8 text-medium-emphasis">
+      No sites found.
+    </div>
 
-      <template #item.actions="{ item }">
-        <v-btn
-          size="small"
-          variant="text"
-          prepend-icon="mdi-movie-open"
-          :to="`/prdb/sites/${item.id}/videos`"
-        >
-          Videos
-        </v-btn>
-      </template>
-    </v-data-table-server>
+    <template v-else>
+      <v-list lines="two" class="pa-0">
+        <template v-for="(site, index) in sites" :key="site.id">
+          <v-list-item class="py-2">
+            <template #prepend>
+              <v-btn
+                icon
+                size="small"
+                variant="text"
+                :loading="togglingIds.includes(site.id)"
+                @click="toggleFavorite(site)"
+              >
+                <v-icon :color="site.isFavorite ? 'amber' : 'default'">
+                  {{ site.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
+                </v-icon>
+              </v-btn>
+            </template>
+
+            <v-list-item-title class="font-weight-medium">{{ site.title }}</v-list-item-title>
+            <v-list-item-subtitle>
+              {{ site.networkTitle ?? '—' }} · {{ site.videoCount }} videos
+            </v-list-item-subtitle>
+
+            <template #append>
+              <v-btn
+                icon="mdi-movie-open"
+                size="small"
+                variant="text"
+                :to="`/prdb/sites/${site.id}/videos`"
+              />
+            </template>
+          </v-list-item>
+
+          <v-divider v-if="index < sites.length - 1" />
+        </template>
+      </v-list>
+
+      <div v-if="pageCount > 1" class="d-flex justify-center mt-4">
+        <v-pagination
+          :model-value="pagination.page"
+          :length="pageCount"
+          density="comfortable"
+          @update:model-value="onPageChange"
+        />
+      </div>
+    </template>
   </v-container>
 </template>
 
@@ -103,13 +116,7 @@ const favoritesOnly = ref(true)
 
 const pagination = reactive({ page: 1, pageSize: 50 })
 
-const headers = [
-  { title: '',         key: 'isFavorite',   width: 48,  sortable: false },
-  { title: 'Title',   key: 'title' },
-  { title: 'Network', key: 'networkTitle' },
-  { title: 'Videos',  key: 'videoCount',   width: 100 },
-  { title: '',        key: 'actions',       sortable: false, align: 'end' as const },
-]
+const pageCount = computed(() => Math.ceil(total.value / pagination.pageSize))
 
 async function load() {
   loading.value = true
@@ -137,12 +144,6 @@ function onFilterChange() {
 
 function onPageChange(page: number) {
   pagination.page = page
-  load()
-}
-
-function onPageSizeChange(size: number) {
-  pagination.pageSize = size
-  pagination.page = 1
   load()
 }
 
