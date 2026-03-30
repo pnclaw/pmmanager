@@ -54,7 +54,21 @@
           md="2"
         >
           <v-card height="100%" class="text-center">
-            <v-card-text class="pa-3 pb-2">
+            <v-btn
+              icon
+              size="x-small"
+              variant="text"
+              class="position-absolute ma-1"
+              style="top: 0; right: 0; z-index: 1"
+              :loading="togglingIds.includes(actor.id)"
+              @click="toggleFavorite(actor)"
+            >
+              <v-icon :color="actor.isFavorite ? 'amber' : 'default'" size="small">
+                {{ actor.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
+              </v-icon>
+            </v-btn>
+
+            <v-card-text class="pa-3 pb-3">
               <v-avatar size="96" class="mb-2" :style="sfwMode ? 'filter: blur(12px)' : ''">
                 <v-img
                   v-if="actor.profileImageUrl"
@@ -69,33 +83,9 @@
               </v-avatar>
 
               <div class="text-body-2 font-weight-bold text-wrap">{{ actor.name }}</div>
-              <div v-if="actor.birthday" class="text-caption text-medium-emphasis mt-1">
+              <div class="text-caption text-medium-emphasis mt-1">{{ genderLabel(actor.gender) }}</div>
+              <div v-if="actor.birthday" class="text-caption text-medium-emphasis">
                 {{ actor.birthday }}
-              </div>
-
-              <div class="mt-1">
-                <v-btn
-                  icon
-                  size="x-small"
-                  variant="text"
-                  :loading="togglingIds.includes(actor.id)"
-                  @click="toggleFavorite(actor)"
-                >
-                  <v-icon :color="actor.isFavorite ? 'amber' : 'default'" size="small">
-                    {{ actor.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
-                  </v-icon>
-                </v-btn>
-              </div>
-
-              <div v-if="actor.aliases.length > 0" class="d-flex flex-wrap justify-center ga-1 mt-1">
-                <v-chip
-                  v-for="alias in actor.aliases"
-                  :key="alias"
-                  size="x-small"
-                  variant="tonal"
-                >
-                  {{ alias }}
-                </v-chip>
               </div>
             </v-card-text>
           </v-card>
@@ -182,6 +172,11 @@ async function toggleFavorite(item: PrdbActor) {
   } finally {
     togglingIds.value = togglingIds.value.filter(id => id !== item.id)
   }
+}
+
+const genderLabels: Record<number, string> = { 1: 'Female', 2: 'Male', 3: 'Trans Female', 4: 'Trans Male' }
+function genderLabel(gender: number): string {
+  return genderLabels[gender] ?? ''
 }
 
 const filtersActive = computed(() => !!search.value || !favoritesOnly.value)
