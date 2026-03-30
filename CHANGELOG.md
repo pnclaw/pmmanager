@@ -5,6 +5,23 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/wanted-download-improvements — 2026-03-30
+
+### Done
+- Downloads view: Started/Completed columns now show hours and minutes (e.g. `Mar 30, 14:23`) with no year; date/time no longer wraps in table cells
+- Downloads detail dialog: storage path now wraps fully instead of being truncated
+- Added responsive `v-app-bar` across all screen sizes: hamburger toggle, page title (`PMManager — {page}` on desktop, `{page}` on mobile), and SFW mode toggle button (eye icon)
+- Nav drawer collapses to an overlay on mobile and auto-closes after navigation; starts expanded on desktop
+- Removed all in-page `<h1>` headings — the app bar is now the single source of truth for the page title
+- Removed PMManager branding header from the nav drawer (redundant with app bar)
+- Grouped Indexers, Download Clients, and Downloads under a "Usenet" nav section; Health moved below Settings
+- Removed Items feature entirely: frontend view, route, API types, backend controller, entity, DbSet, and EF migration to drop the table; default route now redirects to `/prdb/wanted`
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/claud-commands-improvement — 2026-03-29
 
 ### Done
