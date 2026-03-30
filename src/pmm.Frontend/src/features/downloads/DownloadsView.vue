@@ -73,11 +73,11 @@
       </template>
 
       <template #item.createdAt="{ item }">
-        <span class="text-caption">{{ formatDate(item.createdAt) }}</span>
+        <span class="text-caption text-no-wrap">{{ formatDate(item.createdAt) }}</span>
       </template>
 
       <template #item.completedAt="{ item }">
-        <span v-if="item.completedAt" class="text-caption">{{ formatDate(item.completedAt) }}</span>
+        <span v-if="item.completedAt" class="text-caption text-no-wrap">{{ formatDate(item.completedAt) }}</span>
         <span v-else class="text-medium-emphasis">—</span>
       </template>
     </v-data-table>
@@ -115,7 +115,11 @@
             </template>
             <v-list-item v-else-if="detailItem.totalSizeBytes" title="Size" :subtitle="formatBytes(detailItem.totalSizeBytes)" />
 
-            <v-list-item v-if="detailItem.storagePath" title="Storage Path" :subtitle="detailItem.storagePath" />
+            <v-list-item v-if="detailItem.storagePath" title="Storage Path" :lines="false">
+              <template #subtitle>
+                <span style="word-break: break-all; white-space: normal">{{ detailItem.storagePath }}</span>
+              </template>
+            </v-list-item>
 
             <v-list-item v-if="detailItem.errorMessage" title="Error">
               <template #subtitle>
@@ -247,7 +251,7 @@ function formatBytes(bytes: number | null): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 function formatDateTime(iso: string): string {
