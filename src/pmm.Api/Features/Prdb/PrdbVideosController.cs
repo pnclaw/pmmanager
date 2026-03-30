@@ -9,6 +9,62 @@ namespace pmm.Api.Features.Prdb;
 [Produces("application/json")]
 public class PrdbVideosController(AppDbContext db) : ControllerBase
 {
+    [HttpGet]
+    [EndpointSummary("List videos")]
+    [EndpointDescription("Returns a paged list of videos ordered by release date descending. Optionally filter by search or site.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? search,
+        [FromQuery] Guid? siteId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 24)
+    {
+        var q = db.PrdbVideos.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            q = q.Where(v => EF.Functions.Like(v.Title, $"%{search}%"));
+
+        if (siteId.HasValue)
+            q = q.Where(v => v.SiteId == siteId.Value);
+
+        var total = await q.CountAsync();
+
+        var items = await q
+            .OrderByDescending(v => v.ReleaseDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(v => new PrdbVideoListResponse
+            {
+                Id               = v.Id,
+                Title            = v.Title,
+                ReleaseDate      = v.ReleaseDate,
+                SiteId           = v.SiteId,
+                SiteTitle        = v.Site.Title,
+                ThumbnailCdnPath = v.Images.Select(i => i.CdnPath).FirstOrDefault(),
+                ActorCount       = v.VideoActors.Count,
+                IsWanted         = db.PrdbWantedVideos.Any(w => w.VideoId == v.Id),
+                IsFulfilled      = db.PrdbWantedVideos.Where(w => w.VideoId == v.Id).Select(w => (bool?)w.IsFulfilled).FirstOrDefault(),
+            })
+            .ToListAsync();
+
+        return Ok(new { items, total });
+    }
+
+    [HttpGet("filter-options")]
+    [EndpointSummary("Get filter options for videos")]
+    [EndpointDescription("Returns the distinct sites present in the video library, for use in filter dropdowns.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFilterOptions()
+    {
+        var sites = await db.PrdbSites
+            .Where(s => db.PrdbVideos.Any(v => v.SiteId == s.Id))
+            .OrderBy(s => s.Title)
+            .Select(s => new { s.Id, s.Title })
+            .ToListAsync();
+
+        return Ok(new { sites });
+    }
+
     [HttpGet("{id:guid}")]
     [EndpointSummary("Get video detail")]
     [EndpointDescription("Returns full detail for a single video including images, cast, pre-names, and wanted status.")]
