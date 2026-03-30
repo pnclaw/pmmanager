@@ -74,6 +74,20 @@
               <v-btn type="submit" color="primary" :loading="saving">Save</v-btn>
             </div>
           </v-form>
+
+          <v-card class="mt-4">
+            <v-card-title>Danger Zone</v-card-title>
+            <v-card-text>
+              <p class="text-body-2 mb-3">
+                Reset all data cached from prdb.net, including synced videos, sites, actors,
+                wanted list entries, and usenet download logs. Sync will restart from scratch.
+                API credentials and other settings are not affected.
+              </p>
+              <v-btn color="error" variant="outlined" @click="resetDialog = true">
+                Reset DB
+              </v-btn>
+            </v-card-text>
+          </v-card>
         </v-window-item>
 
         <!-- Folder Mapping tab -->
@@ -139,6 +153,26 @@
         </v-window-item>
       </v-window>
     </template>
+
+    <!-- Reset DB confirm dialog -->
+    <v-dialog v-model="resetDialog" max-width="480" persistent>
+      <v-card title="Reset prdb.net data?">
+        <v-card-text>
+          <p class="mb-2">This will permanently delete all data cached from prdb.net:</p>
+          <ul class="mb-3 pl-4 text-body-2">
+            <li>All synced videos, sites, networks, and actors</li>
+            <li>Wanted list entries</li>
+            <li>Usenet download logs and indexer row matches</li>
+          </ul>
+          <p class="mb-0">Your API key, download clients, and folder mappings are <strong>not</strong> affected. The sync will restart from scratch on the next run.</p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" :disabled="resetting" @click="resetDialog = false">Cancel</v-btn>
+          <v-btn color="error" :loading="resetting" @click="confirmReset">Reset DB</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Add / Edit dialog -->
     <v-dialog v-model="mappingDialog" max-width="540" persistent>
@@ -236,6 +270,25 @@ async function submit() {
     error.value = e.message
   } finally {
     saving.value = false
+  }
+}
+
+// Reset DB state
+const resetDialog = ref(false)
+const resetting   = ref(false)
+
+async function confirmReset() {
+  resetting.value = true
+  error.value = null
+  try {
+    await api.settings.resetPrdbData()
+    resetDialog.value = false
+    saved.value = true
+  } catch (e: any) {
+    error.value = e.message
+    resetDialog.value = false
+  } finally {
+    resetting.value = false
   }
 }
 

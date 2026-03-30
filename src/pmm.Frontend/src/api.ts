@@ -479,6 +479,8 @@ export const api = {
     get: () => request<AppSettings>('/settings'),
     update: (data: UpdateSettingsRequest) =>
       request<AppSettings>('/settings', { method: 'PUT', body: JSON.stringify(data) }),
+    resetPrdbData: () =>
+      request<void>('/settings/reset-prdb-data', { method: 'POST' }),
   },
   downloadLogs: {
     list: () => request<DownloadLog[]>('/download-logs'),
