@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container style="max-width: 900px">
     <v-btn
       variant="text"
       prepend-icon="mdi-arrow-left"
@@ -26,46 +26,59 @@
       </v-col>
     </v-row>
 
-    <v-data-table-server
-      v-model:items-per-page="pagination.pageSize"
-      :headers="headers"
-      :items="videos"
-      :items-length="total"
-      :loading="loading"
-      :page="pagination.page"
-      item-value="id"
-      show-expand
-      hover
-      @update:page="onPageChange"
-      @update:items-per-page="onPageSizeChange"
-      @click:row="onRowClick"
-    >
-      <template #item.releaseDate="{ item }">
-        {{ item.releaseDate ?? '—' }}
-      </template>
+    <div v-if="loading" class="text-center py-8">
+      <v-progress-circular indeterminate color="primary" />
+    </div>
 
-      <template #item.preNames="{ item }">
-        {{ item.preNames.length }}
-      </template>
+    <div v-else-if="videos.length === 0" class="text-center py-8 text-medium-emphasis">
+      No videos found.
+    </div>
 
-      <template #expanded-row="{ columns, item }">
-        <tr>
-          <td :colspan="columns.length" class="pa-3 bg-surface-variant">
-            <div v-if="item.preNames.length === 0" class="text-medium-emphasis text-body-2">
-              No pre-names
-            </div>
-            <div v-for="preName in item.preNames" :key="preName.id" class="text-body-2 mb-1">
-              {{ preName.title }}
-            </div>
-          </td>
-        </tr>
-      </template>
-    </v-data-table-server>
+    <template v-else>
+      <v-list lines="two" class="pa-0">
+        <template v-for="(video, index) in videos" :key="video.id">
+          <v-list-item
+            class="py-2"
+            :ripple="true"
+            @click="router.push(`/prdb/videos/${video.id}`)"
+          >
+            <v-list-item-title class="font-weight-medium">{{ video.title }}</v-list-item-title>
+            <v-list-item-subtitle>
+              {{ video.releaseDate ?? '—' }} · {{ video.actorCount }} actors
+            </v-list-item-subtitle>
+
+            <template #append>
+              <div class="d-flex align-center ga-2">
+                <v-chip
+                  v-if="video.preNames.length > 0"
+                  size="x-small"
+                  variant="tonal"
+                >
+                  {{ video.preNames.length }} pre-names
+                </v-chip>
+                <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+              </div>
+            </template>
+          </v-list-item>
+
+          <v-divider v-if="index < videos.length - 1" />
+        </template>
+      </v-list>
+
+      <div v-if="pageCount > 1" class="d-flex justify-center mt-4">
+        <v-pagination
+          :model-value="pagination.page"
+          :length="pageCount"
+          density="comfortable"
+          @update:model-value="onPageChange"
+        />
+      </div>
+    </template>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, type PrdbVideo } from '../../api'
 
@@ -81,13 +94,7 @@ const search  = ref('')
 
 const pagination = reactive({ page: 1, pageSize: 50 })
 
-const headers = [
-  { title: 'Title',        key: 'title' },
-  { title: 'Release Date', key: 'releaseDate', width: 140 },
-  { title: 'Actors',       key: 'actorCount',  width: 90 },
-  { title: 'Pre-names',    key: 'preNames',    width: 110 },
-  { title: '',             key: 'data-table-expand', width: 48 },
-]
+const pageCount = computed(() => Math.ceil(total.value / pagination.pageSize))
 
 async function load() {
   loading.value = true
@@ -107,10 +114,6 @@ async function load() {
   }
 }
 
-function onRowClick(_: MouseEvent, { item }: { item: PrdbVideo }) {
-  router.push(`/prdb/videos/${item.id}`)
-}
-
 function onFilterChange() {
   pagination.page = 1
   load()
@@ -118,12 +121,6 @@ function onFilterChange() {
 
 function onPageChange(page: number) {
   pagination.page = page
-  load()
-}
-
-function onPageSizeChange(size: number) {
-  pagination.pageSize = size
-  pagination.page = 1
   load()
 }
 
