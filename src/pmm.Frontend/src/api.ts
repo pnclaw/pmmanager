@@ -1,22 +1,5 @@
 const BASE_URL = '/api'
 
-export interface Item {
-  id: number
-  name: string
-  description: string | null
-  createdAt: string
-}
-
-export interface CreateItemRequest {
-  name: string
-  description?: string
-}
-
-export interface UpdateItemRequest {
-  name: string
-  description?: string
-}
-
 export interface HealthResponse {
   status: string
   timestamp: string
@@ -363,16 +346,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   health: {
     get: () => request<HealthResponse>('/health'),
-  },
-  items: {
-    list: () => request<Item[]>('/items'),
-    get: (id: number) => request<Item>(`/items/${id}`),
-    create: (data: CreateItemRequest) =>
-      request<Item>('/items', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: UpdateItemRequest) =>
-      request<Item>(`/items/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    delete: (id: number) =>
-      request<void>(`/items/${id}`, { method: 'DELETE' }),
   },
   indexers: {
     list: () => request<Indexer[]>('/indexers'),

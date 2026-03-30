@@ -1,26 +1,20 @@
 <template>
   <v-app>
-    <v-navigation-drawer permanent>
+    <v-app-bar>
+      <v-app-bar-nav-icon @click="drawer = !drawer" />
+      <v-app-bar-title>{{ mobile ? pageTitle : `PMManager — ${pageTitle}` }}</v-app-bar-title>
+      <template #append>
+        <v-btn
+          :icon="sfwMode ? 'mdi-eye-off' : 'mdi-eye'"
+          :title="sfwMode ? 'SFW mode on' : 'SFW mode off'"
+          @click="sfwMode = !sfwMode"
+        />
+      </template>
+    </v-app-bar>
+
+    <v-navigation-drawer v-model="drawer">
       <v-list>
-        <v-list-item
-          prepend-icon="mdi-movie-open"
-          title="PMManager"
-          subtitle="Media Manager"
-          class="py-4"
-        />
-        <v-divider />
-        <v-list-item
-          prepend-icon="mdi-heart-pulse"
-          title="Health"
-          to="/health"
-          rounded="lg"
-        />
-        <v-list-item
-          prepend-icon="mdi-format-list-bulleted"
-          title="Items"
-          to="/items"
-          rounded="lg"
-        />
+        <v-list-subheader>Usenet</v-list-subheader>
         <v-list-item
           prepend-icon="mdi-database-search"
           title="Indexers"
@@ -72,6 +66,12 @@
           to="/settings"
           rounded="lg"
         />
+        <v-list-item
+          prepend-icon="mdi-heart-pulse"
+          title="Health"
+          to="/health"
+          rounded="lg"
+        />
       </v-list>
     </v-navigation-drawer>
 
@@ -82,13 +82,29 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useDisplay } from 'vuetify'
 import { api } from './api'
 import { useSfwMode } from './composables/useSfwMode'
 
 const { sfwMode } = useSfwMode()
+const route = useRoute()
+const { mobile } = useDisplay()
+
+const drawer = ref(true)
+
+const pageTitle = computed(() => (route.meta.title as string) ?? 'PMManager')
+
+// On mobile, close the drawer after navigating
+import { watch } from 'vue'
+watch(
+  () => route.path,
+  () => { if (mobile.value) drawer.value = false }
+)
 
 onMounted(async () => {
+  if (mobile.value) drawer.value = false
   try {
     const settings = await api.settings.get()
     sfwMode.value = settings.safeForWork
