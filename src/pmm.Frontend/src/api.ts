@@ -156,6 +156,7 @@ export interface PrdbSite {
   isFavorite: boolean
   favoritedAtUtc: string | null
   videoCount: number
+  thumbnailCdnPath: string | null
 }
 
 export interface PrdbVideo {
