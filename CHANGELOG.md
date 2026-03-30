@@ -5,6 +5,19 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/prdb-reset-button — 2026-03-30
+
+### Done
+- Added **Reset DB** button to the prdb.net settings tab — opens a confirm dialog and wipes all locally cached prdb.net data (sites, networks, videos, actors, wanted list, download logs, indexer row matches) then resets all sync cursors so the next run starts from scratch; API credentials and other settings are untouched
+- Added **top-indexer stats** to the Indexer Row Match status card — shows total row count and last-7-days count for the three most active indexers
+- Added **Run Now** button to the Library status card — manually triggers the full library sync (sites, networks, favourite sites, favourite actors, videos) without waiting for the 15-minute background tick; last sync and next sync times shown at the bottom of the card
+- Moved the **info** button from the app bar into the Library card title, and the **refresh** button into the Rate Limits card title
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/video-view — 2026-03-30
 
 ### Done
