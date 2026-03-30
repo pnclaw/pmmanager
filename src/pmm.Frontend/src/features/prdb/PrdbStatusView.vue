@@ -376,6 +376,12 @@
             Library
             <v-spacer />
             <v-btn
+              icon="mdi-information-outline"
+              size="small"
+              variant="text"
+              @click="infoDialog = true"
+            />
+            <v-btn
               size="small"
               variant="tonal"
               prepend-icon="mdi-play"
@@ -455,6 +461,14 @@
           <v-card-title class="d-flex align-center ga-2">
             <v-icon>mdi-gauge</v-icon>
             Rate Limits
+            <v-spacer />
+            <v-btn
+              icon="mdi-refresh"
+              size="small"
+              variant="text"
+              :loading="loading"
+              @click="load"
+            />
           </v-card-title>
           <v-card-text>
             <div v-if="!status.rateLimit" class="text-medium-emphasis">
@@ -790,10 +804,7 @@ const { setActions, clearAction, setActionLoading } = usePageAction()
 
 onMounted(() => {
   load()
-  setActions(
-    { icon: 'mdi-refresh', title: 'Refresh', onClick: load },
-    { icon: 'mdi-information-outline', title: 'About sync', onClick: () => { infoDialog.value = true } },
-  )
+  setActions()
 })
 
 onUnmounted(clearAction)
