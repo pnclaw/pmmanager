@@ -1,23 +1,30 @@
 import { ref } from 'vue'
 
-interface PageAction {
+export interface PageAction {
   icon: string
   title: string
   onClick: () => void
+  badgeActive?: () => boolean
+  mobileOnly?: boolean
 }
 
 // Module-level singleton — shared across all components
-const pageAction = ref<PageAction | null>(null)
+const pageActions = ref<PageAction[]>([])
 const pageActionLoading = ref(false)
 
 export function usePageAction() {
-  function setAction(icon: string, title: string, onClick: () => void) {
-    pageAction.value = { icon, title, onClick }
+  function setActions(...actions: PageAction[]) {
+    pageActions.value = actions
     pageActionLoading.value = false
   }
 
+  // Convenience for a single action
+  function setAction(icon: string, title: string, onClick: () => void) {
+    setActions({ icon, title, onClick })
+  }
+
   function clearAction() {
-    pageAction.value = null
+    pageActions.value = []
     pageActionLoading.value = false
   }
 
@@ -25,5 +32,5 @@ export function usePageAction() {
     pageActionLoading.value = loading
   }
 
-  return { pageAction, pageActionLoading, setAction, clearAction, setActionLoading }
+  return { pageActions, pageActionLoading, setAction, setActions, clearAction, setActionLoading }
 }

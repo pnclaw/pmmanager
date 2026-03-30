@@ -16,27 +16,29 @@
       No favorite sites found. Try syncing, or turn off <strong>Favorites only</strong> to see all sites.
     </v-alert>
 
-    <v-row class="mb-4">
-      <v-col cols="12" sm="6" md="4">
-        <v-text-field
-          v-model="search"
-          prepend-inner-icon="mdi-magnify"
-          label="Search"
-          clearable
-          hide-details
-          @update:model-value="onFilterChange"
-        />
-      </v-col>
-      <v-col cols="12" sm="4" md="3" class="d-flex align-center">
-        <v-switch
-          v-model="favoritesOnly"
-          label="Favorites only"
-          hide-details
-          color="primary"
-          @update:model-value="onFilterChange"
-        />
-      </v-col>
-    </v-row>
+    <v-expand-transition>
+      <v-row v-if="!mobile || filterPanelOpen" class="mb-4">
+        <v-col cols="12" sm="6" md="4">
+          <v-text-field
+            v-model="search"
+            prepend-inner-icon="mdi-magnify"
+            label="Search"
+            clearable
+            hide-details
+            @update:model-value="onFilterChange"
+          />
+        </v-col>
+        <v-col cols="12" sm="4" md="3" class="d-flex align-center">
+          <v-switch
+            v-model="favoritesOnly"
+            label="Favorites only"
+            hide-details
+            color="primary"
+            @update:model-value="onFilterChange"
+          />
+        </v-col>
+      </v-row>
+    </v-expand-transition>
 
     <v-data-table-server
       v-model:items-per-page="pagination.pageSize"
@@ -83,9 +85,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useDisplay } from 'vuetify'
 import { api, type PrdbSite } from '../../api'
 import { usePageAction } from '../../composables/usePageAction'
+import { useFilterPanel } from '../../composables/useFilterPanel'
 
 const sites       = ref<PrdbSite[]>([])
 const total       = ref(0)
@@ -174,12 +178,22 @@ async function sync() {
   }
 }
 
-const { setAction, clearAction, setActionLoading } = usePageAction()
+const { mobile } = useDisplay()
+const { setActions, clearAction, setActionLoading } = usePageAction()
+const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
+
+const filtersActive = computed(() => !!search.value || !favoritesOnly.value)
 
 onMounted(() => {
   load()
-  setAction('mdi-sync', 'Sync', sync)
+  setActions(
+    { icon: 'mdi-sync', title: 'Sync', onClick: sync },
+    { icon: 'mdi-tune', title: 'Toggle filters', onClick: toggle, badgeActive: () => filtersActive.value, mobileOnly: true },
+  )
 })
 
-onUnmounted(clearAction)
+onUnmounted(() => {
+  clearAction()
+  closePanel()
+})
 </script>

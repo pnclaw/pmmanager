@@ -4,33 +4,35 @@
       {{ error }}
     </v-alert>
 
-    <v-row class="mb-2" align="center">
-      <v-col cols="12" sm="5" md="4">
-        <v-text-field
-          v-model="search"
-          prepend-inner-icon="mdi-magnify"
-          label="Search"
-          clearable
-          hide-details
-        />
-      </v-col>
-      <v-col cols="12" sm="4" md="3">
-        <v-select
-          v-model="statusFilter"
-          :items="statusOptions"
-          label="Status"
-          hide-details
-        />
-      </v-col>
-      <v-col cols="auto">
-        <v-switch
-          v-model="activeOnly"
-          label="Active only"
-          color="primary"
-          hide-details
-        />
-      </v-col>
-    </v-row>
+    <v-expand-transition>
+      <v-row v-if="!mobile || filterPanelOpen" class="mb-2" align="center">
+        <v-col cols="12" sm="5" md="4">
+          <v-text-field
+            v-model="search"
+            prepend-inner-icon="mdi-magnify"
+            label="Search"
+            clearable
+            hide-details
+          />
+        </v-col>
+        <v-col cols="12" sm="4" md="3">
+          <v-select
+            v-model="statusFilter"
+            :items="statusOptions"
+            label="Status"
+            hide-details
+          />
+        </v-col>
+        <v-col cols="auto">
+          <v-switch
+            v-model="activeOnly"
+            label="Active only"
+            color="primary"
+            hide-details
+          />
+        </v-col>
+      </v-row>
+    </v-expand-transition>
 
     <div v-if="loading" class="text-center py-8">
       <v-progress-circular indeterminate color="primary" />
@@ -167,7 +169,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useDisplay } from 'vuetify'
 import { api, DownloadStatus, DownloadStatusLabels, type DownloadLog } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
+import { useFilterPanel } from '../../composables/useFilterPanel'
+
+const { mobile } = useDisplay()
+const { setActions, clearAction } = usePageAction()
+const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
 
 const logs    = ref<DownloadLog[]>([])
 const loading = ref(false)
@@ -259,12 +268,19 @@ function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString()
 }
 
+const filtersActive = computed(() =>
+  !!search.value || statusFilter.value !== 'all' || activeOnly.value
+)
+
 onMounted(() => {
   load()
   pollTimer = setInterval(load, 20_000)
+  setActions({ icon: 'mdi-tune', title: 'Toggle filters', onClick: toggle, badgeActive: () => filtersActive.value, mobileOnly: true })
 })
 
 onUnmounted(() => {
   if (pollTimer !== null) clearInterval(pollTimer)
+  clearAction()
+  closePanel()
 })
 </script>

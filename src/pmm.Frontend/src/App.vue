@@ -5,12 +5,23 @@
       <v-app-bar-title>{{ mobile ? pageTitle : `PMManager — ${pageTitle}` }}</v-app-bar-title>
       <template #append>
         <v-btn
-          v-if="pageAction"
-          :icon="pageAction.icon"
-          :title="pageAction.title"
-          :loading="pageActionLoading"
-          @click="pageAction.onClick()"
-        />
+          v-for="(action, i) in pageActions"
+          v-show="!action.mobileOnly || mobile"
+          :key="i"
+          :title="action.title"
+          :loading="i === 0 && pageActionLoading"
+          icon
+          @click="action.onClick()"
+        >
+          <v-badge
+            :model-value="action.badgeActive?.() ?? false"
+            dot
+            color="primary"
+            floating
+          >
+            <v-icon>{{ action.icon }}</v-icon>
+          </v-badge>
+        </v-btn>
       </template>
     </v-app-bar>
 
@@ -92,7 +103,7 @@ import { useSfwMode } from './composables/useSfwMode'
 import { usePageAction } from './composables/usePageAction'
 
 const { sfwMode } = useSfwMode()
-const { pageAction, pageActionLoading } = usePageAction()
+const { pageActions, pageActionLoading } = usePageAction()
 const route = useRoute()
 const { mobile } = useDisplay()
 

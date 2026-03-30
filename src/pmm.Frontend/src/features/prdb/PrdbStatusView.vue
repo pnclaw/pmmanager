@@ -1,38 +1,25 @@
 <template>
   <v-container>
-    <v-row align="center" class="mb-4">
-      <v-col class="d-flex align-center ga-2">
-        <v-menu :close-on-content-click="false" max-width="360">
-          <template #activator="{ props }">
-            <v-btn icon="mdi-information-outline" variant="text" size="small" v-bind="props" />
-          </template>
-          <v-card>
-            <v-card-title class="text-body-1 font-weight-medium pt-4 pb-1">Background Sync Service</v-card-title>
-            <v-card-text class="text-body-2">
-              <p class="mb-2">A background service runs automatically every <strong>15 minutes</strong> and performs the following in order:</p>
-              <ol class="pl-4">
-                <li class="mb-1"><strong>Actor summary backfill</strong> — pages through all actors on prdb.net and inserts any not yet in the local DB (5 000 per run until complete, then checks for new actors each tick).</li>
-                <li class="mb-1"><strong>Video detail sync</strong> — fetches full detail for videos that haven't been processed yet, populating cast, images, and pre-names.</li>
-                <li class="mb-1"><strong>Actor detail backfill</strong> — batch-fetches full actor details (50 per API call, 1 000 per run) for all actors lacking detail.</li>
-                <li class="mb-1"><strong>Wanted list sync</strong> — fetches the full wanted video list from prdb.net, upserts entries, and removes any no longer on the list.</li>
-                <li><strong>Indexer row match</strong> — checks NZB titles from the last 7 days against known video prenames and links any exact (case-insensitive) matches.</li>
-              </ol>
-              <p class="mt-2 text-medium-emphasis">Individual steps can also be triggered manually using the Run Now buttons on each card.</p>
-            </v-card-text>
-          </v-card>
-        </v-menu>
-      </v-col>
-      <v-col class="text-right">
-        <span v-if="status?.syncWorker" class="text-body-2 text-medium-emphasis">
-          <template v-if="status.syncWorker.nextRunAt">
-            Next run {{ nextRunLabel }}
-          </template>
-          <template v-else>
-            Next run scheduled
-          </template>
-        </span>
-      </v-col>
-    </v-row>
+    <v-dialog v-model="infoDialog" max-width="420">
+      <v-card>
+        <v-card-title class="text-body-1 font-weight-medium pt-4 pb-1">Background Sync Service</v-card-title>
+        <v-card-text class="text-body-2">
+          <p class="mb-2">A background service runs automatically every <strong>15 minutes</strong> and performs the following in order:</p>
+          <ol class="pl-4">
+            <li class="mb-1"><strong>Actor summary backfill</strong> — pages through all actors on prdb.net and inserts any not yet in the local DB (5 000 per run until complete, then checks for new actors each tick).</li>
+            <li class="mb-1"><strong>Video detail sync</strong> — fetches full detail for videos that haven't been processed yet, populating cast, images, and pre-names.</li>
+            <li class="mb-1"><strong>Actor detail backfill</strong> — batch-fetches full actor details (50 per API call, 1 000 per run) for all actors lacking detail.</li>
+            <li class="mb-1"><strong>Wanted list sync</strong> — fetches the full wanted video list from prdb.net, upserts entries, and removes any no longer on the list.</li>
+            <li><strong>Indexer row match</strong> — checks NZB titles from the last 7 days against known video prenames and links any exact (case-insensitive) matches.</li>
+          </ol>
+          <p class="mt-2 text-medium-emphasis">Individual steps can also be triggered manually using the Run Now buttons on each card.</p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="infoDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
@@ -538,6 +525,7 @@ import { usePageAction } from '../../composables/usePageAction'
 
 const status                   = ref<PrdbStatus | null>(null)
 const loading                  = ref(false)
+const infoDialog               = ref(false)
 const runningBackfill          = ref(false)
 const runningVideoDetailSync   = ref(false)
 const runningPreNameSync       = ref(false)
@@ -549,17 +537,6 @@ const debugDialog              = ref(false)
 const debugSearch              = ref('')
 const debugResult              = ref<IndexerRowMatchDebugResult | null>(null)
 const error                    = ref<string | null>(null)
-
-// ── SyncWorker next run ────────────────────────────────────────────────────
-
-const nextRunLabel = computed(() => {
-  const next = status.value?.syncWorker?.nextRunAt
-  if (!next) return ''
-  const diffMs = new Date(next).getTime() - Date.now()
-  if (diffMs <= 0) return 'imminently'
-  const m = Math.ceil(diffMs / 60_000)
-  return m === 1 ? 'in ~1 minute' : `in ~${m} minutes`
-})
 
 // ── Actor summary backfill ─────────────────────────────────────────────────
 
@@ -741,6 +718,7 @@ async function runIndexerRowMatch() {
 
 async function load() {
   loading.value = true
+  setActionLoading(true)
   error.value = null
   try {
     status.value = await api.prdbStatus.get()
@@ -748,14 +726,18 @@ async function load() {
     error.value = e.message
   } finally {
     loading.value = false
+    setActionLoading(false)
   }
 }
 
-const { setAction, clearAction } = usePageAction()
+const { setActions, clearAction, setActionLoading } = usePageAction()
 
 onMounted(() => {
   load()
-  setAction('mdi-refresh', 'Refresh', load)
+  setActions(
+    { icon: 'mdi-refresh', title: 'Refresh', onClick: load },
+    { icon: 'mdi-information-outline', title: 'About sync', onClick: () => { infoDialog.value = true } },
+  )
 })
 
 onUnmounted(clearAction)

@@ -4,53 +4,55 @@
       {{ error }}
     </v-alert>
 
-    <v-row class="mb-4">
-      <v-col cols="12" sm="6" md="3">
-        <v-text-field
-          v-model="search"
-          prepend-inner-icon="mdi-magnify"
-          label="Search"
-          clearable
-          hide-details
-          @update:model-value="onFilterChange"
-        />
-      </v-col>
-      <v-col cols="12" sm="6" md="2">
-        <v-select
-          v-model="statusFilter"
-          :items="statusOptions"
-          label="Status"
-          hide-details
-          @update:model-value="onFilterChange"
-        />
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-autocomplete
-          v-model="selectedSiteId"
-          :items="filterOptions.sites"
-          item-value="id"
-          item-title="title"
-          label="Site"
-          clearable
-          hide-details
-          :loading="loadingOptions"
-          @update:model-value="onFilterChange"
-        />
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-autocomplete
-          v-model="selectedActorId"
-          :items="filterOptions.actors"
-          item-value="id"
-          item-title="name"
-          label="Actor"
-          clearable
-          hide-details
-          :loading="loadingOptions"
-          @update:model-value="onFilterChange"
-        />
-      </v-col>
-    </v-row>
+    <v-expand-transition>
+      <v-row v-if="!mobile || filterPanelOpen" class="mb-4">
+        <v-col cols="12" sm="6" md="3">
+          <v-text-field
+            v-model="search"
+            prepend-inner-icon="mdi-magnify"
+            label="Search"
+            clearable
+            hide-details
+            @update:model-value="onFilterChange"
+          />
+        </v-col>
+        <v-col cols="12" sm="6" md="2">
+          <v-select
+            v-model="statusFilter"
+            :items="statusOptions"
+            label="Status"
+            hide-details
+            @update:model-value="onFilterChange"
+          />
+        </v-col>
+        <v-col cols="12" sm="6" md="3">
+          <v-autocomplete
+            v-model="selectedSiteId"
+            :items="filterOptions.sites"
+            item-value="id"
+            item-title="title"
+            label="Site"
+            clearable
+            hide-details
+            :loading="loadingOptions"
+            @update:model-value="onFilterChange"
+          />
+        </v-col>
+        <v-col cols="12" sm="6" md="3">
+          <v-autocomplete
+            v-model="selectedActorId"
+            :items="filterOptions.actors"
+            item-value="id"
+            item-title="name"
+            label="Actor"
+            clearable
+            hide-details
+            :loading="loadingOptions"
+            @update:model-value="onFilterChange"
+          />
+        </v-col>
+      </v-row>
+    </v-expand-transition>
 
     <v-data-table-server
       v-model:items-per-page="pagination.pageSize"
@@ -160,14 +162,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useRouter } from 'vue-router'
 import { api, type PrdbWantedVideo, type PrdbWantedFilterOptions } from '../../api'
 import { useSfwMode } from '../../composables/useSfwMode'
+import { usePageAction } from '../../composables/usePageAction'
+import { useFilterPanel } from '../../composables/useFilterPanel'
 
 const { sfwMode } = useSfwMode()
-const { mdAndUp } = useDisplay()
+const { mdAndUp, mobile } = useDisplay()
+const { setActions, clearAction } = usePageAction()
+const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
 const router = useRouter()
 
 const videos   = ref<PrdbWantedVideo[]>([])
@@ -301,8 +307,18 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+const filtersActive = computed(() =>
+  !!search.value || statusFilter.value !== 'unfulfilled' || !!selectedSiteId.value || !!selectedActorId.value
+)
+
 onMounted(() => {
   loadFilterOptions()
   load()
+  setActions({ icon: 'mdi-tune', title: 'Toggle filters', onClick: toggle, badgeActive: () => filtersActive.value, mobileOnly: true })
+})
+
+onUnmounted(() => {
+  clearAction()
+  closePanel()
 })
 </script>
