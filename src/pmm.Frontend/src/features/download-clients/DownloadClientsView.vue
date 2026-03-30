@@ -1,13 +1,5 @@
 <template>
   <v-container style="max-width: 900px">
-    <v-row align="center" class="mb-4">
-      <v-col class="text-right">
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
-          New Client
-        </v-btn>
-      </v-col>
-    </v-row>
-
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
     </v-alert>
@@ -215,8 +207,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { api, type DownloadClient, ClientType } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
+
+const { setAction, clearAction } = usePageAction()
 
 const clientTypeOptions = [
   { title: 'SABnzbd', value: ClientType.Sabnzbd },
@@ -384,5 +379,10 @@ async function deleteClient() {
   }
 }
 
-onMounted(fetchClients)
+onMounted(() => {
+  fetchClients()
+  setAction('mdi-plus', 'New Client', openCreateDialog)
+})
+
+onUnmounted(clearAction)
 </script>

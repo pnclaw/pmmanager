@@ -1,13 +1,5 @@
 <template>
   <v-container style="max-width: 900px">
-    <v-row align="center" class="mb-4">
-      <v-col class="text-right">
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
-          New Indexer
-        </v-btn>
-      </v-col>
-    </v-row>
-
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
     </v-alert>
@@ -203,11 +195,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, type Indexer, ParsingType } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
 
 const router = useRouter()
+const { setAction, clearAction } = usePageAction()
 
 const parsingTypeOptions = [
   { title: 'Newznab', value: ParsingType.Newznab },
@@ -375,5 +369,10 @@ async function deleteIndexer() {
   }
 }
 
-onMounted(fetchIndexers)
+onMounted(() => {
+  fetchIndexers()
+  setAction('mdi-plus', 'New Indexer', openCreateDialog)
+})
+
+onUnmounted(clearAction)
 </script>

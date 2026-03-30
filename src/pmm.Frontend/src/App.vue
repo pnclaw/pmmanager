@@ -5,9 +5,10 @@
       <v-app-bar-title>{{ mobile ? pageTitle : `PMManager — ${pageTitle}` }}</v-app-bar-title>
       <template #append>
         <v-btn
-          :icon="sfwMode ? 'mdi-eye-off' : 'mdi-eye'"
-          :title="sfwMode ? 'SFW mode on' : 'SFW mode off'"
-          @click="sfwMode = !sfwMode"
+          v-if="pageAction"
+          :icon="pageAction.icon"
+          :title="pageAction.title"
+          @click="pageAction.onClick()"
         />
       </template>
     </v-app-bar>
@@ -87,8 +88,10 @@ import { useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { api } from './api'
 import { useSfwMode } from './composables/useSfwMode'
+import { usePageAction } from './composables/usePageAction'
 
 const { sfwMode } = useSfwMode()
+const { pageAction } = usePageAction()
 const route = useRoute()
 const { mobile } = useDisplay()
 
