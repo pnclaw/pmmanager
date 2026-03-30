@@ -38,6 +38,40 @@ public class SettingsController(AppDbContext db) : ControllerBase
         return Ok(ToResponse(settings));
     }
 
+    [HttpPost("reset-prdb-data")]
+    [EndpointSummary("Reset all cached prdb.net data")]
+    [EndpointDescription("Deletes all data cached from prdb.net and resets sync cursors. API credentials and unrelated settings are not affected.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ResetPrdbData()
+    {
+        await db.IndexerRowMatches.ExecuteDeleteAsync();
+        await db.DownloadLogs.ExecuteDeleteAsync();
+        await db.PrdbWantedVideos.ExecuteDeleteAsync();
+        await db.PrdbVideoActors.ExecuteDeleteAsync();
+        await db.PrdbVideoImages.ExecuteDeleteAsync();
+        await db.PrdbVideoPreNames.ExecuteDeleteAsync();
+        await db.PrdbVideos.ExecuteDeleteAsync();
+        await db.PrdbSites.ExecuteDeleteAsync();
+        await db.PrdbNetworks.ExecuteDeleteAsync();
+        await db.PrdbActorImages.ExecuteDeleteAsync();
+        await db.PrdbActorAliases.ExecuteDeleteAsync();
+        await db.PrdbActors.ExecuteDeleteAsync();
+
+        var settings = await db.AppSettings.FirstAsync();
+        settings.PrdbActorSyncPage          = 1;
+        settings.PrdbActorLastSyncedAt      = null;
+        settings.PrdbActorTotalCount        = null;
+        settings.SyncWorkerLastRunAt        = null;
+        settings.PrdbWantedVideoLastSyncedAt = null;
+        settings.IndexerRowMatchLastRunAt   = null;
+        settings.PrenamesBackfillPage       = 1;
+        settings.PrenamesBackfillTotalCount = null;
+        settings.PrenamesSyncCursorUtc      = null;
+        await db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     private static SettingsResponse ToResponse(AppSettings settings) => new()
     {
         PrdbApiKey = settings.PrdbApiKey,

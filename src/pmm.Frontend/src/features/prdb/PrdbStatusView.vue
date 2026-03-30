@@ -344,6 +344,26 @@
                 </tr>
               </tbody>
             </v-table>
+
+            <template v-if="status.indexerRowMatchSync.topIndexers.length">
+              <div class="text-caption text-medium-emphasis mt-3 mb-1">Top indexers by row count</div>
+              <v-table density="compact">
+                <thead>
+                  <tr>
+                    <th class="text-left">Indexer</th>
+                    <th class="text-right">Total</th>
+                    <th class="text-right">Last 7 days</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="idx in status.indexerRowMatchSync.topIndexers" :key="idx.title">
+                    <td>{{ idx.title }}</td>
+                    <td class="text-right">{{ idx.totalRows.toLocaleString() }}</td>
+                    <td class="text-right">{{ idx.rowsLastWeek.toLocaleString() }}</td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </template>
           </v-card-text>
         </v-card>
       </v-col>
@@ -354,6 +374,22 @@
           <v-card-title class="d-flex align-center ga-2">
             <v-icon>mdi-database</v-icon>
             Library
+            <v-spacer />
+            <v-btn
+              icon="mdi-information-outline"
+              size="small"
+              variant="text"
+              @click="infoDialog = true"
+            />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningSyncAll"
+              @click="runSyncAll"
+            >
+              Run Now
+            </v-btn>
           </v-card-title>
           <v-card-text>
             <v-table density="compact">
@@ -401,6 +437,18 @@
                   <td class="text-medium-emphasis">Actor images</td>
                   <td>{{ status.library.actorImages.toLocaleString() }}</td>
                 </tr>
+                <tr v-if="status.syncWorker.lastRunAt">
+                  <td class="text-medium-emphasis">Last sync</td>
+                  <td>{{ formatDate(status.syncWorker.lastRunAt) }}</td>
+                </tr>
+                <tr v-else>
+                  <td class="text-medium-emphasis">Last sync</td>
+                  <td class="text-medium-emphasis">Never</td>
+                </tr>
+                <tr v-if="status.syncWorker.nextRunAt">
+                  <td class="text-medium-emphasis">Next sync</td>
+                  <td>{{ formatDate(status.syncWorker.nextRunAt) }}</td>
+                </tr>
               </tbody>
             </v-table>
           </v-card-text>
@@ -413,6 +461,14 @@
           <v-card-title class="d-flex align-center ga-2">
             <v-icon>mdi-gauge</v-icon>
             Rate Limits
+            <v-spacer />
+            <v-btn
+              icon="mdi-refresh"
+              size="small"
+              variant="text"
+              :loading="loading"
+              @click="load"
+            />
           </v-card-title>
           <v-card-text>
             <div v-if="!status.rateLimit" class="text-medium-emphasis">
@@ -526,6 +582,7 @@ import { usePageAction } from '../../composables/usePageAction'
 const status                   = ref<PrdbStatus | null>(null)
 const loading                  = ref(false)
 const infoDialog               = ref(false)
+const runningSyncAll           = ref(false)
 const runningBackfill          = ref(false)
 const runningVideoDetailSync   = ref(false)
 const runningPreNameSync       = ref(false)
@@ -611,6 +668,19 @@ function formatDate(iso: string) {
 }
 
 // ── Actions ────────────────────────────────────────────────────────────────
+
+async function runSyncAll() {
+  runningSyncAll.value = true
+  error.value = null
+  try {
+    await api.prdbSync.syncAll()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningSyncAll.value = false
+  }
+}
 
 async function runBackfill() {
   runningBackfill.value = true
@@ -734,10 +804,7 @@ const { setActions, clearAction, setActionLoading } = usePageAction()
 
 onMounted(() => {
   load()
-  setActions(
-    { icon: 'mdi-refresh', title: 'Refresh', onClick: load },
-    { icon: 'mdi-information-outline', title: 'About sync', onClick: () => { infoDialog.value = true } },
-  )
+  setActions()
 })
 
 onUnmounted(clearAction)
