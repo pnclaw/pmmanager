@@ -1,18 +1,5 @@
 <template>
   <v-container>
-    <v-row align="center" class="mb-4">
-      <v-col class="text-right">
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-sync"
-          :loading="syncing"
-          @click="sync"
-        >
-          Sync
-        </v-btn>
-      </v-col>
-    </v-row>
-
     <v-alert v-if="syncResult" type="success" class="mb-4" closable @click:close="syncResult = null">
       Sync complete — {{ syncResult.sitesUpserted }} sites, {{ syncResult.networksUpserted }} networks, {{ syncResult.favoriteSitesSynced }} favorite sites, {{ syncResult.favoriteActorsSynced }} favorite actors, {{ syncResult.videosUpserted }} videos upserted.
     </v-alert>
@@ -96,8 +83,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { api, type PrdbSite } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
 
 const sites       = ref<PrdbSite[]>([])
 const total       = ref(0)
@@ -184,5 +172,12 @@ async function sync() {
   }
 }
 
-onMounted(load)
+const { setAction, clearAction } = usePageAction()
+
+onMounted(() => {
+  load()
+  setAction('mdi-sync', 'Sync', sync)
+})
+
+onUnmounted(clearAction)
 </script>
