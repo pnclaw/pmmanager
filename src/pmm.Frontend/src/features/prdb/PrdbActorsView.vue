@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container style="max-width: 1200px">
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
     </v-alert>
@@ -36,41 +36,71 @@
       </v-row>
     </v-expand-transition>
 
-    <v-data-table-server
-      v-model:items-per-page="pagination.pageSize"
-      :headers="headers"
-      :items="actors"
-      :items-length="total"
-      :loading="loading"
-      :page="pagination.page"
-      item-value="id"
-      hover
-      @update:page="onPageChange"
-      @update:items-per-page="onPageSizeChange"
-    >
-      <template #item.isFavorite="{ item }">
-        <v-btn
-          icon
-          size="small"
-          variant="text"
-          :loading="togglingIds.includes(item.id)"
-          @click="toggleFavorite(item)"
+    <div v-if="loading" class="text-center py-8">
+      <v-progress-circular indeterminate color="primary" />
+    </div>
+
+    <div v-else-if="actors.length === 0" class="text-center py-8 text-medium-emphasis">
+      No actors found.
+    </div>
+
+    <template v-else>
+      <v-row>
+        <v-col
+          v-for="actor in actors"
+          :key="actor.id"
+          cols="4"
+          sm="3"
+          md="2"
         >
-          <v-icon :color="item.isFavorite ? 'amber' : 'default'">
-            {{ item.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
-          </v-icon>
-        </v-btn>
-      </template>
+          <v-card height="100%" class="text-center">
+            <v-btn
+              icon
+              size="x-small"
+              variant="text"
+              class="position-absolute ma-1"
+              style="top: 0; right: 0; z-index: 1"
+              :loading="togglingIds.includes(actor.id)"
+              @click="toggleFavorite(actor)"
+            >
+              <v-icon :color="actor.isFavorite ? 'amber' : 'default'" size="small">
+                {{ actor.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
+              </v-icon>
+            </v-btn>
 
-      <template #item.birthday="{ item }">
-        {{ item.birthday ?? '—' }}
-      </template>
+            <v-card-text class="pa-3 pb-3">
+              <v-avatar size="96" class="mb-2" :style="sfwMode ? 'filter: blur(12px)' : ''">
+                <v-img
+                  v-if="actor.profileImageUrl"
+                  :src="actor.profileImageUrl"
+                  cover
+                >
+                  <template #error>
+                    <v-icon size="48" color="medium-emphasis">mdi-account</v-icon>
+                  </template>
+                </v-img>
+                <v-icon v-else size="48" color="medium-emphasis">mdi-account</v-icon>
+              </v-avatar>
 
-      <template #item.aliases="{ item }">
-        <span v-if="item.aliases.length === 0" class="text-medium-emphasis">—</span>
-        <span v-else>{{ item.aliases.join(', ') }}</span>
-      </template>
-    </v-data-table-server>
+              <div class="text-body-2 font-weight-bold text-wrap">{{ actor.name }}</div>
+              <div class="text-caption text-medium-emphasis mt-1">{{ genderLabel(actor.gender) }}</div>
+              <div v-if="actor.birthday" class="text-caption text-medium-emphasis">
+                {{ actor.birthday }}
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+
+      <div v-if="pageCount > 1" class="d-flex justify-center mt-4">
+        <v-pagination
+          :model-value="pagination.page"
+          :length="pageCount"
+          density="comfortable"
+          @update:model-value="onPageChange"
+        />
+      </div>
+    </template>
   </v-container>
 </template>
 
@@ -78,10 +108,12 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useDisplay } from 'vuetify'
 import { api, type PrdbActor } from '../../api'
+import { useSfwMode } from '../../composables/useSfwMode'
 import { usePageAction } from '../../composables/usePageAction'
 import { useFilterPanel } from '../../composables/useFilterPanel'
 
 const { mobile } = useDisplay()
+const { sfwMode } = useSfwMode()
 const { setActions, clearAction } = usePageAction()
 const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
 
@@ -95,14 +127,7 @@ const togglingIds = ref<string[]>([])
 
 const pagination = reactive({ page: 1, pageSize: 50 })
 
-const headers = [
-  { title: '',          key: 'isFavorite',  width: 48,  sortable: false },
-  { title: 'Name',        key: 'name' },
-  { title: 'Gender',      key: 'gender',      width: 100 },
-  { title: 'Nationality', key: 'nationality', width: 120 },
-  { title: 'Birthday',    key: 'birthday',    width: 130 },
-  { title: 'Aliases',     key: 'aliases' },
-]
+const pageCount = computed(() => Math.ceil(total.value / pagination.pageSize))
 
 async function load() {
   loading.value = true
@@ -133,12 +158,6 @@ function onPageChange(page: number) {
   load()
 }
 
-function onPageSizeChange(size: number) {
-  pagination.pageSize = size
-  pagination.page = 1
-  load()
-}
-
 async function toggleFavorite(item: PrdbActor) {
   if (togglingIds.value.includes(item.id)) return
   togglingIds.value = [...togglingIds.value, item.id]
@@ -153,6 +172,11 @@ async function toggleFavorite(item: PrdbActor) {
   } finally {
     togglingIds.value = togglingIds.value.filter(id => id !== item.id)
   }
+}
+
+const genderLabels: Record<number, string> = { 1: 'Female', 2: 'Male', 3: 'Trans Female', 4: 'Trans Male' }
+function genderLabel(gender: number): string {
+  return genderLabels[gender] ?? ''
 }
 
 const filtersActive = computed(() => !!search.value || !favoritesOnly.value)
