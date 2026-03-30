@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container style="max-width: 900px">
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
     </v-alert>
@@ -32,49 +32,65 @@
       </v-col>
     </v-row>
 
-    <v-data-table
-      :headers="headers"
-      :items="filteredLogs"
-      :loading="loading"
-      item-value="id"
-      hover
-      @click:row="openDetail"
-    >
-      <template #item.status="{ item }">
-        <v-chip :color="statusColor(item.status)" size="small" variant="tonal">
-          {{ statusLabel(item.status) }}
-        </v-chip>
-      </template>
+    <div v-if="loading" class="text-center py-8">
+      <v-progress-circular indeterminate color="primary" />
+    </div>
 
-      <template #item.progress="{ item }">
-        <template v-if="item.status === DownloadStatus.Downloading || item.status === DownloadStatus.PostProcessing">
-          <v-progress-linear
-            :model-value="progressPct(item)"
-            color="primary"
-            height="6"
-            rounded
-            class="mb-1"
-            style="min-width: 120px"
-          />
-          <div class="text-caption text-medium-emphasis">
-            {{ formatBytes(item.downloadedBytes) }} / {{ formatBytes(item.totalSizeBytes) }}
-          </div>
-        </template>
-        <span v-else-if="item.totalSizeBytes" class="text-caption text-medium-emphasis">
-          {{ formatBytes(item.totalSizeBytes) }}
-        </span>
-        <span v-else class="text-medium-emphasis">—</span>
-      </template>
+    <div v-else-if="filteredLogs.length === 0" class="text-center py-8 text-medium-emphasis">
+      No downloads found.
+    </div>
 
-      <template #item.createdAt="{ item }">
-        <span class="text-caption text-no-wrap">{{ formatDate(item.createdAt) }}</span>
-      </template>
+    <v-list v-else lines="two" class="pa-0">
+      <template v-for="(item, index) in filteredLogs" :key="item.id">
+        <v-list-item
+          :ripple="true"
+          class="py-3"
+          @click="openDetail($event, { item })"
+        >
+          <template #prepend>
+            <v-icon :color="statusColor(item.status)" size="small" class="mr-2">
+              mdi-circle
+            </v-icon>
+          </template>
 
-      <template #item.completedAt="{ item }">
-        <span v-if="item.completedAt" class="text-caption text-no-wrap">{{ formatDate(item.completedAt) }}</span>
-        <span v-else class="text-medium-emphasis">—</span>
+          <v-list-item-title class="text-truncate font-weight-medium">
+            {{ item.nzbName }}
+          </v-list-item-title>
+
+          <v-list-item-subtitle class="mt-1">
+            {{ item.downloadClientTitle }} · {{ formatDate(item.createdAt) }}
+          </v-list-item-subtitle>
+
+          <template
+            v-if="item.status === DownloadStatus.Downloading || item.status === DownloadStatus.PostProcessing"
+          >
+            <v-progress-linear
+              :model-value="progressPct(item)"
+              color="primary"
+              height="4"
+              rounded
+              class="mt-2"
+            />
+            <div class="text-caption text-medium-emphasis mt-1">
+              {{ formatBytes(item.downloadedBytes) }} / {{ formatBytes(item.totalSizeBytes) }}
+            </div>
+          </template>
+
+          <template #append>
+            <div class="d-flex flex-column align-end ga-1">
+              <v-chip :color="statusColor(item.status)" size="x-small" variant="tonal">
+                {{ statusLabel(item.status) }}
+              </v-chip>
+              <span class="text-caption text-medium-emphasis">
+                {{ item.totalSizeBytes ? formatBytes(item.totalSizeBytes) : '—' }}
+              </span>
+            </div>
+          </template>
+        </v-list-item>
+
+        <v-divider v-if="index < filteredLogs.length - 1" />
       </template>
-    </v-data-table>
+    </v-list>
 
     <!-- Detail dialog -->
     <v-dialog v-model="detailOpen" max-width="560">
@@ -175,15 +191,6 @@ const statusOptions = [
   { title: 'Failed',           value: DownloadStatus.Failed },
 ]
 
-const headers = [
-  { title: 'Name',      key: 'nzbName',          sortable: true },
-  { title: 'Client',    key: 'downloadClientTitle', sortable: true, width: '150px' },
-  { title: 'Status',    key: 'status',           sortable: true,  width: '150px' },
-  { title: 'Progress',  key: 'progress',         sortable: false, width: '180px' },
-  { title: 'Started',   key: 'createdAt',        sortable: true,  width: '130px' },
-  { title: 'Completed', key: 'completedAt',      sortable: true,  width: '130px' },
-]
-
 const terminalStatuses = new Set([DownloadStatus.Completed, DownloadStatus.Failed])
 
 const filteredLogs = computed(() => {
@@ -211,7 +218,7 @@ async function load() {
   }
 }
 
-function openDetail(_: MouseEvent, { item }: { item: DownloadLog }) {
+function openDetail(_: Event, { item }: { item: DownloadLog }) {
   detailItem.value = item
   detailOpen.value = true
 }
