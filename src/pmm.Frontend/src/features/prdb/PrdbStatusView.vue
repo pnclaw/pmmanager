@@ -26,72 +26,6 @@
     </v-alert>
 
     <v-row v-if="status">
-      <!-- Library Sync -->
-      <v-col cols="12" md="6">
-        <v-card>
-          <v-card-title class="d-flex align-center ga-2">
-            <v-icon>mdi-sync</v-icon>
-            Library Sync
-            <v-spacer />
-            <v-btn
-              size="small"
-              variant="tonal"
-              prepend-icon="mdi-play"
-              :loading="runningSyncAll"
-              @click="runSyncAll"
-            >
-              Run Now
-            </v-btn>
-          </v-card-title>
-          <v-card-text>
-            <v-table density="compact">
-              <tbody>
-                <tr v-if="status.syncWorker.lastRunAt">
-                  <td class="text-medium-emphasis">Last run</td>
-                  <td>{{ formatDate(status.syncWorker.lastRunAt) }}</td>
-                </tr>
-                <tr v-else>
-                  <td class="text-medium-emphasis">Last run</td>
-                  <td class="text-medium-emphasis">Never</td>
-                </tr>
-                <tr v-if="status.syncWorker.nextRunAt">
-                  <td class="text-medium-emphasis">Next run</td>
-                  <td>{{ formatDate(status.syncWorker.nextRunAt) }}</td>
-                </tr>
-              </tbody>
-            </v-table>
-
-            <template v-if="syncResult">
-              <div class="text-caption text-medium-emphasis mt-3 mb-1">Last manual run result</div>
-              <v-table density="compact">
-                <tbody>
-                  <tr>
-                    <td class="text-medium-emphasis">Networks</td>
-                    <td>{{ syncResult.networksUpserted.toLocaleString() }}</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Sites</td>
-                    <td>{{ syncResult.sitesUpserted.toLocaleString() }}</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Favourite sites</td>
-                    <td>{{ syncResult.favoriteSitesSynced.toLocaleString() }}</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Favourite actors</td>
-                    <td>{{ syncResult.favoriteActorsSynced.toLocaleString() }}</td>
-                  </tr>
-                  <tr>
-                    <td class="text-medium-emphasis">Videos</td>
-                    <td>{{ syncResult.videosUpserted.toLocaleString() }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </template>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
       <!-- Actor Summary Backfill -->
       <v-col cols="12" md="6">
         <v-card>
@@ -440,6 +374,16 @@
           <v-card-title class="d-flex align-center ga-2">
             <v-icon>mdi-database</v-icon>
             Library
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningSyncAll"
+              @click="runSyncAll"
+            >
+              Run Now
+            </v-btn>
           </v-card-title>
           <v-card-text>
             <v-table density="compact">
@@ -486,6 +430,18 @@
                 <tr>
                   <td class="text-medium-emphasis">Actor images</td>
                   <td>{{ status.library.actorImages.toLocaleString() }}</td>
+                </tr>
+                <tr v-if="status.syncWorker.lastRunAt">
+                  <td class="text-medium-emphasis">Last sync</td>
+                  <td>{{ formatDate(status.syncWorker.lastRunAt) }}</td>
+                </tr>
+                <tr v-else>
+                  <td class="text-medium-emphasis">Last sync</td>
+                  <td class="text-medium-emphasis">Never</td>
+                </tr>
+                <tr v-if="status.syncWorker.nextRunAt">
+                  <td class="text-medium-emphasis">Next sync</td>
+                  <td>{{ formatDate(status.syncWorker.nextRunAt) }}</td>
                 </tr>
               </tbody>
             </v-table>
@@ -613,7 +569,6 @@ const status                   = ref<PrdbStatus | null>(null)
 const loading                  = ref(false)
 const infoDialog               = ref(false)
 const runningSyncAll           = ref(false)
-const syncResult               = ref<Awaited<ReturnType<typeof api.prdbSync.syncAll>> | null>(null)
 const runningBackfill          = ref(false)
 const runningVideoDetailSync   = ref(false)
 const runningPreNameSync       = ref(false)
@@ -704,7 +659,7 @@ async function runSyncAll() {
   runningSyncAll.value = true
   error.value = null
   try {
-    syncResult.value = await api.prdbSync.syncAll()
+    await api.prdbSync.syncAll()
     await load()
   } catch (e: any) {
     error.value = e.message
