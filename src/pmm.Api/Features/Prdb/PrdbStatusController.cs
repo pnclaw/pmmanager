@@ -121,10 +121,40 @@ public class PrdbStatusController(
         // ── Indexer row match sync ────────────────────────────────────────────
         var totalMatches = await db.IndexerRowMatches.CountAsync(ct);
 
+        var weekAgo = DateTime.UtcNow.AddDays(-7);
+
+        var topGrouped = await db.IndexerRows
+            .GroupBy(r => r.IndexerId)
+            .Select(g => new
+            {
+                IndexerId    = g.Key,
+                TotalRows    = g.Count(),
+                RowsLastWeek = g.Count(r => r.CreatedAt >= weekAgo),
+            })
+            .OrderByDescending(g => g.TotalRows)
+            .Take(3)
+            .ToListAsync(ct);
+
+        var topIndexerIds = topGrouped.Select(g => g.IndexerId).ToList();
+        var indexerTitles = await db.Indexers
+            .Where(i => topIndexerIds.Contains(i.Id))
+            .Select(i => new { i.Id, i.Title })
+            .ToDictionaryAsync(i => i.Id, i => i.Title, ct);
+
+        var topIndexers = topGrouped
+            .Select(g => new IndexerRowStat
+            {
+                Title        = indexerTitles.GetValueOrDefault(g.IndexerId, "Unknown"),
+                TotalRows    = g.TotalRows,
+                RowsLastWeek = g.RowsLastWeek,
+            })
+            .ToList();
+
         var indexerRowMatchSync = new IndexerRowMatchSyncStatus
         {
             TotalMatches = totalMatches,
             LastRunAt    = settings.IndexerRowMatchLastRunAt,
+            TopIndexers  = topIndexers,
         };
 
         // ── Rate limits ───────────────────────────────────────────────────────
@@ -293,6 +323,14 @@ public class IndexerRowMatchSyncStatus
 {
     public int TotalMatches { get; init; }
     public DateTime? LastRunAt { get; init; }
+    public List<IndexerRowStat> TopIndexers { get; init; } = [];
+}
+
+public class IndexerRowStat
+{
+    public string Title { get; init; } = string.Empty;
+    public int TotalRows { get; init; }
+    public int RowsLastWeek { get; init; }
 }
 
 public class PreNameSyncStatus

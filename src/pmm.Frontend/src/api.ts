@@ -268,6 +268,7 @@ export interface PrdbStatus {
   indexerRowMatchSync: {
     totalMatches: number
     lastRunAt: string | null
+    topIndexers: { title: string; totalRows: number; rowsLastWeek: number }[]
   }
   library: {
     networks: number

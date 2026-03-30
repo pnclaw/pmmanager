@@ -344,6 +344,26 @@
                 </tr>
               </tbody>
             </v-table>
+
+            <template v-if="status.indexerRowMatchSync.topIndexers.length">
+              <div class="text-caption text-medium-emphasis mt-3 mb-1">Top indexers by row count</div>
+              <v-table density="compact">
+                <thead>
+                  <tr>
+                    <th class="text-left">Indexer</th>
+                    <th class="text-right">Total</th>
+                    <th class="text-right">Last 7 days</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="idx in status.indexerRowMatchSync.topIndexers" :key="idx.title">
+                    <td>{{ idx.title }}</td>
+                    <td class="text-right">{{ idx.totalRows.toLocaleString() }}</td>
+                    <td class="text-right">{{ idx.rowsLastWeek.toLocaleString() }}</td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </template>
           </v-card-text>
         </v-card>
       </v-col>
