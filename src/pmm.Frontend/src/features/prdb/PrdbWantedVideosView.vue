@@ -54,74 +54,74 @@
       </v-row>
     </v-expand-transition>
 
-    <v-data-table-server
-      v-model:items-per-page="pagination.pageSize"
-      :headers="headers"
-      :items="videos"
-      :items-length="total"
-      :loading="loading"
-      :page="pagination.page"
-      item-value="videoId"
-      hover
-      @update:page="onPageChange"
-      @update:items-per-page="onPageSizeChange"
-      @click:row="onRowClick"
-    >
-      <template #item.thumbnail="{ item }">
-        <div class="py-2">
-          <div class="position-relative rounded overflow-hidden" style="width: 240px; height: 135px">
-            <v-img
-              v-if="item.thumbnailCdnPath"
-              :src="item.thumbnailCdnPath"
-              width="240"
-              height="135"
-              cover
-              :style="sfwMode ? 'filter: blur(12px)' : ''"
-            />
-            <div
-              v-else
-              class="bg-surface-variant d-flex align-center justify-center"
-              style="width: 240px; height: 135px"
-            >
-              <v-icon size="small" color="medium-emphasis">mdi-image-off</v-icon>
+    <!-- Card grid -->
+    <div v-if="loading" class="d-flex justify-center py-10">
+      <v-progress-circular indeterminate />
+    </div>
+
+    <template v-else>
+      <v-row v-if="videos.length">
+        <v-col v-for="item in videos" :key="item.videoId" cols="12" sm="6" md="4" lg="3">
+          <v-card @click="router.push(`/prdb/videos/${item.videoId}`)">
+            <div class="position-relative">
+              <v-img
+                v-if="item.thumbnailCdnPath"
+                :src="item.thumbnailCdnPath"
+                :aspect-ratio="16 / 9"
+                cover
+                :style="sfwMode ? 'filter: blur(12px)' : ''"
+              />
+              <div
+                v-else
+                class="bg-surface-variant d-flex align-center justify-center"
+                style="aspect-ratio: 16/9"
+              >
+                <v-icon size="large" color="medium-emphasis">mdi-image-off</v-icon>
+              </div>
+
+              <div
+                class="position-absolute text-caption font-weight-bold px-2 py-1"
+                style="top: 0; left: 0; border-bottom-right-radius: 6px"
+                :style="item.isFulfilled
+                  ? 'background: rgba(var(--v-theme-success), 0.85); color: rgb(var(--v-theme-on-success))'
+                  : 'background: rgba(var(--v-theme-warning), 0.85); color: rgb(var(--v-theme-on-warning))'"
+              >
+                {{ item.isFulfilled ? 'Fulfilled' : 'Unfulfilled' }}
+              </div>
+
+              <v-btn
+                icon="mdi-pencil"
+                size="small"
+                class="position-absolute"
+                style="top: 6px; right: 6px; background-color: rgba(0,0,0,0.5)"
+                @click.stop="openDialog(item)"
+              />
             </div>
-            <div
-              class="position-absolute text-caption font-weight-bold px-2 py-1"
-              style="top: 0; left: 0; border-bottom-right-radius: 6px"
-              :style="item.isFulfilled
-                ? 'background: rgba(var(--v-theme-success), 0.85); color: rgb(var(--v-theme-on-success))'
-                : 'background: rgba(var(--v-theme-warning), 0.85); color: rgb(var(--v-theme-on-warning))'"
-            >
-              {{ item.isFulfilled ? 'Fulfilled' : 'Unfulfilled' }}
-            </div>
-          </div>
-        </div>
-      </template>
 
-      <template #item.videoInfo="{ item }">
-        <div>
-          <div class="text-caption text-medium-emphasis">{{ item.siteTitle }}</div>
-          <div>{{ item.videoTitle }}</div>
-        </div>
-      </template>
+            <v-card-text class="pb-3">
+              <div class="text-caption text-medium-emphasis">{{ item.siteTitle }}</div>
+              <div class="text-body-2 font-weight-medium">{{ item.videoTitle }}</div>
+              <div class="text-caption text-medium-emphasis mt-1">
+                {{ item.releaseDate ? 'Released ' + formatDate(item.releaseDate) : 'Release date unknown' }}
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
 
-      <template #item.releaseDate="{ item }">
-        {{ item.releaseDate ? formatDate(item.releaseDate) : '—' }}
-      </template>
+      <div v-else class="text-center text-medium-emphasis py-10">
+        No videos found.
+      </div>
 
-      <template #item.addedAtUtc="{ item }">
-        {{ formatDate(item.addedAtUtc) }}
-      </template>
-
-      <template #item.actions="{ item }">
-        <v-btn
-          icon="mdi-pencil"
-          size="small"
-          variant="text"
-          @click.stop="openDialog(item)"
+      <div v-if="totalPages > 1" class="d-flex justify-center mt-4">
+        <v-pagination
+          v-model="pagination.page"
+          :length="totalPages"
+          :total-visible="5"
+          @update:model-value="onPageChange"
         />
-      </template>
-    </v-data-table-server>
+      </div>
+    </template>
 
     <!-- Edit dialog -->
     <v-dialog v-model="dialogOpen" max-width="400">
@@ -171,7 +171,7 @@ import { usePageAction } from '../../composables/usePageAction'
 import { useFilterPanel } from '../../composables/useFilterPanel'
 
 const { sfwMode } = useSfwMode()
-const { mdAndUp, mobile } = useDisplay()
+const { mobile } = useDisplay()
 const { setActions, clearAction } = usePageAction()
 const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
 const router = useRouter()
@@ -194,21 +194,15 @@ const selectedActorId = ref<string | null>(null)
 const loadingOptions = ref(false)
 const filterOptions  = ref<PrdbWantedFilterOptions>({ sites: [], actors: [] })
 
-const pagination = reactive({ page: 1, pageSize: 50 })
+const pagination = reactive({ page: 1, pageSize: 24 })
+
+const totalPages = computed(() => Math.ceil(total.value / pagination.pageSize))
 
 const statusOptions = [
   { title: 'Unfulfilled', value: 'unfulfilled' },
   { title: 'Fulfilled',   value: 'fulfilled' },
   { title: 'All',         value: 'all' },
 ]
-
-const headers = computed(() => [
-  { title: '',         key: 'thumbnail',   width: 260, sortable: false },
-  { title: 'Video',    key: 'videoInfo',   sortable: false },
-  { title: 'Released', key: 'releaseDate', sortable: false, width: 120 },
-  ...(mdAndUp.value ? [{ title: 'Added', key: 'addedAtUtc', sortable: false, width: 130 }] : []),
-  { title: '',         key: 'actions',     sortable: false, width: 60 },
-])
 
 function isFulfilledParam(): boolean | undefined {
   if (statusFilter.value === 'unfulfilled') return false
@@ -256,16 +250,6 @@ function onFilterChange() {
 function onPageChange(page: number) {
   pagination.page = page
   load()
-}
-
-function onPageSizeChange(size: number) {
-  pagination.pageSize = size
-  pagination.page = 1
-  load()
-}
-
-function onRowClick(_: MouseEvent, { item }: { item: PrdbWantedVideo }) {
-  router.push(`/prdb/videos/${item.videoId}`)
 }
 
 function openDialog(item: PrdbWantedVideo) {
