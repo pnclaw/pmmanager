@@ -5,6 +5,19 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/wanted-list-mobile-friendly — 2026-03-30
+
+### Done
+- Replaced Wanted list `v-data-table-server` with an image-focused responsive card grid (1/2/3/4 cols at xs/sm/md/lg); each card shows a 16:9 thumbnail, fulfilled/unfulfilled badge overlay, edit button overlay, site title, video title, and release date; `v-pagination` replaces the table footer; page size 24
+- Replaced Sites `v-list` with the same responsive card grid; each card shows a 16:9 site thumbnail (sourced from the most recently released video for that site), favourite star overlay, network title, site title, and video count; navigates to site videos on tap
+- Added `ThumbnailCdnPath` to `PrdbSiteResponse` — populated via a correlated subquery on `Videos → Images` ordered by release date
+- Reordered PRDB nav: Wanted now appears first, above Sites
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/mobile-friendly-part-2 — 2026-03-30
 
 ### Done
