@@ -160,6 +160,7 @@ async function toggleFavorite(item: PrdbSite) {
 
 async function sync() {
   syncing.value = true
+  setActionLoading(true)
   syncResult.value = null
   error.value = null
   try {
@@ -169,10 +170,11 @@ async function sync() {
     error.value = e.message
   } finally {
     syncing.value = false
+    setActionLoading(false)
   }
 }
 
-const { setAction, clearAction } = usePageAction()
+const { setAction, clearAction, setActionLoading } = usePageAction()
 
 onMounted(() => {
   load()

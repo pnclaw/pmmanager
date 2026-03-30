@@ -8,6 +8,7 @@
           v-if="pageAction"
           :icon="pageAction.icon"
           :title="pageAction.title"
+          :loading="pageActionLoading"
           @click="pageAction.onClick()"
         />
       </template>
@@ -91,7 +92,7 @@ import { useSfwMode } from './composables/useSfwMode'
 import { usePageAction } from './composables/usePageAction'
 
 const { sfwMode } = useSfwMode()
-const { pageAction } = usePageAction()
+const { pageAction, pageActionLoading } = usePageAction()
 const route = useRoute()
 const { mobile } = useDisplay()
 
