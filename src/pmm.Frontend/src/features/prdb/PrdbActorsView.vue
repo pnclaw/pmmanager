@@ -49,45 +49,31 @@
         <v-col
           v-for="actor in actors"
           :key="actor.id"
-          cols="6"
-          sm="4"
-          md="3"
+          cols="4"
+          sm="3"
+          md="2"
         >
-          <v-card height="100%">
-            <div class="position-relative">
-              <v-img
-                v-if="actor.profileImageUrl"
-                :src="actor.profileImageUrl"
-                aspect-ratio="2/3"
-                cover
-                :style="sfwMode ? 'filter: blur(12px)' : ''"
-              >
-                <template #error>
-                  <div
-                    class="bg-surface-variant d-flex align-center justify-center"
-                    style="aspect-ratio: 2/3"
-                  >
+          <v-card height="100%" class="text-center">
+            <v-card-text class="pa-3 pb-2">
+              <v-avatar size="96" class="mb-2" :style="sfwMode ? 'filter: blur(12px)' : ''">
+                <v-img
+                  v-if="actor.profileImageUrl"
+                  :src="actor.profileImageUrl"
+                  cover
+                >
+                  <template #error>
                     <v-icon size="48" color="medium-emphasis">mdi-account</v-icon>
-                  </div>
-                </template>
-              </v-img>
-              <div
-                v-else
-                class="bg-surface-variant d-flex align-center justify-center"
-                style="aspect-ratio: 2/3"
-              >
-                <v-icon size="48" color="medium-emphasis">mdi-account</v-icon>
-              </div>
-            </div>
+                  </template>
+                </v-img>
+                <v-icon v-else size="48" color="medium-emphasis">mdi-account</v-icon>
+              </v-avatar>
 
-            <v-card-item class="pa-3 pb-1">
-              <v-card-title class="text-body-2 font-weight-bold text-wrap">
-                {{ actor.name }}
-              </v-card-title>
-              <v-card-subtitle v-if="actor.birthday" class="text-caption mt-0">
+              <div class="text-body-2 font-weight-bold text-wrap">{{ actor.name }}</div>
+              <div v-if="actor.birthday" class="text-caption text-medium-emphasis mt-1">
                 {{ actor.birthday }}
-              </v-card-subtitle>
-              <template #append>
+              </div>
+
+              <div class="mt-1">
                 <v-btn
                   icon
                   size="x-small"
@@ -99,11 +85,9 @@
                     {{ actor.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
                   </v-icon>
                 </v-btn>
-              </template>
-            </v-card-item>
+              </div>
 
-            <v-card-text v-if="actor.aliases.length > 0" class="px-3 pb-3 pt-1">
-              <div class="d-flex flex-wrap ga-1">
+              <div v-if="actor.aliases.length > 0" class="d-flex flex-wrap justify-center ga-1 mt-1">
                 <v-chip
                   v-for="alias in actor.aliases"
                   :key="alias"
