@@ -10,4 +10,5 @@ public class PrdbSiteResponse
     public bool IsFavorite { get; set; }
     public DateTime? FavoritedAtUtc { get; set; }
     public int VideoCount { get; set; }
+    public string? ThumbnailCdnPath { get; set; }
 }

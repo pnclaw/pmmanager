@@ -38,14 +38,19 @@ public class PrdbSitesController(AppDbContext db, PrdbFavoritesService favorites
             .Take(pageSize)
             .Select(s => new PrdbSiteResponse
             {
-                Id             = s.Id,
-                Title          = s.Title,
-                Url            = s.Url,
-                NetworkId      = s.NetworkId,
-                NetworkTitle   = s.Network != null ? s.Network.Title : null,
-                IsFavorite     = s.IsFavorite,
-                FavoritedAtUtc = s.FavoritedAtUtc,
-                VideoCount     = s.Videos.Count,
+                Id               = s.Id,
+                Title            = s.Title,
+                Url              = s.Url,
+                NetworkId        = s.NetworkId,
+                NetworkTitle     = s.Network != null ? s.Network.Title : null,
+                IsFavorite       = s.IsFavorite,
+                FavoritedAtUtc   = s.FavoritedAtUtc,
+                VideoCount       = s.Videos.Count,
+                ThumbnailCdnPath = s.Videos
+                    .OrderByDescending(v => v.ReleaseDate)
+                    .SelectMany(v => v.Images)
+                    .Select(i => i.CdnPath)
+                    .FirstOrDefault(),
             })
             .ToListAsync();
 

@@ -1,5 +1,5 @@
 <template>
-  <v-container style="max-width: 900px">
+  <v-container>
     <v-alert v-if="syncResult" type="success" class="mb-4" closable @click:close="syncResult = null">
       Sync complete — {{ syncResult.sitesUpserted }} sites, {{ syncResult.networksUpserted }} networks, {{ syncResult.favoriteSitesSynced }} favorite sites, {{ syncResult.favoriteActorsSynced }} favorite actors, {{ syncResult.videosUpserted }} videos upserted.
     </v-alert>
@@ -49,41 +49,44 @@
     </div>
 
     <template v-else>
-      <v-list lines="two" class="pa-0">
-        <template v-for="(site, index) in sites" :key="site.id">
-          <v-list-item class="py-2">
-            <template #prepend>
-              <v-btn
-                icon
-                size="small"
-                variant="text"
-                :loading="togglingIds.includes(site.id)"
-                @click="toggleFavorite(site)"
-              >
-                <v-icon :color="site.isFavorite ? 'amber' : 'default'">
-                  {{ site.isFavorite ? 'mdi-star' : 'mdi-star-outline' }}
-                </v-icon>
-              </v-btn>
-            </template>
-
-            <v-list-item-title class="font-weight-medium">{{ site.title }}</v-list-item-title>
-            <v-list-item-subtitle>
-              {{ site.networkTitle ?? '—' }} · {{ site.videoCount }} videos
-            </v-list-item-subtitle>
-
-            <template #append>
-              <v-btn
-                icon="mdi-movie-open"
-                size="small"
-                variant="text"
-                :to="`/prdb/sites/${site.id}/videos`"
+      <v-row>
+        <v-col v-for="site in sites" :key="site.id" cols="12" sm="6" md="4" lg="3">
+          <v-card :to="`/prdb/sites/${site.id}/videos`">
+            <div class="position-relative">
+              <v-img
+                v-if="site.thumbnailCdnPath"
+                :src="site.thumbnailCdnPath"
+                :aspect-ratio="16 / 9"
+                cover
+                :style="sfwMode ? 'filter: blur(12px)' : ''"
               />
-            </template>
-          </v-list-item>
+              <div
+                v-else
+                class="bg-surface-variant d-flex align-center justify-center"
+                style="aspect-ratio: 16/9"
+              >
+                <v-icon size="large" color="medium-emphasis">mdi-image-off</v-icon>
+              </div>
 
-          <v-divider v-if="index < sites.length - 1" />
-        </template>
-      </v-list>
+              <v-btn
+                :icon="site.isFavorite ? 'mdi-star' : 'mdi-star-outline'"
+                size="small"
+                :color="site.isFavorite ? 'amber' : 'white'"
+                class="position-absolute"
+                style="top: 6px; right: 6px; background-color: rgba(0,0,0,0.5)"
+                :loading="togglingIds.includes(site.id)"
+                @click.prevent="toggleFavorite(site)"
+              />
+            </div>
+
+            <v-card-text class="pb-3">
+              <div v-if="site.networkTitle" class="text-caption text-medium-emphasis">{{ site.networkTitle }}</div>
+              <div class="text-body-2 font-weight-medium">{{ site.title }}</div>
+              <div class="text-caption text-medium-emphasis mt-1">{{ site.videoCount }} videos</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
 
       <div v-if="pageCount > 1" class="d-flex justify-center mt-4">
         <v-pagination
@@ -101,6 +104,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useDisplay } from 'vuetify'
 import { api, type PrdbSite } from '../../api'
+import { useSfwMode } from '../../composables/useSfwMode'
 import { usePageAction } from '../../composables/usePageAction'
 import { useFilterPanel } from '../../composables/useFilterPanel'
 
@@ -114,7 +118,7 @@ const syncResult  = ref<{ networksUpserted: number; sitesUpserted: number; favor
 const search      = ref('')
 const favoritesOnly = ref(true)
 
-const pagination = reactive({ page: 1, pageSize: 50 })
+const pagination = reactive({ page: 1, pageSize: 24 })
 
 const pageCount = computed(() => Math.ceil(total.value / pagination.pageSize))
 
@@ -179,6 +183,7 @@ async function sync() {
   }
 }
 
+const { sfwMode } = useSfwMode()
 const { mobile } = useDisplay()
 const { setActions, clearAction, setActionLoading } = usePageAction()
 const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
