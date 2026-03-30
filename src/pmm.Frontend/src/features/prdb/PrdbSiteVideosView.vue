@@ -13,18 +13,20 @@
       {{ error }}
     </v-alert>
 
-    <v-row class="mb-4">
-      <v-col cols="12" sm="6" md="4">
-        <v-text-field
-          v-model="search"
-          prepend-inner-icon="mdi-magnify"
-          label="Search"
-          clearable
-          hide-details
-          @update:model-value="onFilterChange"
-        />
-      </v-col>
-    </v-row>
+    <v-expand-transition>
+      <v-row v-if="!mobile || filterPanelOpen" class="mb-4">
+        <v-col cols="12" sm="6" md="4">
+          <v-text-field
+            v-model="search"
+            prepend-inner-icon="mdi-magnify"
+            label="Search"
+            clearable
+            hide-details
+            @update:model-value="onFilterChange"
+          />
+        </v-col>
+      </v-row>
+    </v-expand-transition>
 
     <div v-if="loading" class="text-center py-8">
       <v-progress-circular indeterminate color="primary" />
@@ -78,9 +80,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useDisplay } from 'vuetify'
 import { useRoute, useRouter } from 'vue-router'
 import { api, type PrdbVideo } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
+import { useFilterPanel } from '../../composables/useFilterPanel'
+
+const { mobile } = useDisplay()
+const { setActions, clearAction } = usePageAction()
+const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
 
 const route  = useRoute()
 const router = useRouter()
@@ -124,5 +133,15 @@ function onPageChange(page: number) {
   load()
 }
 
-onMounted(load)
+const filtersActive = computed(() => !!search.value)
+
+onMounted(() => {
+  load()
+  setActions({ icon: 'mdi-tune', title: 'Toggle filters', onClick: toggle, badgeActive: () => filtersActive.value, mobileOnly: true })
+})
+
+onUnmounted(() => {
+  clearAction()
+  closePanel()
+})
 </script>
