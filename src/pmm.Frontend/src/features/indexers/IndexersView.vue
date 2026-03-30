@@ -1,13 +1,5 @@
 <template>
-  <v-container>
-    <v-row align="center" class="mb-4">
-      <v-col class="text-right">
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
-          New Indexer
-        </v-btn>
-      </v-col>
-    </v-row>
-
+  <v-container style="max-width: 900px">
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
     </v-alert>
@@ -16,67 +8,85 @@
       Scrape complete — {{ scrapeResult }} new row{{ scrapeResult === 1 ? '' : 's' }} saved.
     </v-alert>
 
-    <v-data-table
-      :headers="headers"
-      :items="indexers"
-      :loading="loading"
-      item-value="id"
-      hover
-    >
-      <template #item.parsingType="{ item }">
-        {{ parsingTypeLabel(item.parsingType) }}
-      </template>
+    <v-row v-if="loading">
+      <v-col cols="12" class="text-center py-8">
+        <v-progress-circular indeterminate color="primary" />
+      </v-col>
+    </v-row>
 
-      <template #item.isEnabled="{ item }">
-        <v-chip :color="item.isEnabled ? 'success' : 'default'" size="small">
-          {{ item.isEnabled ? 'Enabled' : 'Disabled' }}
-        </v-chip>
-      </template>
+    <v-row v-else-if="indexers.length === 0">
+      <v-col cols="12" class="text-center py-8 text-medium-emphasis">
+        No indexers configured.
+      </v-col>
+    </v-row>
 
-      <template #item.actions="{ item }">
-        <div class="d-flex justify-end flex-nowrap">
-        <v-btn
-          icon="mdi-chart-bar"
-          size="small"
-          variant="text"
-          color="secondary"
-          title="Stats"
-          @click="router.push(`/indexers/${item.id}/stats`)"
-        />
-        <v-btn
-          icon="mdi-table"
-          size="small"
-          variant="text"
-          color="secondary"
-          title="View rows"
-          @click="router.push(`/indexers/${item.id}/rows`)"
-        />
-        <v-btn
-          icon="mdi-download"
-          size="small"
-          variant="text"
-          color="primary"
-          title="Scrape latest"
-          :loading="scrapingId === item.id"
-          :disabled="scrapingId !== null"
-          @click="scrapeIndexer(item.id)"
-        />
-        <v-btn
-          icon="mdi-pencil"
-          size="small"
-          variant="text"
-          @click="openEditDialog(item)"
-        />
-        <v-btn
-          icon="mdi-delete"
-          size="small"
-          variant="text"
-          color="error"
-          @click="confirmDelete(item)"
-        />
-        </div>
-      </template>
-    </v-data-table>
+    <v-row v-else>
+      <v-col
+        v-for="indexer in indexers"
+        :key="indexer.id"
+        cols="12"
+        sm="6"
+      >
+        <v-card height="100%">
+          <v-card-item class="pa-4">
+            <v-card-title class="text-h6">{{ indexer.title }}</v-card-title>
+            <v-card-subtitle class="text-truncate mt-1">{{ indexer.url }}</v-card-subtitle>
+            <template #append>
+              <v-chip :color="indexer.isEnabled ? 'success' : 'default'" size="small">
+                {{ indexer.isEnabled ? 'Enabled' : 'Disabled' }}
+              </v-chip>
+            </template>
+          </v-card-item>
+
+          <v-card-text class="px-4 pb-2">
+            <v-chip size="small" variant="outlined">{{ parsingTypeLabel(indexer.parsingType) }}</v-chip>
+          </v-card-text>
+
+          <v-card-actions class="px-4 pb-4">
+            <v-btn
+              icon="mdi-chart-bar"
+              size="small"
+              variant="text"
+              color="secondary"
+              title="Stats"
+              @click="router.push(`/indexers/${indexer.id}/stats`)"
+            />
+            <v-btn
+              icon="mdi-table"
+              size="small"
+              variant="text"
+              color="secondary"
+              title="View rows"
+              @click="router.push(`/indexers/${indexer.id}/rows`)"
+            />
+            <v-btn
+              icon="mdi-download"
+              size="small"
+              variant="text"
+              color="primary"
+              title="Scrape latest"
+              :loading="scrapingId === indexer.id"
+              :disabled="scrapingId !== null"
+              @click="scrapeIndexer(indexer.id)"
+            />
+            <v-spacer />
+            <v-btn
+              icon="mdi-pencil"
+              size="small"
+              variant="text"
+              @click="openEditDialog(indexer)"
+            />
+            <v-btn
+              icon="mdi-delete"
+              size="small"
+              variant="text"
+              color="error"
+              @click="confirmDelete(indexer)"
+            />
+          </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
 
     <v-dialog v-model="dialog" max-width="500" persistent>
       <v-card :title="editingId ? 'Edit Indexer' : 'New Indexer'">
@@ -185,11 +195,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, type Indexer, ParsingType } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
 
 const router = useRouter()
+const { setAction, clearAction } = usePageAction()
 
 const parsingTypeOptions = [
   { title: 'Newznab', value: ParsingType.Newznab },
@@ -221,14 +233,6 @@ const emptyForm = () => ({
 })
 
 const form = ref(emptyForm())
-
-const headers = [
-  { title: 'Title', key: 'title' },
-  { title: 'URL', key: 'url' },
-  { title: 'Type', key: 'parsingType', width: '120px' },
-  { title: 'Status', key: 'isEnabled', width: '110px' },
-  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '210px', minWidth: '210px' },
-]
 
 const required = (v: string) => !!v || 'Required'
 const requiredSelect = (v: number | null) => v !== null && v !== undefined ? true : 'Required'
@@ -365,5 +369,10 @@ async function deleteIndexer() {
   }
 }
 
-onMounted(fetchIndexers)
+onMounted(() => {
+  fetchIndexers()
+  setAction('mdi-plus', 'New Indexer', openCreateDialog)
+})
+
+onUnmounted(clearAction)
 </script>

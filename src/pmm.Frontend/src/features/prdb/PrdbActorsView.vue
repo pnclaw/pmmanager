@@ -12,27 +12,29 @@
       No favorite actors found. Try syncing, or turn off <strong>Favorites only</strong> to see all actors.
     </v-alert>
 
-    <v-row class="mb-4">
-      <v-col cols="12" sm="6" md="4">
-        <v-text-field
-          v-model="search"
-          prepend-inner-icon="mdi-magnify"
-          label="Search"
-          clearable
-          hide-details
-          @update:model-value="onFilterChange"
-        />
-      </v-col>
-      <v-col cols="12" sm="4" md="3" class="d-flex align-center">
-        <v-switch
-          v-model="favoritesOnly"
-          label="Favorites only"
-          hide-details
-          color="primary"
-          @update:model-value="onFilterChange"
-        />
-      </v-col>
-    </v-row>
+    <v-expand-transition>
+      <v-row v-if="!mobile || filterPanelOpen" class="mb-4">
+        <v-col cols="12" sm="6" md="4">
+          <v-text-field
+            v-model="search"
+            prepend-inner-icon="mdi-magnify"
+            label="Search"
+            clearable
+            hide-details
+            @update:model-value="onFilterChange"
+          />
+        </v-col>
+        <v-col cols="12" sm="4" md="3" class="d-flex align-center">
+          <v-switch
+            v-model="favoritesOnly"
+            label="Favorites only"
+            hide-details
+            color="primary"
+            @update:model-value="onFilterChange"
+          />
+        </v-col>
+      </v-row>
+    </v-expand-transition>
 
     <v-data-table-server
       v-model:items-per-page="pagination.pageSize"
@@ -73,8 +75,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useDisplay } from 'vuetify'
 import { api, type PrdbActor } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
+import { useFilterPanel } from '../../composables/useFilterPanel'
+
+const { mobile } = useDisplay()
+const { setActions, clearAction } = usePageAction()
+const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
 
 const actors      = ref<PrdbActor[]>([])
 const total       = ref(0)
@@ -146,5 +155,15 @@ async function toggleFavorite(item: PrdbActor) {
   }
 }
 
-onMounted(load)
+const filtersActive = computed(() => !!search.value || !favoritesOnly.value)
+
+onMounted(() => {
+  load()
+  setActions({ icon: 'mdi-tune', title: 'Toggle filters', onClick: toggle, badgeActive: () => filtersActive.value, mobileOnly: true })
+})
+
+onUnmounted(() => {
+  clearAction()
+  closePanel()
+})
 </script>

@@ -5,10 +5,23 @@
       <v-app-bar-title>{{ mobile ? pageTitle : `PMManager — ${pageTitle}` }}</v-app-bar-title>
       <template #append>
         <v-btn
-          :icon="sfwMode ? 'mdi-eye-off' : 'mdi-eye'"
-          :title="sfwMode ? 'SFW mode on' : 'SFW mode off'"
-          @click="sfwMode = !sfwMode"
-        />
+          v-for="(action, i) in pageActions"
+          v-show="!action.mobileOnly || mobile"
+          :key="i"
+          :title="action.title"
+          :loading="i === 0 && pageActionLoading"
+          icon
+          @click="action.onClick()"
+        >
+          <v-badge
+            :model-value="action.badgeActive?.() ?? false"
+            dot
+            color="primary"
+            floating
+          >
+            <v-icon>{{ action.icon }}</v-icon>
+          </v-badge>
+        </v-btn>
       </template>
     </v-app-bar>
 
@@ -87,8 +100,10 @@ import { useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { api } from './api'
 import { useSfwMode } from './composables/useSfwMode'
+import { usePageAction } from './composables/usePageAction'
 
 const { sfwMode } = useSfwMode()
+const { pageActions, pageActionLoading } = usePageAction()
 const route = useRoute()
 const { mobile } = useDisplay()
 
