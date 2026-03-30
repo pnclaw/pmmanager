@@ -22,7 +22,7 @@
           </v-card>
         </v-menu>
       </v-col>
-      <v-col class="text-right d-flex align-center justify-end ga-3">
+      <v-col class="text-right">
         <span v-if="status?.syncWorker" class="text-body-2 text-medium-emphasis">
           <template v-if="status.syncWorker.nextRunAt">
             Next run {{ nextRunLabel }}
@@ -31,13 +31,6 @@
             Next run scheduled
           </template>
         </span>
-        <v-btn
-          prepend-icon="mdi-refresh"
-          :loading="loading"
-          @click="load"
-        >
-          Refresh
-        </v-btn>
       </v-col>
     </v-row>
 
@@ -539,8 +532,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { api, type PrdbStatus, type IndexerRowMatchDebugResult } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
 
 const status                   = ref<PrdbStatus | null>(null)
 const loading                  = ref(false)
@@ -757,5 +751,12 @@ async function load() {
   }
 }
 
-onMounted(load)
+const { setAction, clearAction } = usePageAction()
+
+onMounted(() => {
+  load()
+  setAction('mdi-refresh', 'Refresh', load)
+})
+
+onUnmounted(clearAction)
 </script>
