@@ -188,6 +188,7 @@ export interface PrdbActor {
   isFavorite: boolean
   favoritedAtUtc: string | null
   aliases: string[]
+  profileImageUrl: string | null
 }
 
 export interface PrdbWantedVideo {

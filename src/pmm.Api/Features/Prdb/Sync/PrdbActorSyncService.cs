@@ -134,6 +134,9 @@ public class PrdbActorSyncService(AppDbContext db, IHttpClientFactory httpClient
                 PrdbCreatedAtUtc = now,
                 PrdbUpdatedAtUtc = now,
                 SyncedAtUtc      = now,
+                Images           = a.ProfileImageUrl is not null
+                    ? [ new PrdbActorImage { Id = Guid.NewGuid(), ImageType = 0, Url = a.ProfileImageUrl } ]
+                    : [],
             })
             .ToList();
 

@@ -35,14 +35,15 @@ public class PrdbActorsController(AppDbContext db, PrdbFavoritesService favorite
             .Take(pageSize)
             .Select(a => new PrdbActorResponse
             {
-                Id             = a.Id,
-                Name           = a.Name,
-                Gender         = a.Gender,
-                Nationality    = a.Nationality,
-                Birthday       = a.Birthday,
-                IsFavorite     = a.IsFavorite,
-                FavoritedAtUtc = a.FavoritedAtUtc,
-                Aliases        = a.Aliases.Select(x => x.Name).ToList(),
+                Id              = a.Id,
+                Name            = a.Name,
+                Gender          = a.Gender,
+                Nationality     = a.Nationality,
+                Birthday        = a.Birthday,
+                IsFavorite      = a.IsFavorite,
+                FavoritedAtUtc  = a.FavoritedAtUtc,
+                Aliases         = a.Aliases.Select(x => x.Name).ToList(),
+                ProfileImageUrl = a.Images.Select(i => i.Url).FirstOrDefault(),
             })
             .ToListAsync();
 
