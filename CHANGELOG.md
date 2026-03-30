@@ -5,6 +5,19 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/mobile-friendly-part-2 — 2026-03-30
+
+### Done
+- Replaced Sites `v-data-table-server` with a two-line `v-list` + `v-pagination` (star toggle prepend, network · video count subtitle, movie icon append, max-width 900px)
+- Replaced Site Videos `v-data-table-server` with a `v-list` + `v-pagination` (click navigates to video detail, pre-names count chip in append slot); added mobile filter panel toggle via `useFilterPanel`
+- Replaced Actors `v-data-table-server` with a responsive card grid (3 cols mobile / 4 sm / 6 md+): 96px circular avatar, gender label, birthday, star toggle as absolute top-right overlay; images blurred in SFW mode
+- Sync: actor summary sync now stores `ProfileImageUrl` as a `PrdbActorImage` on first insert; `PrdbActorResponse` now returns the first image URL
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/mobile-friendly — 2026-03-30
 
 ### Done
