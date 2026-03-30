@@ -1,10 +1,6 @@
 <template>
   <v-container>
-    <!-- Header -->
     <v-row align="center" class="mb-4">
-      <v-col>
-        <h1 class="text-h4">Items</h1>
-      </v-col>
       <v-col class="text-right">
         <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
           New Item

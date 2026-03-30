@@ -5,9 +5,6 @@
       <v-col cols="auto">
         <v-btn icon="mdi-arrow-left" variant="text" @click="router.push('/indexers')" />
       </v-col>
-      <v-col>
-        <h1 class="text-h4">Indexer Rows</h1>
-      </v-col>
       <v-col class="text-right d-flex justify-end ga-2">
         <v-btn
           color="primary"

@@ -2,8 +2,6 @@
   <v-container>
     <v-row>
       <v-col cols="12" md="6">
-        <h1 class="text-h4 mb-6">System Health</h1>
-
         <v-card :loading="loading">
           <v-card-title>API Status</v-card-title>
           <v-card-text>

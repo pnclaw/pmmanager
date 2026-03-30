@@ -9,12 +9,6 @@
       Sites
     </v-btn>
 
-    <v-row align="center" class="mb-4">
-      <v-col>
-        <h1 class="text-h4">Videos</h1>
-      </v-col>
-    </v-row>
-
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
     </v-alert>

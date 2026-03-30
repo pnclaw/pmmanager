@@ -5,7 +5,6 @@
         <v-btn icon="mdi-arrow-left" variant="text" @click="router.push('/indexers')" />
       </v-col>
       <v-col>
-        <h1 class="text-h4">{{ indexerTitle }} — Stats</h1>
         <p class="text-caption text-medium-emphasis">Last 30 days</p>
       </v-col>
     </v-row>

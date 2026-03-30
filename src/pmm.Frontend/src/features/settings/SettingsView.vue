@@ -1,7 +1,5 @@
 <template>
   <v-container max-width="600">
-    <h1 class="text-h4 mb-6">Settings</h1>
-
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
     </v-alert>

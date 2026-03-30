@@ -1,9 +1,6 @@
 <template>
   <v-container>
     <v-row align="center" class="mb-4">
-      <v-col>
-        <h1 class="text-h4">Indexers</h1>
-      </v-col>
       <v-col class="text-right">
         <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
           New Indexer

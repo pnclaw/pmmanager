@@ -2,7 +2,6 @@
   <v-container>
     <v-row align="center" class="mb-4">
       <v-col class="d-flex align-center ga-2">
-        <h1 class="text-h4">prdb Status</h1>
         <v-menu :close-on-content-click="false" max-width="360">
           <template #activator="{ props }">
             <v-btn icon="mdi-information-outline" variant="text" size="small" v-bind="props" />
