@@ -5,6 +5,21 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/mobile-friendly — 2026-03-30
+
+### Done
+- Replaced `v-data-table` with responsive card grids in Indexers and Download Clients views (2-column on tablet+, single column on mobile, max-width 900px centered)
+- Replaced `v-data-table` with a `v-list` two-line layout in the Downloads view for high-density mobile display (status dot, name, client/date subtitle, inline progress bar for active downloads)
+- Replaced SFW toggle in the app bar with a contextual page action button — each view registers its primary action (e.g. New Indexer, New Client) on mount and clears it on unmount
+- Moved Refresh buttons from Status and Health views into the app bar; moved Sync button from Sites view into the app bar with a loading spinner
+- Added collapsible filter panel toggle (`mdi-tune`) in the app bar for Wanted, Downloads, Sites, and Actors views — visible on mobile only, with a badge dot when non-default filters are active; filters collapse/expand with `v-expand-transition`
+- Moved Status view info button into the app bar as a second action (opens a dialog); removed broken "next run" countdown text
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/wanted-download-improvements — 2026-03-30
 
 ### Done
