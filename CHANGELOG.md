@@ -5,6 +5,20 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/prenames-view — 2026-04-03
+
+### Done
+- Added "Predb" nav entry to the PRDB navigation group (above Status), routing to `/prdb/prenames`
+- New Prenames view lists prenames grouped by video with a default 7-day release date range filter (From / To); supports optional keyword search (min 3 chars), debounced
+- List titles render as "Site - Video"; prename matches shown as inline chips; clicking a row navigates to the video detail page
+- Backend `GET /api/prdb-prenames/search` queries the local `PrdbVideoPreNames` table, supporting keyword (`LIKE`) and date range (`releaseDateFrom` / `releaseDateTo`) filters, grouped by video and capped at 500 groups
+- Mobile-friendly: filter row collapses behind the filter action button on small screens
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/improve-indexer-matching — 2026-04-03
 
 ### Done
