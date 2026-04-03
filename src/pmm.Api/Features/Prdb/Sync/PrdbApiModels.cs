@@ -76,6 +76,7 @@ record PrdbApiActorAliasDetail(string Name, Guid? SiteId);
 record PrdbApiActorImageDetail(Guid Id, int ImageType, string? Url);
 
 record PrdbApiBatchActorsRequest(List<Guid> Ids);
+record PrdbApiBatchVideosRequest(List<Guid> Ids);
 
 record PrdbApiWantedVideoSummary(
     Guid VideoId,
