@@ -162,6 +162,48 @@ public sealed class IndexerRowMatchServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Run_DotSeparatedRow_MatchesDashSeparatedPreName()
+    {
+        var indexer     = await SeedIndexerAsync();
+        var (video, pn) = await SeedVideoWithPreNameAsync("Some-Scene-Title");
+        var row         = await SeedIndexerRowAsync(indexer.Id, "Some.Scene.Title");
+
+        await _service.RunAsync(CancellationToken.None);
+
+        var match = _db.IndexerRowMatches.SingleOrDefault(m => m.IndexerRowId == row.Id);
+        match.Should().NotBeNull();
+        match!.PrdbVideoId.Should().Be(video.Id);
+    }
+
+    [Fact]
+    public async Task Run_MixedSeparators_MatchesSpaceSeparatedPreName()
+    {
+        var indexer     = await SeedIndexerAsync();
+        var (video, pn) = await SeedVideoWithPreNameAsync("Some Scene Title");
+        var row         = await SeedIndexerRowAsync(indexer.Id, "Some.Scene-Title");
+
+        await _service.RunAsync(CancellationToken.None);
+
+        var match = _db.IndexerRowMatches.SingleOrDefault(m => m.IndexerRowId == row.Id);
+        match.Should().NotBeNull();
+        match!.PrdbVideoId.Should().Be(video.Id);
+    }
+
+    [Fact]
+    public async Task Run_UnderscoreSeparatedRow_MatchesDotSeparatedPreName()
+    {
+        var indexer     = await SeedIndexerAsync();
+        var (video, pn) = await SeedVideoWithPreNameAsync("Some.Scene.Title");
+        var row         = await SeedIndexerRowAsync(indexer.Id, "Some_Scene_Title");
+
+        await _service.RunAsync(CancellationToken.None);
+
+        var match = _db.IndexerRowMatches.SingleOrDefault(m => m.IndexerRowId == row.Id);
+        match.Should().NotBeNull();
+        match!.PrdbVideoId.Should().Be(video.Id);
+    }
+
+    [Fact]
     public async Task Run_UpdatesLastRunAt()
     {
         var indexer = await SeedIndexerAsync();

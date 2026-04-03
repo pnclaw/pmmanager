@@ -29,15 +29,24 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
 {
     private static readonly TimeSpan MatchWindow = TimeSpan.FromDays(7);
 
+    /// <summary>
+    /// Normalizes a title for comparison: replaces dots, dashes, and underscores with
+    /// spaces, collapses to lowercase. "Some.Scene-Title" and "Some Scene Title" are equal.
+    /// </summary>
+    private static string Normalize(string title) =>
+        title.Replace('.', ' ').Replace('-', ' ').Replace('_', ' ')
+             .ToLowerInvariant()
+             .Trim();
+
     public async Task RunAsync(CancellationToken ct)
     {
         var cutoff = DateTime.UtcNow - MatchWindow;
 
-        // All IndexerRows from the last 48 h that do not yet have a match attempt.
+        // All IndexerRows from the last 7 days that do not yet have a match attempt.
         var rows = await db.IndexerRows
             .Where(r => r.CreatedAt > cutoff)
             .Where(r => !db.IndexerRowMatches.Any(m => m.IndexerRowId == r.Id))
-            .Select(r => new { r.Id, TitleLower = r.Title.ToLower() })
+            .Select(r => new { r.Id, r.Title })
             .ToListAsync(ct);
 
         if (rows.Count == 0)
@@ -49,31 +58,35 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
 
         logger.LogInformation("IndexerRowMatchService: checking {Count} indexer row(s) for prename matches", rows.Count);
 
-        // Load every prename whose lower-cased title appears in the candidate set.
-        var lowerTitles = rows.Select(r => r.TitleLower).ToList();
+        // Normalize titles in memory and build the candidate set for the DB pre-filter.
+        var normalizedRows   = rows.Select(r => new { r.Id, TitleNorm = Normalize(r.Title) }).ToList();
+        var normalizedTitles = normalizedRows.Select(r => r.TitleNorm).Distinct().ToHashSet();
 
+        // Pre-filter: load prenames whose normalized title appears in the candidate set.
+        // EF Core/SQLite translates string.Replace to SQL replace(), enabling server-side normalization.
         var prenames = await db.PrdbVideoPreNames
-            .Where(p => lowerTitles.Contains(p.Title.ToLower()))
+            .Where(p => normalizedTitles.Contains(
+                p.Title.Replace(".", " ").Replace("-", " ").Replace("_", " ").ToLower()))
             .ToListAsync(ct);
 
-        // Group prenames by their lower-cased title for fast lookup.
+        // Group prenames by their normalized title for fast lookup.
         var prenamesByTitle = prenames
-            .GroupBy(p => p.Title.ToLowerInvariant())
+            .GroupBy(p => Normalize(p.Title))
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var now = DateTime.UtcNow;
         int matched = 0, skippedMultiple = 0;
 
-        foreach (var row in rows)
+        foreach (var row in normalizedRows)
         {
-            if (!prenamesByTitle.TryGetValue(row.TitleLower, out var candidates))
+            if (!prenamesByTitle.TryGetValue(row.TitleNorm, out var candidates))
                 continue;
 
             if (candidates.Count > 1)
             {
                 logger.LogWarning(
                     "IndexerRowMatchService: indexer row {RowId} title '{Title}' matched {Count} prenames — skipping",
-                    row.Id, row.TitleLower, candidates.Count);
+                    row.Id, row.TitleNorm, candidates.Count);
                 skippedMultiple++;
                 continue;
             }
@@ -152,15 +165,16 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
             .Include(m => m.Video)
             .ToDictionaryAsync(m => m.IndexerRowId, ct);
 
-        // Load prenames whose lower title matches any candidate row title
-        var lowerTitles = rows.Select(r => r.Title.ToLower()).Distinct().ToList();
-        var prenames    = await db.PrdbVideoPreNames
-            .Where(p => lowerTitles.Contains(p.Title.ToLower()))
+        // Pre-filter: load prenames whose normalized title matches any candidate row's normalized title.
+        var normalizedTitles = rows.Select(r => Normalize(r.Title)).Distinct().ToHashSet();
+        var prenames = await db.PrdbVideoPreNames
+            .Where(p => normalizedTitles.Contains(
+                p.Title.Replace(".", " ").Replace("-", " ").Replace("_", " ").ToLower()))
             .Include(p => p.Video)
             .ToListAsync(ct);
 
         var prenamesByTitle = prenames
-            .GroupBy(p => p.Title.ToLowerInvariant())
+            .GroupBy(p => Normalize(p.Title))
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var entries = new List<IndexerRowDebugEntry>(rows.Count);
@@ -171,7 +185,7 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
                 "IndexerRowMatchService [debug]: checking '{Title}' ({RowId})",
                 row.Title, row.Id);
 
-            var titleLower = row.Title.ToLower();
+            var titleNorm = Normalize(row.Title);
 
             if (existing.TryGetValue(row.Id, out var match))
             {
@@ -190,7 +204,7 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
                 continue;
             }
 
-            if (!prenamesByTitle.TryGetValue(titleLower, out var candidates))
+            if (!prenamesByTitle.TryGetValue(titleNorm, out var candidates))
             {
                 logger.LogInformation(
                     "IndexerRowMatchService [debug]: '{Title}' — no prename match",
