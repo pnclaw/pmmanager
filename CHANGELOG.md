@@ -5,6 +5,19 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/improve-indexer-matching — 2026-04-03
+
+### Done
+- Improved indexer row title matching to normalize separator characters (`.`, `-`, `_`) to spaces before comparison, so `Some.Scene.Title` now matches `Some-Scene-Title` and `Some Scene Title`
+- Normalization is applied on both sides (indexer row titles and prenames) including in the DB pre-filter via EF-translatable `string.Replace`, with no schema changes required
+- Applies consistently to both the background match run and the debug diagnostic endpoint
+- Added three new integration tests covering cross-separator matching scenarios
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/copper-wave-spark — 2026-04-03
 
 ### Done
