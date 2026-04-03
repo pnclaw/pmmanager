@@ -117,6 +117,7 @@ export interface IndexerRow {
   fileSize: number | null
   category: number
   createdAt: string
+  prdbVideoId: string | null
 }
 
 export interface IndexerRowsQuery {
@@ -128,6 +129,7 @@ export interface IndexerRowsQuery {
   to?: string
   minSize?: number
   maxSize?: number
+  hasVideoLink?: boolean
 }
 
 export interface PagedResult<T> {
@@ -343,6 +345,7 @@ export interface IndexerRowMatchDebugResult {
   rows: {
     rowId: string
     title: string
+    indexerTitle: string
     matchStatus: 'Matched' | 'AlreadyMatched' | 'MultipleMatches' | 'NoMatch'
     candidatePreNames: string[]
     matchedVideoTitle: string | null
@@ -394,6 +397,7 @@ export const api = {
       if (query.to) params.set('to', query.to)
       if (query.minSize != null) params.set('minSize', String(query.minSize))
       if (query.maxSize != null) params.set('maxSize', String(query.maxSize))
+      if (query.hasVideoLink != null) params.set('hasVideoLink', String(query.hasVideoLink))
       return request<PagedResult<IndexerRow>>(`/indexers/${id}/rows?${params}`)
     },
     stats: (id: string) =>

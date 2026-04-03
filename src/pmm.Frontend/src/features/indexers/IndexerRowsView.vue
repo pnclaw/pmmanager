@@ -115,6 +115,17 @@
               hide-details
             />
           </v-col>
+          <v-col cols="12" sm="6" md="3">
+            <v-select
+              v-model="filters.hasVideoLink"
+              label="Video link"
+              :items="[{ title: 'Linked', value: true }, { title: 'Unlinked', value: false }]"
+              item-title="title"
+              item-value="value"
+              clearable
+              hide-details
+            />
+          </v-col>
           <v-col cols="12" sm="6" md="3" class="d-flex align-center ga-2">
             <v-btn color="primary" @click="applyFilters">Apply</v-btn>
             <v-btn variant="text" @click="resetFilters">Reset</v-btn>
@@ -137,9 +148,23 @@
       @update:items-per-page="onPageSizeChange"
     >
       <template #item.title="{ item }">
-        <span class="text-truncate d-inline-block" style="max-width: 400px;" :title="item.title">
-          {{ item.title }}
-        </span>
+        <div class="d-flex align-center ga-2">
+          <v-icon
+            v-if="item.prdbVideoId"
+            size="small"
+            color="success"
+            title="Linked to a video"
+          >mdi-link-variant</v-icon>
+          <v-icon
+            v-else
+            size="small"
+            color="surface-variant"
+            title="No video match"
+          >mdi-link-variant-off</v-icon>
+          <span class="text-truncate flex-grow-1" style="min-width: 0" :title="item.title">
+            {{ item.title }}
+          </span>
+        </div>
       </template>
       <template #item.nzbSize="{ item }">
         {{ formatSize(item.nzbSize) }}
@@ -286,6 +311,7 @@ const filters = reactive({
   search: null as string | null,
   minSizeGb: null as number | null,
   maxSizeGb: null as number | null,
+  hasVideoLink: null as boolean | null,
 })
 
 const pagination = reactive({ page: 1, pageSize: 50 })
@@ -327,6 +353,7 @@ async function fetchRows() {
       to: filters.to || undefined,
       minSize: filters.minSizeGb ? Math.round(filters.minSizeGb * 1_073_741_824) : undefined,
       maxSize: filters.maxSizeGb ? Math.round(filters.maxSizeGb * 1_073_741_824) : undefined,
+      hasVideoLink: filters.hasVideoLink ?? undefined,
     })
     rows.value = result.items
     totalRows.value = result.total
@@ -365,6 +392,7 @@ function resetFilters() {
   filters.search = null
   filters.minSizeGb = null
   filters.maxSizeGb = null
+  filters.hasVideoLink = null
   pagination.page = 1
   fetchRows()
 }

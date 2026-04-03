@@ -13,6 +13,7 @@ public class IndexerRowDebugEntry
 {
     public Guid RowId { get; init; }
     public string Title { get; init; } = string.Empty;
+    public string IndexerTitle { get; init; } = string.Empty;
 
     /// <summary>Matched | AlreadyMatched | MultipleMatches | NoMatch</summary>
     public string MatchStatus { get; init; } = string.Empty;
@@ -134,7 +135,7 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
 
         var rows = await query
             .OrderByDescending(r => r.CreatedAt)
-            .Select(r => new { r.Id, r.Title })
+            .Select(r => new { r.Id, r.Title, IndexerTitle = r.Indexer.Title })
             .ToListAsync(ct);
 
         logger.LogInformation(
@@ -181,6 +182,7 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
                 {
                     RowId             = row.Id,
                     Title             = row.Title,
+                    IndexerTitle      = row.IndexerTitle,
                     MatchStatus       = "AlreadyMatched",
                     CandidatePreNames = [match.MatchedTitle],
                     MatchedVideoTitle = match.Video.Title,
@@ -195,9 +197,10 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
                     row.Title);
                 entries.Add(new IndexerRowDebugEntry
                 {
-                    RowId       = row.Id,
-                    Title       = row.Title,
-                    MatchStatus = "NoMatch",
+                    RowId        = row.Id,
+                    Title        = row.Title,
+                    IndexerTitle = row.IndexerTitle,
+                    MatchStatus  = "NoMatch",
                 });
                 continue;
             }
@@ -212,6 +215,7 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
                 {
                     RowId             = row.Id,
                     Title             = row.Title,
+                    IndexerTitle      = row.IndexerTitle,
                     MatchStatus       = "MultipleMatches",
                     CandidatePreNames = candidates.Select(c => c.Title).ToList(),
                 });
@@ -226,6 +230,7 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
             {
                 RowId             = row.Id,
                 Title             = row.Title,
+                IndexerTitle      = row.IndexerTitle,
                 MatchStatus       = "Matched",
                 CandidatePreNames = [prename.Title],
                 MatchedVideoTitle = prename.Video.Title,

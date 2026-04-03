@@ -202,6 +202,14 @@ public class IndexersController(AppDbContext db) : ControllerBase
         if (query.MaxSize.HasValue)
             q = q.Where(r => r.NzbSize <= query.MaxSize.Value);
 
+        if (query.HasVideoLink.HasValue)
+        {
+            var linked = db.IndexerRowMatches.Select(m => m.IndexerRowId);
+            q = query.HasVideoLink.Value
+                ? q.Where(r => linked.Contains(r.Id))
+                : q.Where(r => !linked.Contains(r.Id));
+        }
+
         var total = await q.CountAsync();
         var items = await q
             .OrderByDescending(r => r.NzbPublishedAt)
@@ -219,6 +227,10 @@ public class IndexersController(AppDbContext db) : ControllerBase
                 FileSize = r.FileSize,
                 Category = r.Category,
                 CreatedAt = r.CreatedAt,
+                PrdbVideoId = db.IndexerRowMatches
+                    .Where(m => m.IndexerRowId == r.Id)
+                    .Select(m => (Guid?)m.PrdbVideoId)
+                    .FirstOrDefault(),
             })
             .ToListAsync();
 
