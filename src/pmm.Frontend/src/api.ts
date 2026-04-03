@@ -169,6 +169,24 @@ export interface PrdbVideo {
   preNames: { id: string; title: string }[]
 }
 
+export interface PrdbPreNameItem {
+  id: string
+  title: string
+}
+
+export interface PrdbPreNameGroup {
+  videoId: string
+  videoTitle: string
+  siteId: string
+  siteTitle: string
+  preNames: PrdbPreNameItem[]
+}
+
+export interface PrdbPreNamesSearchResult {
+  items: PrdbPreNameGroup[]
+  totalGroups: number
+}
+
 export interface PrdbVideoDetail {
   id: string
   title: string
@@ -466,6 +484,15 @@ export const api = {
     },
     filterOptions: () => request<PrdbVideoFilterOptions>('/prdb-videos/filter-options'),
     get: (id: string) => request<PrdbVideoDetail>(`/prdb-videos/${id}`),
+  },
+  prdbPreNames: {
+    search: (params: { q?: string; releaseDateFrom?: string; releaseDateTo?: string }) => {
+      const q = new URLSearchParams()
+      if (params.q) q.set('q', params.q)
+      if (params.releaseDateFrom) q.set('releaseDateFrom', params.releaseDateFrom)
+      if (params.releaseDateTo) q.set('releaseDateTo', params.releaseDateTo)
+      return request<PrdbPreNamesSearchResult>(`/prdb-prenames/search?${q}`)
+    },
   },
   prdbSync: {
     syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; favoriteActorsSynced: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
