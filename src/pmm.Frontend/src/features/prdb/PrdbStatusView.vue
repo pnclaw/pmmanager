@@ -537,13 +537,15 @@
           <v-table v-else density="compact">
             <thead>
               <tr>
-                <th>Indexer Title</th>
+                <th>Indexer</th>
+                <th>NZB Title</th>
                 <th>Status</th>
                 <th>Details</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="entry in debugResult.rows" :key="entry.rowId">
+                <td class="text-body-2 py-2 text-no-wrap">{{ entry.indexerTitle }}</td>
                 <td class="text-body-2 py-2" style="word-break: break-all">{{ entry.title }}</td>
                 <td class="py-2">
                   <v-chip size="small" :color="debugStatusColor(entry.matchStatus)">

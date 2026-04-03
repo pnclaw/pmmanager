@@ -5,6 +5,19 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/copper-wave-spark — 2026-04-03
+
+### Done
+- Added video-link indicator to the indexer rows table — a green `mdi-link-variant` icon when a row is matched to a known video, muted `mdi-link-variant-off` when unmatched; title column now grows to fill available space instead of truncating at a fixed 380 px
+- Added **Video link** filter (Linked / Unlinked) to the indexer rows view, backed by a `HasVideoLink` query parameter that filters against `IndexerRowMatches` server-side
+- Exposed `prdbVideoId` (nullable) on `IndexerRowResponse` so the frontend can determine link state without a separate request
+- Fixed the indexer row match debug dialog in the prdb status page: the table now includes an **Indexer** column showing which indexer each row came from, and the previously misnamed "Indexer Title" column is correctly labelled "NZB Title"
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/batch-video-detail-sync — 2026-04-03
 
 ### Done

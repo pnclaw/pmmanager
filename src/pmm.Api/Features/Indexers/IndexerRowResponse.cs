@@ -12,4 +12,5 @@ public class IndexerRowResponse
     public long? FileSize { get; set; }
     public int Category { get; set; }
     public DateTime CreatedAt { get; set; }
+    public Guid? PrdbVideoId { get; set; }
 }
