@@ -5,6 +5,19 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/batch-video-detail-sync — 2026-04-03
+
+### Done
+- Switched video detail sync from individual `GET /videos/{id}` calls to the new `POST /videos/batch` endpoint (up to 50 IDs per request), reducing API requests from 200 to 20 per run while increasing throughput from 200 to 1 000 videos per 15-minute cycle
+- Batch-loaded existing image IDs and VideoActor join pairs per batch to prevent EF Core identity map collisions
+- Added missing-ID handling: videos silently omitted by the batch API have their `DetailSyncedAtUtc` stamped so they are not retried on the next run
+- Updated local prdb.net OpenAPI spec (`docs/external/prdb-openapi-v1.json`) to include the new `/videos/batch` endpoint
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/prdb-reset-button — 2026-03-30
 
 ### Done

@@ -11,10 +11,11 @@ public class PrdbVideoDetailSyncService(
     ILogger<PrdbVideoDetailSyncService> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private const int VideosPerRun          = 200; // 200 API requests per run
-    private const int DetailResyncDays      = 30;  // re-sync video details after this many days
+    private const int DetailResyncDays   = 30; // re-sync video details after this many days
+    private const int VideoBatchSize     = 50; // max IDs per /videos/batch request
+    private const int VideoBatchesPerRun = 20; // 1 000 videos per run, 20 API requests
     private const int ActorBatchSize     = 50;
-    private const int ActorBatchesPerRun = 20;  // 1 000 actors per run, 20 API requests
+    private const int ActorBatchesPerRun = 20; // 1 000 actors per run, 20 API requests
 
     public async Task RunAsync(CancellationToken ct = default)
     {
@@ -52,12 +53,12 @@ public class PrdbVideoDetailSyncService(
             .Where(v => v.DetailSyncedAtUtc == null || v.DetailSyncedAtUtc < resyncBefore)
             .OrderBy(v => v.DetailSyncedAtUtc)
             .Select(v => v.Id)
-            .Take(VideosPerRun)
+            .Take(VideoBatchSize * VideoBatchesPerRun)
             .ToListAsync(ct);
 
         logger.LogInformation(
-            "PrdbVideoDetailSyncService: syncing details for {Count} videos this run ({Pending} total pending)",
-            videoIds.Count, totalPending);
+            "PrdbVideoDetailSyncService: syncing details for {Count} videos this run ({Pending} total pending), batches of {BatchSize}",
+            videoIds.Count, totalPending, VideoBatchSize);
 
         var existingActorIds = await db.PrdbActors
             .Select(a => a.Id)
@@ -65,78 +66,93 @@ public class PrdbVideoDetailSyncService(
 
         var synced = 0;
 
-        foreach (var videoId in videoIds)
+        foreach (var batch in videoIds.Chunk(VideoBatchSize))
         {
             ct.ThrowIfCancellationRequested();
 
-            var detail = await http.GetFromJsonAsync<PrdbApiVideoDetail>(
-                $"videos/{videoId}", JsonOptions, ct);
+            var request  = new PrdbApiBatchVideosRequest(batch.ToList());
+            var response = await http.PostAsJsonAsync("videos/batch", request, ct);
+            response.EnsureSuccessStatusCode();
 
-            if (detail is null)
-            {
-                logger.LogWarning("PrdbVideoDetailSyncService: no detail returned for video {VideoId}", videoId);
-                continue;
-            }
+            var details = await response.Content.ReadFromJsonAsync<List<PrdbApiVideoDetail>>(JsonOptions, ct);
+            if (details is null) continue;
 
             var now = DateTime.UtcNow;
+            var ids = batch.ToHashSet();
 
-            // Upsert images
+            // Load existing image IDs for the whole batch upfront to avoid identity map
+            // collisions when the same image ID appears for multiple videos in one batch.
             var existingImageIds = await db.PrdbVideoImages
-                .Where(i => i.VideoId == videoId)
+                .Where(i => ids.Contains(i.VideoId))
                 .Select(i => i.Id)
                 .ToHashSetAsync(ct);
 
-            foreach (var img in detail.Images.Where(i => !existingImageIds.Contains(i.Id)))
-            {
-                db.PrdbVideoImages.Add(new PrdbVideoImage
-                {
-                    Id      = img.Id,
-                    CdnPath = img.CdnPath,
-                    VideoId = videoId,
-                });
-            }
+            // Load existing VideoActor joins for the batch upfront
+            var existingVideoActorPairs = await db.PrdbVideoActors
+                .Where(va => ids.Contains(va.VideoId))
+                .Select(va => new { va.VideoId, va.ActorId })
+                .ToListAsync(ct);
+            var existingVideoActorSet = existingVideoActorPairs
+                .Select(va => (va.VideoId, va.ActorId))
+                .ToHashSet();
 
-            // Upsert VideoActor join entries; insert actor stubs for unknown actors
-            var existingVideoActorIds = await db.PrdbVideoActors
-                .Where(va => va.VideoId == videoId)
-                .Select(va => va.ActorId)
-                .ToHashSetAsync(ct);
-
-            foreach (var actor in detail.Actors)
+            foreach (var detail in details)
             {
-                if (!existingVideoActorIds.Contains(actor.Id))
+                // Upsert images
+                foreach (var img in detail.Images.Where(i => existingImageIds.Add(i.Id)))
                 {
-                    db.PrdbVideoActors.Add(new PrdbVideoActor
+                    db.PrdbVideoImages.Add(new PrdbVideoImage
                     {
-                        VideoId = videoId,
-                        ActorId = actor.Id,
+                        Id      = img.Id,
+                        CdnPath = img.CdnPath,
+                        VideoId = detail.Id,
                     });
                 }
 
-                if (!existingActorIds.Contains(actor.Id))
+                // Upsert VideoActor join entries; insert actor stubs for unknown actors
+                foreach (var actor in detail.Actors)
                 {
-                    db.PrdbActors.Add(new PrdbActor
+                    if (existingVideoActorSet.Add((detail.Id, actor.Id)))
                     {
-                        Id               = actor.Id,
-                        Name             = actor.Name,
-                        Gender           = actor.Gender,
-                        Birthday         = actor.Birthday,
-                        Nationality      = actor.Nationality,
-                        PrdbCreatedAtUtc = now,
-                        PrdbUpdatedAtUtc = now,
-                        SyncedAtUtc      = now,
-                    });
-                    existingActorIds.Add(actor.Id);
+                        db.PrdbVideoActors.Add(new PrdbVideoActor
+                        {
+                            VideoId = detail.Id,
+                            ActorId = actor.Id,
+                        });
+                    }
+
+                    if (existingActorIds.Add(actor.Id))
+                    {
+                        db.PrdbActors.Add(new PrdbActor
+                        {
+                            Id               = actor.Id,
+                            Name             = actor.Name,
+                            Gender           = actor.Gender,
+                            Birthday         = actor.Birthday,
+                            Nationality      = actor.Nationality,
+                            PrdbCreatedAtUtc = now,
+                            PrdbUpdatedAtUtc = now,
+                            SyncedAtUtc      = now,
+                        });
+                    }
                 }
+
+                // Mark video detail as synced
+                var video = await db.PrdbVideos.FindAsync([detail.Id], ct);
+                if (video is not null)
+                    video.DetailSyncedAtUtc = now;
             }
 
-            // Mark video detail as synced
-            var video = await db.PrdbVideos.FindAsync([videoId], ct);
-            if (video is not null)
-                video.DetailSyncedAtUtc = now;
+            // Mark videos silently omitted by the API as synced so they aren't retried
+            foreach (var missingId in ids.Except(details.Select(d => d.Id)))
+            {
+                var video = await db.PrdbVideos.FindAsync([missingId], ct);
+                if (video is not null)
+                    video.DetailSyncedAtUtc = now;
+            }
 
             await db.SaveChangesAsync(ct);
-            synced++;
+            synced += details.Count;
         }
 
         logger.LogInformation("PrdbVideoDetailSyncService: synced details for {Count} videos", synced);
