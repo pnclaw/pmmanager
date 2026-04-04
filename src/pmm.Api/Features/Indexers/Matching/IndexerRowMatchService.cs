@@ -64,7 +64,8 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
 
         // Pre-filter: load prenames whose normalized title appears in the candidate set.
         // EF Core/SQLite translates string.Replace to SQL replace(), enabling server-side normalization.
-        var prenames = await db.PrdbVideoPreNames
+        var prenames = await db.PrdbPreDbEntries
+            .Where(p => p.PrdbVideoId != null)
             .Where(p => normalizedTitles.Contains(
                 p.Title.Replace(".", " ").Replace("-", " ").Replace("_", " ").ToLower()))
             .ToListAsync(ct);
@@ -94,12 +95,12 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
             var prename = candidates[0];
             db.IndexerRowMatches.Add(new IndexerRowMatch
             {
-                Id               = Guid.NewGuid(),
-                IndexerRowId     = row.Id,
-                PrdbVideoId      = prename.VideoId,
-                MatchedPreNameId = prename.Id,
-                MatchedTitle     = prename.Title,
-                MatchedAtUtc     = now,
+                Id                  = Guid.NewGuid(),
+                IndexerRowId        = row.Id,
+                PrdbVideoId         = prename.PrdbVideoId!.Value,
+                MatchedPreDbEntryId = prename.Id,
+                MatchedTitle        = prename.Title,
+                MatchedAtUtc        = now,
             });
             matched++;
         }
@@ -167,7 +168,8 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
 
         // Pre-filter: load prenames whose normalized title matches any candidate row's normalized title.
         var normalizedTitles = rows.Select(r => Normalize(r.Title)).Distinct().ToHashSet();
-        var prenames = await db.PrdbVideoPreNames
+        var prenames = await db.PrdbPreDbEntries
+            .Where(p => p.PrdbVideoId != null)
             .Where(p => normalizedTitles.Contains(
                 p.Title.Replace(".", " ").Replace("-", " ").Replace("_", " ").ToLower()))
             .Include(p => p.Video)
@@ -239,7 +241,7 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
             var prename = candidates[0];
             logger.LogInformation(
                 "IndexerRowMatchService [debug]: '{Title}' → prename '{PreName}' → video '{VideoTitle}'",
-                row.Title, prename.Title, prename.Video.Title);
+                row.Title, prename.Title, prename.Video!.Title);
             entries.Add(new IndexerRowDebugEntry
             {
                 RowId             = row.Id,
@@ -247,7 +249,7 @@ public class IndexerRowMatchService(AppDbContext db, ILogger<IndexerRowMatchServ
                 IndexerTitle      = row.IndexerTitle,
                 MatchStatus       = "Matched",
                 CandidatePreNames = [prename.Title],
-                MatchedVideoTitle = prename.Video.Title,
+                MatchedVideoTitle = prename.Video!.Title,
             });
         }
 

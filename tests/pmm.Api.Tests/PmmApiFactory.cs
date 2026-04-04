@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Pmm.Database;
 
 namespace pmm.Api.Tests;
@@ -23,6 +24,13 @@ public sealed class PmmApiFactory : WebApplicationFactory<Program>
             var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
             if (descriptor is not null)
                 services.Remove(descriptor);
+
+            var hostedServices = services
+                .Where(d => d.ServiceType == typeof(IHostedService))
+                .ToList();
+
+            foreach (var hostedService in hostedServices)
+                services.Remove(hostedService);
 
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlite($"Data Source={_dbPath}"));

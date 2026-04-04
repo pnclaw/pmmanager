@@ -75,7 +75,7 @@ public class PrdbVideosController(AppDbContext db) : ControllerBase
         var video = await db.PrdbVideos
             .Include(v => v.Site)
             .Include(v => v.Images)
-            .Include(v => v.PreNames)
+            .Include(v => v.PreDbEntries)
             .Include(v => v.VideoActors)
                 .ThenInclude(va => va.Actor)
             .FirstOrDefaultAsync(v => v.Id == id);
@@ -104,7 +104,7 @@ public class PrdbVideosController(AppDbContext db) : ControllerBase
                 })
                 .OrderBy(a => a.Name)
                 .ToList(),
-            PreNames    = video.PreNames.Select(p => p.Title).ToList(),
+            PreNames    = video.PreDbEntries.Select(p => p.Title).ToList(),
             IsFulfilled = wanted?.IsFulfilled,
         });
     }

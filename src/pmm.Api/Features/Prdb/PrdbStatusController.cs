@@ -92,12 +92,12 @@ public class PrdbStatusController(
         };
 
         // ── Prename sync ──────────────────────────────────────────────────────
-        var totalPreNames = await db.PrdbVideoPreNames.CountAsync(ct);
         var totalPreDbEntries = await db.PrdbPreDbEntries.CountAsync(ct);
+        var totalLinkedPreDbEntries = await db.PrdbPreDbEntries.CountAsync(p => p.PrdbVideoId != null, ct);
 
         var preNameSync = new PreNameSyncStatus
         {
-            TotalPreNames       = totalPreNames,
+            TotalPreNames       = totalLinkedPreDbEntries,
             TotalPreDbEntries   = totalPreDbEntries,
             IsBackfilling       = settings.PrenamesBackfillPage is not null || settings.PrenamesSyncCursorUtc is null,
             BackfillPage        = settings.PrenamesBackfillPage,
@@ -113,7 +113,7 @@ public class PrdbStatusController(
             FavoriteSites  = await db.PrdbSites.CountAsync(s => s.IsFavorite, ct),
             Videos         = videoCount,
             PreDbEntries   = totalPreDbEntries,
-            PreNames       = totalPreNames,
+            PreNames       = totalLinkedPreDbEntries,
             Actors         = actorCount,
             FavoriteActors = favoriteActors,
             ActorImages    = await db.PrdbActorImages.CountAsync(ct),

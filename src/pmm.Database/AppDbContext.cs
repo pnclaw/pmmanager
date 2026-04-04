@@ -16,7 +16,6 @@ public class AppDbContext : DbContext
     public DbSet<PrdbVideo> PrdbVideos => Set<PrdbVideo>();
     public DbSet<PrdbPreDbEntry> PrdbPreDbEntries => Set<PrdbPreDbEntry>();
     public DbSet<PrdbVideoImage> PrdbVideoImages => Set<PrdbVideoImage>();
-    public DbSet<PrdbVideoPreName> PrdbVideoPreNames => Set<PrdbVideoPreName>();
     public DbSet<PrdbActor> PrdbActors => Set<PrdbActor>();
     public DbSet<PrdbActorImage> PrdbActorImages => Set<PrdbActorImage>();
     public DbSet<PrdbActorAlias> PrdbActorAliases => Set<PrdbActorAlias>();
@@ -52,6 +51,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<IndexerRowMatch>(e =>
         {
             e.HasIndex(m => m.IndexerRowId).IsUnique();
+
+            e.HasOne(m => m.MatchedPreDbEntry)
+             .WithMany()
+             .HasForeignKey(m => m.MatchedPreDbEntryId);
         });
 
         modelBuilder.Entity<FolderMapping>(e =>
