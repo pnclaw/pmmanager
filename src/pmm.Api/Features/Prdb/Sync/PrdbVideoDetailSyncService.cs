@@ -11,9 +11,12 @@ public class PrdbVideoDetailSyncService(
     ILogger<PrdbVideoDetailSyncService> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private const int DetailResyncDays   = 30; // re-sync video details after this many days
-    private const int VideoBatchSize     = 50; // max IDs per /videos/batch request
-    private const int VideoBatchesPerRun = 20; // 1 000 videos per run, 20 API requests
+    private const int DetailResyncDays        = 30;  // re-sync video details after this many days
+    private const int RecentResyncHours       = 3;   // re-sync recently-added videos more frequently
+    private const int RecentVideoAgeDays      = 3;   // videos younger than this use the fast resync interval
+    private const int MaxVideoAgeDays         = 360; // videos older than this are not re-synced
+    private const int VideoBatchSize          = 50;  // max IDs per /videos/batch request
+    private const int VideoBatchesPerRun      = 20;  // 1 000 videos per run, 20 API requests
     private const int ActorBatchSize     = 50;
     private const int ActorBatchesPerRun = 20; // 1 000 actors per run, 20 API requests
 
@@ -39,9 +42,19 @@ public class PrdbVideoDetailSyncService(
 
     private async Task SyncVideoDetailsAsync(HttpClient http, CancellationToken ct)
     {
-        var resyncBefore = DateTime.UtcNow.AddDays(-DetailResyncDays);
+        var runAt              = DateTime.UtcNow;
+        var ageCutoff          = runAt.AddDays(-MaxVideoAgeDays);
+        var recentCutoff       = runAt.AddDays(-RecentVideoAgeDays);
+        var recentResyncBefore = runAt.AddHours(-RecentResyncHours);
+        var resyncBefore       = runAt.AddDays(-DetailResyncDays);
+
         var totalPending = await db.PrdbVideos
-            .CountAsync(v => v.DetailSyncedAtUtc == null || v.DetailSyncedAtUtc < resyncBefore, ct);
+            .CountAsync(v =>
+                v.PrdbCreatedAtUtc >= ageCutoff &&
+                (
+                    (v.PrdbCreatedAtUtc >= recentCutoff && (v.DetailSyncedAtUtc == null || v.DetailSyncedAtUtc < recentResyncBefore)) ||
+                    (v.PrdbCreatedAtUtc <  recentCutoff && (v.DetailSyncedAtUtc == null || v.DetailSyncedAtUtc < resyncBefore))
+                ), ct);
 
         if (totalPending == 0)
         {
@@ -50,7 +63,12 @@ public class PrdbVideoDetailSyncService(
         }
 
         var videoIds = await db.PrdbVideos
-            .Where(v => v.DetailSyncedAtUtc == null || v.DetailSyncedAtUtc < resyncBefore)
+            .Where(v =>
+                v.PrdbCreatedAtUtc >= ageCutoff &&
+                (
+                    (v.PrdbCreatedAtUtc >= recentCutoff && (v.DetailSyncedAtUtc == null || v.DetailSyncedAtUtc < recentResyncBefore)) ||
+                    (v.PrdbCreatedAtUtc <  recentCutoff && (v.DetailSyncedAtUtc == null || v.DetailSyncedAtUtc < resyncBefore))
+                ))
             .OrderBy(v => v.DetailSyncedAtUtc)
             .Select(v => v.Id)
             .Take(VideoBatchSize * VideoBatchesPerRun)
