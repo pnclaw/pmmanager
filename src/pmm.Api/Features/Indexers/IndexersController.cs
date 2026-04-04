@@ -52,6 +52,7 @@ public class IndexersController(AppDbContext db) : ControllerBase
             IsEnabled = request.IsEnabled,
             ApiKey = request.ApiKey,
             ApiPath = request.ApiPath,
+            BackfillDays = request.BackfillDays,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
@@ -80,6 +81,9 @@ public class IndexersController(AppDbContext db) : ControllerBase
         indexer.IsEnabled = request.IsEnabled;
         indexer.ApiKey = request.ApiKey;
         indexer.ApiPath = request.ApiPath;
+        if (request.BackfillDays > indexer.BackfillDays)
+            ResetBackfillState(indexer);
+        indexer.BackfillDays = request.BackfillDays;
         indexer.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync();
@@ -202,6 +206,14 @@ public class IndexersController(AppDbContext db) : ControllerBase
         if (query.MaxSize.HasValue)
             q = q.Where(r => r.NzbSize <= query.MaxSize.Value);
 
+        if (query.HasVideoLink.HasValue)
+        {
+            var linked = db.IndexerRowMatches.Select(m => m.IndexerRowId);
+            q = query.HasVideoLink.Value
+                ? q.Where(r => linked.Contains(r.Id))
+                : q.Where(r => !linked.Contains(r.Id));
+        }
+
         var total = await q.CountAsync();
         var items = await q
             .OrderByDescending(r => r.NzbPublishedAt)
@@ -219,6 +231,10 @@ public class IndexersController(AppDbContext db) : ControllerBase
                 FileSize = r.FileSize,
                 Category = r.Category,
                 CreatedAt = r.CreatedAt,
+                PrdbVideoId = db.IndexerRowMatches
+                    .Where(m => m.IndexerRowId == r.Id)
+                    .Select(m => (Guid?)m.PrdbVideoId)
+                    .FirstOrDefault(),
             })
             .ToListAsync();
 
@@ -312,7 +328,22 @@ public class IndexersController(AppDbContext db) : ControllerBase
         IsEnabled = indexer.IsEnabled,
         ApiKey = indexer.ApiKey,
         ApiPath = indexer.ApiPath,
+        BackfillDays = indexer.BackfillDays,
+        BackfillStartedAtUtc = indexer.BackfillStartedAtUtc,
+        BackfillCutoffUtc = indexer.BackfillCutoffUtc,
+        BackfillCompletedAtUtc = indexer.BackfillCompletedAtUtc,
+        BackfillLastRunAtUtc = indexer.BackfillLastRunAtUtc,
+        BackfillCurrentOffset = indexer.BackfillCurrentOffset,
         CreatedAt = indexer.CreatedAt,
         UpdatedAt = indexer.UpdatedAt,
     };
+
+    private static void ResetBackfillState(Indexer indexer)
+    {
+        indexer.BackfillStartedAtUtc = null;
+        indexer.BackfillCutoffUtc = null;
+        indexer.BackfillCompletedAtUtc = null;
+        indexer.BackfillLastRunAtUtc = null;
+        indexer.BackfillCurrentOffset = null;
+    }
 }

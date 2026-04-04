@@ -23,4 +23,7 @@ public class CreateIndexerRequest
 
     [MaxLength(500)]
     public string ApiPath { get; set; } = string.Empty;
+
+    [Range(1, 3650)]
+    public int BackfillDays { get; set; } = 30;
 }

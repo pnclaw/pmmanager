@@ -29,10 +29,18 @@ builder.Services.AddScoped<IndexerScrapeService>();
 builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbSyncService>();
 builder.Services.AddScoped<pmm.Api.Features.Prdb.PrdbFavoritesService>();
 builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbActorSyncService>();
+builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbVideoDetailSyncService>();
+builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbLatestPreDbSyncService>();
+builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbWantedVideoSyncService>();
+builder.Services.AddScoped<pmm.Api.Features.Indexers.Matching.IndexerRowMatchService>();
+builder.Services.AddScoped<pmm.Api.Features.Indexers.Scraping.IndexerBackfillService>();
 builder.Services.AddHostedService<IndexerScraperBackgroundService>();
 builder.Services.AddScoped<DownloadClientTester>();
 builder.Services.AddScoped<DownloadClientSender>();
+builder.Services.AddScoped<pmm.Api.Features.DownloadClients.SabnzbdPoller>();
+builder.Services.AddScoped<pmm.Api.Features.DownloadClients.NzbgetPoller>();
 builder.Services.AddHostedService<pmm.Api.Background.SyncWorker>();
+builder.Services.AddHostedService<pmm.Api.Background.DownloadPollingWorker>();
 
 // EF Core / SQLite — DB_PATH env var takes precedence over appsettings
 var dbPath = Path.GetFullPath(

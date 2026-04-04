@@ -10,4 +10,5 @@ public class PrdbActorResponse
     public bool IsFavorite { get; set; }
     public DateTime? FavoritedAtUtc { get; set; }
     public List<string> Aliases { get; set; } = [];
+    public string? ProfileImageUrl { get; set; }
 }

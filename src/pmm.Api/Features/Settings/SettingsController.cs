@@ -32,9 +32,50 @@ public class SettingsController(AppDbContext db) : ControllerBase
         settings.PrdbApiKey = request.PrdbApiKey;
         settings.PrdbApiUrl = request.PrdbApiUrl;
         settings.PreferredVideoQuality = request.PreferredVideoQuality;
+        settings.SafeForWork = request.SafeForWork;
 
         await db.SaveChangesAsync();
         return Ok(ToResponse(settings));
+    }
+
+    [HttpPost("reset-prdb-data")]
+    [EndpointSummary("Reset all cached prdb.net data")]
+    [EndpointDescription("Deletes all data cached from prdb.net and resets sync cursors. API credentials and unrelated settings are not affected.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ResetPrdbData()
+    {
+        await db.IndexerRowMatches.ExecuteDeleteAsync();
+        await db.DownloadLogs.ExecuteDeleteAsync();
+        await db.PrdbWantedVideos.ExecuteDeleteAsync();
+        await db.PrdbVideoActors.ExecuteDeleteAsync();
+        await db.PrdbVideoImages.ExecuteDeleteAsync();
+        await db.PrdbPreDbEntries.ExecuteDeleteAsync();
+        await db.PrdbVideos.ExecuteDeleteAsync();
+        await db.PrdbSites.ExecuteDeleteAsync();
+        await db.PrdbNetworks.ExecuteDeleteAsync();
+        await db.PrdbActorImages.ExecuteDeleteAsync();
+        await db.PrdbActorAliases.ExecuteDeleteAsync();
+        await db.PrdbActors.ExecuteDeleteAsync();
+
+        var settings = await db.AppSettings.FirstAsync();
+        settings.PrdbActorSyncPage          = 1;
+        settings.PrdbActorLastSyncedAt      = null;
+        settings.PrdbActorTotalCount        = null;
+        settings.SyncWorkerLastRunAt        = null;
+        settings.PrdbWantedVideoLastSyncedAt = null;
+        settings.IndexerRowMatchLastRunAt   = null;
+        settings.PrenamesBackfillPage       = 1;
+        settings.PrenamesBackfillTotalCount = null;
+        settings.PrenamesSyncCursorUtc      = null;
+        await db.Indexers.ExecuteUpdateAsync(setters => setters
+            .SetProperty(i => i.BackfillStartedAtUtc, (DateTime?)null)
+            .SetProperty(i => i.BackfillCutoffUtc, (DateTime?)null)
+            .SetProperty(i => i.BackfillCompletedAtUtc, (DateTime?)null)
+            .SetProperty(i => i.BackfillLastRunAtUtc, (DateTime?)null)
+            .SetProperty(i => i.BackfillCurrentOffset, (int?)null));
+        await db.SaveChangesAsync();
+
+        return NoContent();
     }
 
     private static SettingsResponse ToResponse(AppSettings settings) => new()
@@ -42,5 +83,6 @@ public class SettingsController(AppDbContext db) : ControllerBase
         PrdbApiKey = settings.PrdbApiKey,
         PrdbApiUrl = settings.PrdbApiUrl,
         PreferredVideoQuality = (int)settings.PreferredVideoQuality,
+        SafeForWork = settings.SafeForWork,
     };
 }

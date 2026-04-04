@@ -23,6 +23,9 @@ namespace Pmm.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("IndexerRowMatchLastRunAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("PrdbActorLastSyncedAt")
                         .HasColumnType("TEXT");
 
@@ -42,8 +45,26 @@ namespace Pmm.Database.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("PrdbWantedVideoLastSyncedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("PreferredVideoQuality")
                         .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PrenamesBackfillPage")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PrenamesBackfillTotalCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("PrenamesSyncCursorUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SafeForWork")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("SyncWorkerLastRunAt")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -56,7 +77,8 @@ namespace Pmm.Database.Migrations
                             PrdbActorSyncPage = 1,
                             PrdbApiKey = "",
                             PrdbApiUrl = "https://api.prdb.net",
-                            PreferredVideoQuality = 2
+                            PreferredVideoQuality = 2,
+                            SafeForWork = false
                         });
                 });
 
@@ -119,6 +141,106 @@ namespace Pmm.Database.Migrations
                     b.ToTable("DownloadClients");
                 });
 
+            modelBuilder.Entity("Pmm.Database.DownloadLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ClientItemId")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DownloadClientId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("DownloadedBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileNames")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("IndexerRowId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastPolledAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NzbName")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NzbUrl")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("StoragePath")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("TotalSizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DownloadClientId");
+
+                    b.HasIndex("IndexerRowId");
+
+                    b.ToTable("DownloadLogs");
+                });
+
+            modelBuilder.Entity("Pmm.Database.FolderMapping", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MappedToFolder")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OriginalFolder")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MappedToFolder")
+                        .IsUnique();
+
+                    b.HasIndex("OriginalFolder")
+                        .IsUnique();
+
+                    b.ToTable("FolderMappings");
+                });
+
             modelBuilder.Entity("Pmm.Database.Indexer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -133,6 +255,24 @@ namespace Pmm.Database.Migrations
                     b.Property<string>("ApiPath")
                         .IsRequired()
                         .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("BackfillCompletedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("BackfillCurrentOffset")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("BackfillCutoffUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("BackfillDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("BackfillLastRunAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("BackfillStartedAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
@@ -242,28 +382,39 @@ namespace Pmm.Database.Migrations
                     b.ToTable("IndexerRows");
                 });
 
-            modelBuilder.Entity("Pmm.Database.Item", b =>
+            modelBuilder.Entity("Pmm.Database.IndexerRowMatch", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<Guid>("IndexerRowId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Description")
+                    b.Property<DateTime>("MatchedAtUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Name")
+                    b.Property<Guid>("MatchedPreDbEntryId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MatchedTitle")
                         .IsRequired()
+                        .HasMaxLength(1000)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<Guid>("PrdbVideoId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Items");
+                    b.HasIndex("IndexerRowId")
+                        .IsUnique();
+
+                    b.HasIndex("MatchedPreDbEntryId");
+
+                    b.HasIndex("PrdbVideoId");
+
+                    b.ToTable("IndexerRowMatches");
                 });
 
             modelBuilder.Entity("Pmm.Database.PrdbActor", b =>
@@ -299,6 +450,9 @@ namespace Pmm.Database.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateOnly?>("Deathday")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DetailSyncedAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Ethnicity")
@@ -429,6 +583,53 @@ namespace Pmm.Database.Migrations
                     b.ToTable("PrdbNetworks");
                 });
 
+            modelBuilder.Entity("Pmm.Database.PrdbPreDbEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("PrdbSiteId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("PrdbVideoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("ReleaseDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SiteTitle")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SyncedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VideoTitle")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("PrdbSiteId");
+
+                    b.HasIndex("PrdbVideoId");
+
+                    b.HasIndex("Title");
+
+                    b.ToTable("PrdbPreDbEntries");
+                });
+
             modelBuilder.Entity("Pmm.Database.PrdbSite", b =>
                 {
                     b.Property<Guid>("Id")
@@ -468,6 +669,9 @@ namespace Pmm.Database.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DetailSyncedAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("PrdbCreatedAtUtc")
@@ -532,25 +736,58 @@ namespace Pmm.Database.Migrations
                     b.ToTable("PrdbVideoImages");
                 });
 
-            modelBuilder.Entity("Pmm.Database.PrdbVideoPreName", b =>
+            modelBuilder.Entity("Pmm.Database.PrdbWantedVideo", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
-
                     b.Property<Guid>("VideoId")
                         .HasColumnType("TEXT");
 
-                    b.HasKey("Id");
+                    b.Property<DateTime?>("FulfilledAtUtc")
+                        .HasColumnType("TEXT");
 
-                    b.HasIndex("VideoId");
+                    b.Property<int?>("FulfilledInQuality")
+                        .HasColumnType("INTEGER");
 
-                    b.ToTable("PrdbVideoPreNames");
+                    b.Property<int?>("FulfillmentByApp")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FulfillmentExternalId")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsFulfilled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("PrdbCreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("PrdbUpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SyncedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("VideoId");
+
+                    b.ToTable("PrdbWantedVideos");
+                });
+
+            modelBuilder.Entity("Pmm.Database.DownloadLog", b =>
+                {
+                    b.HasOne("Pmm.Database.DownloadClient", "DownloadClient")
+                        .WithMany()
+                        .HasForeignKey("DownloadClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Pmm.Database.IndexerRow", "IndexerRow")
+                        .WithMany()
+                        .HasForeignKey("IndexerRowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DownloadClient");
+
+                    b.Navigation("IndexerRow");
                 });
 
             modelBuilder.Entity("Pmm.Database.IndexerApiRequest", b =>
@@ -575,6 +812,33 @@ namespace Pmm.Database.Migrations
                     b.Navigation("Indexer");
                 });
 
+            modelBuilder.Entity("Pmm.Database.IndexerRowMatch", b =>
+                {
+                    b.HasOne("Pmm.Database.IndexerRow", "IndexerRow")
+                        .WithMany()
+                        .HasForeignKey("IndexerRowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Pmm.Database.PrdbPreDbEntry", "MatchedPreDbEntry")
+                        .WithMany()
+                        .HasForeignKey("MatchedPreDbEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Pmm.Database.PrdbVideo", "Video")
+                        .WithMany()
+                        .HasForeignKey("PrdbVideoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("IndexerRow");
+
+                    b.Navigation("MatchedPreDbEntry");
+
+                    b.Navigation("Video");
+                });
+
             modelBuilder.Entity("Pmm.Database.PrdbActorAlias", b =>
                 {
                     b.HasOne("Pmm.Database.PrdbActor", "Actor")
@@ -595,6 +859,23 @@ namespace Pmm.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Actor");
+                });
+
+            modelBuilder.Entity("Pmm.Database.PrdbPreDbEntry", b =>
+                {
+                    b.HasOne("Pmm.Database.PrdbSite", "Site")
+                        .WithMany("PreDbEntries")
+                        .HasForeignKey("PrdbSiteId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Pmm.Database.PrdbVideo", "Video")
+                        .WithMany("PreDbEntries")
+                        .HasForeignKey("PrdbVideoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Site");
+
+                    b.Navigation("Video");
                 });
 
             modelBuilder.Entity("Pmm.Database.PrdbSite", b =>
@@ -647,10 +928,10 @@ namespace Pmm.Database.Migrations
                     b.Navigation("Video");
                 });
 
-            modelBuilder.Entity("Pmm.Database.PrdbVideoPreName", b =>
+            modelBuilder.Entity("Pmm.Database.PrdbWantedVideo", b =>
                 {
                     b.HasOne("Pmm.Database.PrdbVideo", "Video")
-                        .WithMany("PreNames")
+                        .WithMany()
                         .HasForeignKey("VideoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -674,6 +955,8 @@ namespace Pmm.Database.Migrations
 
             modelBuilder.Entity("Pmm.Database.PrdbSite", b =>
                 {
+                    b.Navigation("PreDbEntries");
+
                     b.Navigation("Videos");
                 });
 
@@ -681,7 +964,7 @@ namespace Pmm.Database.Migrations
                 {
                     b.Navigation("Images");
 
-                    b.Navigation("PreNames");
+                    b.Navigation("PreDbEntries");
 
                     b.Navigation("VideoActors");
                 });

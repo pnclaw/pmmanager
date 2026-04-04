@@ -2,8 +2,6 @@
   <v-container>
     <v-row>
       <v-col cols="12" md="6">
-        <h1 class="text-h4 mb-6">System Health</h1>
-
         <v-card :loading="loading">
           <v-card-title>API Status</v-card-title>
           <v-card-text>
@@ -27,15 +25,6 @@
             </v-alert>
           </v-card-text>
 
-          <v-card-actions>
-            <v-btn
-              :loading="loading"
-              prepend-icon="mdi-refresh"
-              @click="fetchHealth"
-            >
-              Refresh
-            </v-btn>
-          </v-card-actions>
         </v-card>
       </v-col>
     </v-row>
@@ -43,8 +32,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { api, type HealthResponse } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
 
 const health = ref<HealthResponse | null>(null)
 const loading = ref(false)
@@ -66,5 +56,12 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleString()
 }
 
-onMounted(fetchHealth)
+const { setAction, clearAction } = usePageAction()
+
+onMounted(() => {
+  fetchHealth()
+  setAction('mdi-refresh', 'Refresh', fetchHealth)
+})
+
+onUnmounted(clearAction)
 </script>

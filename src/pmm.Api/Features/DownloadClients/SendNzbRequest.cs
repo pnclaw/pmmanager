@@ -13,4 +13,6 @@ public class SendNzbRequest
 
     [Required]
     public Guid IndexerId { get; set; }
+
+    public Guid? IndexerRowId { get; set; }
 }

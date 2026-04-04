@@ -10,4 +10,5 @@ public class IndexerRowsQuery
     public DateTime? To { get; set; }
     public long? MinSize { get; set; }
     public long? MaxSize { get; set; }
+    public bool? HasVideoLink { get; set; }
 }

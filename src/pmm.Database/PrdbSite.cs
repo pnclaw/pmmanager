@@ -20,5 +20,6 @@ public class PrdbSite
 
     public DateTime SyncedAtUtc { get; set; }
 
+    public ICollection<PrdbPreDbEntry> PreDbEntries { get; set; } = [];
     public ICollection<PrdbVideo> Videos { get; set; } = [];
 }

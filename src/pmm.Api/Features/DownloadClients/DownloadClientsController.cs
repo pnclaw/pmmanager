@@ -118,7 +118,7 @@ public class DownloadClientsController(AppDbContext db) : ControllerBase
         if (client is null) return NotFound();
 
         var sw = Stopwatch.StartNew();
-        var (success, message) = await sender.SendAsync(client, request.NzbUrl, request.Name);
+        var (success, message, clientItemId) = await sender.SendAsync(client, request.NzbUrl, request.Name);
         sw.Stop();
 
         db.IndexerApiRequests.Add(new IndexerApiRequest
@@ -131,9 +131,29 @@ public class DownloadClientsController(AppDbContext db) : ControllerBase
             HttpStatusCode = null, // request to indexer is made by the download client
             ResponseTimeMs = (int)sw.ElapsedMilliseconds,
         });
+
+        Guid? downloadLogId = null;
+        if (success && request.IndexerRowId.HasValue)
+        {
+            var log = new DownloadLog
+            {
+                Id               = Guid.NewGuid(),
+                IndexerRowId     = request.IndexerRowId.Value,
+                DownloadClientId = id,
+                NzbName          = request.Name,
+                NzbUrl           = request.NzbUrl,
+                ClientItemId     = clientItemId,
+                Status           = DownloadStatus.Queued,
+                CreatedAt        = DateTime.UtcNow,
+                UpdatedAt        = DateTime.UtcNow,
+            };
+            db.DownloadLogs.Add(log);
+            downloadLogId = log.Id;
+        }
+
         await db.SaveChangesAsync();
 
-        return Ok(new { success, message });
+        return Ok(new { success, message, downloadLogId });
     }
 
     [HttpPost("test")]

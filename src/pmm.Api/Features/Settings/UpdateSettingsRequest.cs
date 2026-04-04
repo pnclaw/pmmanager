@@ -12,4 +12,7 @@ public class UpdateSettingsRequest
     public string PrdbApiUrl { get; set; } = string.Empty;
 
     public VideoQuality PreferredVideoQuality { get; set; }
+
+    public bool SafeForWork { get; set; }
+
 }

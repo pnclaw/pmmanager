@@ -11,9 +11,13 @@ public class PrdbActorsController(AppDbContext db, PrdbFavoritesService favorite
 {
     [HttpGet]
     [EndpointSummary("List prdb actors")]
-    [EndpointDescription("Returns all synced prdb actors with aliases. Optionally filter by search term.")]
-    [ProducesResponseType(typeof(IEnumerable<PrdbActorResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] bool? favoritesOnly)
+    [EndpointDescription("Returns a paged list of synced prdb actors with aliases. Optionally filter by search term or favorites.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? search,
+        [FromQuery] bool? favoritesOnly,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
         var q = db.PrdbActors.AsQueryable();
 
@@ -23,22 +27,27 @@ public class PrdbActorsController(AppDbContext db, PrdbFavoritesService favorite
         if (favoritesOnly == true)
             q = q.Where(a => a.IsFavorite);
 
-        var actors = await q
+        var total = await q.CountAsync();
+
+        var items = await q
             .OrderBy(a => a.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(a => new PrdbActorResponse
             {
-                Id             = a.Id,
-                Name           = a.Name,
-                Gender         = a.Gender,
-                Nationality    = a.Nationality,
-                Birthday       = a.Birthday,
-                IsFavorite     = a.IsFavorite,
-                FavoritedAtUtc = a.FavoritedAtUtc,
-                Aliases        = a.Aliases.Select(x => x.Name).ToList(),
+                Id              = a.Id,
+                Name            = a.Name,
+                Gender          = a.Gender,
+                Nationality     = a.Nationality,
+                Birthday        = a.Birthday,
+                IsFavorite      = a.IsFavorite,
+                FavoritedAtUtc  = a.FavoritedAtUtc,
+                Aliases         = a.Aliases.Select(x => x.Name).ToList(),
+                ProfileImageUrl = a.Images.Select(i => i.Url).FirstOrDefault(),
             })
             .ToListAsync();
 
-        return Ok(actors);
+        return Ok(new { items, total });
     }
 
     [HttpPost("{id:guid}/favorite")]
@@ -62,5 +71,4 @@ public class PrdbActorsController(AppDbContext db, PrdbFavoritesService favorite
         await favoritesService.SetActorFavoriteAsync(id, false, ct);
         return NoContent();
     }
-
 }

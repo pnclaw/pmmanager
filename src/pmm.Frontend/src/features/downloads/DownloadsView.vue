@@ -1,0 +1,286 @@
+<template>
+  <v-container style="max-width: 900px">
+    <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
+      {{ error }}
+    </v-alert>
+
+    <v-expand-transition>
+      <v-row v-if="!mobile || filterPanelOpen" class="mb-2" align="center">
+        <v-col cols="12" sm="5" md="4">
+          <v-text-field
+            v-model="search"
+            prepend-inner-icon="mdi-magnify"
+            label="Search"
+            clearable
+            hide-details
+          />
+        </v-col>
+        <v-col cols="12" sm="4" md="3">
+          <v-select
+            v-model="statusFilter"
+            :items="statusOptions"
+            label="Status"
+            hide-details
+          />
+        </v-col>
+        <v-col cols="auto">
+          <v-switch
+            v-model="activeOnly"
+            label="Active only"
+            color="primary"
+            hide-details
+          />
+        </v-col>
+      </v-row>
+    </v-expand-transition>
+
+    <div v-if="loading" class="text-center py-8">
+      <v-progress-circular indeterminate color="primary" />
+    </div>
+
+    <div v-else-if="filteredLogs.length === 0" class="text-center py-8 text-medium-emphasis">
+      No downloads found.
+    </div>
+
+    <v-list v-else lines="two" class="pa-0">
+      <template v-for="(item, index) in filteredLogs" :key="item.id">
+        <v-list-item
+          :ripple="true"
+          class="py-3"
+          @click="openDetail($event, { item })"
+        >
+          <template #prepend>
+            <v-icon :color="statusColor(item.status)" size="small" class="mr-2">
+              mdi-circle
+            </v-icon>
+          </template>
+
+          <v-list-item-title class="text-truncate font-weight-medium">
+            {{ item.nzbName }}
+          </v-list-item-title>
+
+          <v-list-item-subtitle class="mt-1">
+            {{ item.downloadClientTitle }} · {{ formatDate(item.createdAt) }}
+          </v-list-item-subtitle>
+
+          <template
+            v-if="item.status === DownloadStatus.Downloading || item.status === DownloadStatus.PostProcessing"
+          >
+            <v-progress-linear
+              :model-value="progressPct(item)"
+              color="primary"
+              height="4"
+              rounded
+              class="mt-2"
+            />
+            <div class="text-caption text-medium-emphasis mt-1">
+              {{ formatBytes(item.downloadedBytes) }} / {{ formatBytes(item.totalSizeBytes) }}
+            </div>
+          </template>
+
+          <template #append>
+            <div class="d-flex flex-column align-end ga-1">
+              <v-chip :color="statusColor(item.status)" size="x-small" variant="tonal">
+                {{ statusLabel(item.status) }}
+              </v-chip>
+              <span class="text-caption text-medium-emphasis">
+                {{ item.totalSizeBytes ? formatBytes(item.totalSizeBytes) : '—' }}
+              </span>
+            </div>
+          </template>
+        </v-list-item>
+
+        <v-divider v-if="index < filteredLogs.length - 1" />
+      </template>
+    </v-list>
+
+    <!-- Detail dialog -->
+    <v-dialog v-model="detailOpen" max-width="560">
+      <v-card v-if="detailItem">
+        <v-card-title class="pt-4 d-flex align-center justify-space-between">
+          <span class="text-truncate mr-2">{{ detailItem.nzbName }}</span>
+          <v-chip :color="statusColor(detailItem.status)" size="small" variant="tonal" class="flex-shrink-0">
+            {{ statusLabel(detailItem.status) }}
+          </v-chip>
+        </v-card-title>
+        <v-card-subtitle>{{ detailItem.downloadClientTitle }}</v-card-subtitle>
+
+        <v-card-text>
+          <v-list density="compact" lines="one">
+            <v-list-item v-if="detailItem.clientItemId" title="Client ID" :subtitle="detailItem.clientItemId" />
+
+            <template v-if="detailItem.status === DownloadStatus.Downloading || detailItem.status === DownloadStatus.PostProcessing">
+              <v-list-item title="Progress">
+                <template #subtitle>
+                  <v-progress-linear
+                    :model-value="progressPct(detailItem)"
+                    color="primary"
+                    height="6"
+                    rounded
+                    class="mt-1 mb-1"
+                  />
+                  <span class="text-caption">
+                    {{ formatBytes(detailItem.downloadedBytes) }} / {{ formatBytes(detailItem.totalSizeBytes) }}
+                  </span>
+                </template>
+              </v-list-item>
+            </template>
+            <v-list-item v-else-if="detailItem.totalSizeBytes" title="Size" :subtitle="formatBytes(detailItem.totalSizeBytes)" />
+
+            <v-list-item v-if="detailItem.storagePath" title="Storage Path" :lines="false">
+              <template #subtitle>
+                <span style="word-break: break-all; white-space: normal">{{ detailItem.storagePath }}</span>
+              </template>
+            </v-list-item>
+
+            <v-list-item v-if="detailItem.errorMessage" title="Error">
+              <template #subtitle>
+                <span class="text-error">{{ detailItem.errorMessage }}</span>
+              </template>
+            </v-list-item>
+
+            <v-list-item title="Started" :subtitle="formatDateTime(detailItem.createdAt)" />
+            <v-list-item v-if="detailItem.completedAt" title="Completed" :subtitle="formatDateTime(detailItem.completedAt)" />
+            <v-list-item v-if="detailItem.lastPolledAt" title="Last polled" :subtitle="formatDateTime(detailItem.lastPolledAt)" />
+          </v-list>
+
+          <template v-if="detailItem.fileNames?.length">
+            <div class="text-subtitle-2 mt-3 mb-1">Extracted Files</div>
+            <v-list density="compact" class="bg-surface-variant rounded">
+              <v-list-item
+                v-for="file in detailItem.fileNames"
+                :key="file"
+                :title="file"
+                prepend-icon="mdi-file-outline"
+                density="compact"
+              />
+            </v-list>
+          </template>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="detailOpen = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-container>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useDisplay } from 'vuetify'
+import { api, DownloadStatus, DownloadStatusLabels, type DownloadLog } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
+import { useFilterPanel } from '../../composables/useFilterPanel'
+
+const { mobile } = useDisplay()
+const { setActions, clearAction } = usePageAction()
+const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
+
+const logs    = ref<DownloadLog[]>([])
+const loading = ref(false)
+const error   = ref<string | null>(null)
+
+const search       = ref('')
+const statusFilter = ref<number | 'all'>('all')
+const activeOnly   = ref(false)
+
+const detailOpen = ref(false)
+const detailItem = ref<DownloadLog | null>(null)
+
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+const statusOptions = [
+  { title: 'All',              value: 'all' as const },
+  { title: 'Queued',           value: DownloadStatus.Queued },
+  { title: 'Downloading',      value: DownloadStatus.Downloading },
+  { title: 'Post-processing',  value: DownloadStatus.PostProcessing },
+  { title: 'Completed',        value: DownloadStatus.Completed },
+  { title: 'Failed',           value: DownloadStatus.Failed },
+]
+
+const terminalStatuses = new Set([DownloadStatus.Completed, DownloadStatus.Failed])
+
+const filteredLogs = computed(() => {
+  return logs.value.filter(log => {
+    if (activeOnly.value && terminalStatuses.has(log.status)) return false
+    if (statusFilter.value !== 'all' && log.status !== statusFilter.value) return false
+    if (search.value) {
+      const q = search.value.toLowerCase()
+      if (!log.nzbName.toLowerCase().includes(q) &&
+          !log.downloadClientTitle.toLowerCase().includes(q)) return false
+    }
+    return true
+  })
+})
+
+async function load() {
+  loading.value = true
+  error.value = null
+  try {
+    logs.value = await api.downloadLogs.list()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    loading.value = false
+  }
+}
+
+function openDetail(_: Event, { item }: { item: DownloadLog }) {
+  detailItem.value = item
+  detailOpen.value = true
+}
+
+function statusLabel(status: DownloadStatus): string {
+  return DownloadStatusLabels[status] ?? String(status)
+}
+
+function statusColor(status: DownloadStatus): string {
+  switch (status) {
+    case DownloadStatus.Queued:         return 'default'
+    case DownloadStatus.Downloading:    return 'info'
+    case DownloadStatus.PostProcessing: return 'warning'
+    case DownloadStatus.Completed:      return 'success'
+    case DownloadStatus.Failed:         return 'error'
+    default:                            return 'default'
+  }
+}
+
+function progressPct(log: DownloadLog): number {
+  if (!log.totalSizeBytes || !log.downloadedBytes) return 0
+  return Math.min(100, Math.round((log.downloadedBytes / log.totalSizeBytes) * 100))
+}
+
+function formatBytes(bytes: number | null): string {
+  if (bytes == null) return '—'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString()
+}
+
+const filtersActive = computed(() =>
+  !!search.value || statusFilter.value !== 'all' || activeOnly.value
+)
+
+onMounted(() => {
+  load()
+  pollTimer = setInterval(load, 20_000)
+  setActions({ icon: 'mdi-tune', title: 'Toggle filters', onClick: toggle, badgeActive: () => filtersActive.value, mobileOnly: true })
+})
+
+onUnmounted(() => {
+  if (pollTimer !== null) clearInterval(pollTimer)
+  clearAction()
+  closePanel()
+})
+</script>

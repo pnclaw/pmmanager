@@ -1,37 +1,43 @@
 <template>
   <v-container>
-    <v-row align="center" class="mb-4">
-      <v-col>
-        <h1 class="text-h4">prdb Status</h1>
-      </v-col>
-      <v-col class="text-right">
-        <v-btn
-          prepend-icon="mdi-refresh"
-          :loading="loading"
-          @click="load"
-        >
-          Refresh
-        </v-btn>
-      </v-col>
-    </v-row>
+    <v-dialog v-model="infoDialog" max-width="420">
+      <v-card>
+        <v-card-title class="text-body-1 font-weight-medium pt-4 pb-1">Background Sync Service</v-card-title>
+        <v-card-text class="text-body-2">
+          <p class="mb-2">A background service runs automatically every <strong>15 minutes</strong> and performs the following in order:</p>
+          <ol class="pl-4">
+            <li class="mb-1"><strong>Actor summary backfill</strong> — pages through all actors on prdb.net and inserts any not yet in the local DB (5 000 per run until complete, then checks for new actors each tick).</li>
+            <li class="mb-1"><strong>Video detail sync</strong> — fetches full detail for videos that haven't been processed yet, populating cast, images, and pre-names.</li>
+            <li class="mb-1"><strong>Actor detail backfill</strong> — batch-fetches full actor details (50 per API call, 1 000 per run) for all actors lacking detail.</li>
+            <li class="mb-1"><strong>Wanted list sync</strong> — fetches the full wanted video list from prdb.net, upserts entries, and removes any no longer on the list.</li>
+            <li><strong>Indexer row match</strong> — checks NZB titles from the last 7 days against known video prenames and links any exact (case-insensitive) matches.</li>
+          </ol>
+          <p class="mt-2 text-medium-emphasis">Individual steps can also be triggered manually using the Run Now buttons on each card.</p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="infoDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
     </v-alert>
 
     <v-row v-if="status">
-      <!-- Actor Backfill -->
+      <!-- Actor Summary Backfill -->
       <v-col cols="12" md="6">
         <v-card>
           <v-card-title class="d-flex align-center ga-2">
             <v-icon>mdi-account-sync</v-icon>
-            Actor Backfill
+            Actor Summary Backfill
             <v-spacer />
             <v-btn
               size="small"
               variant="tonal"
               prepend-icon="mdi-play"
-              :loading="resetting"
+              :loading="runningBackfill"
               @click="runBackfill"
             >
               Run Now
@@ -45,9 +51,7 @@
             <div v-else class="mb-3">
               <div class="d-flex justify-space-between mb-1">
                 <span class="text-body-2">Progress</span>
-                <span class="text-body-2">
-                  {{ backfillProgressLabel }}
-                </span>
+                <span class="text-body-2">{{ backfillProgressLabel }}</span>
               </div>
               <v-progress-linear
                 :model-value="backfillPercent"
@@ -81,12 +85,461 @@
         </v-card>
       </v-col>
 
+      <!-- Actor Detail Sync -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-account-details</v-icon>
+            Actor Detail Sync
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningVideoDetailSync"
+              @click="runVideoDetailSync"
+            >
+              Run Now
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <div v-if="status.actorDetailSync.actorsPending === 0" class="d-flex align-center ga-2 mb-3">
+              <v-icon color="success">mdi-check-circle</v-icon>
+              <span class="text-success">All actors have full detail</span>
+            </div>
+            <div v-else class="mb-3">
+              <div class="d-flex justify-space-between mb-1">
+                <span class="text-body-2">Progress</span>
+                <span class="text-body-2">{{ actorDetailProgressLabel }}</span>
+              </div>
+              <v-progress-linear
+                :model-value="actorDetailPercent"
+                color="primary"
+                height="8"
+                rounded
+              />
+            </div>
+
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-medium-emphasis">With detail</td>
+                  <td>{{ status.actorDetailSync.actorsWithDetail.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Pending</td>
+                  <td>{{ status.actorDetailSync.actorsPending.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Favourites</td>
+                  <td>{{ status.actorDetailSync.favoriteActors.toLocaleString() }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Video Detail Sync -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-video-check</v-icon>
+            Video Detail Sync
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningVideoDetailSync"
+              @click="runVideoDetailSync"
+            >
+              Run Now
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <div v-if="status.videoDetailSync.videosPending === 0" class="d-flex align-center ga-2 mb-3">
+              <v-icon color="success">mdi-check-circle</v-icon>
+              <span class="text-success">All videos have full detail</span>
+            </div>
+            <div v-else class="mb-3">
+              <div class="d-flex justify-space-between mb-1">
+                <span class="text-body-2">Progress</span>
+                <span class="text-body-2">{{ videoDetailProgressLabel }}</span>
+              </div>
+              <v-progress-linear
+                :model-value="videoDetailPercent"
+                color="primary"
+                height="8"
+                rounded
+              />
+            </div>
+
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-medium-emphasis">With detail</td>
+                  <td>{{ status.videoDetailSync.videosWithDetail.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Pending</td>
+                  <td>{{ status.videoDetailSync.videosPending.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">With cast linked</td>
+                  <td>{{ status.videoDetailSync.videosWithCast.toLocaleString() }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Prename Sync -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-alphabetical-variant</v-icon>
+            Prename Sync
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-restore"
+              :loading="resettingPreNameCursor"
+              @click="resetPreNameCursor"
+            >
+              Reset Cursor
+            </v-btn>
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningPreNameSync"
+              @click="runPreNameSync"
+            >
+              Run Now
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-medium-emphasis">Total in DB</td>
+                  <td>{{ status.preNameSync.totalPreNames.toLocaleString() }}</td>
+                </tr>
+                <template v-if="status.preNameSync.isBackfilling">
+                  <tr>
+                    <td class="text-medium-emphasis">Status</td>
+                    <td class="text-warning">
+                      Backfill in progress — page {{ status.preNameSync.backfillPage ?? 1 }}
+                      <template v-if="status.preNameSync.backfillTotalCount">
+                        of {{ Math.ceil(status.preNameSync.backfillTotalCount / 500) }}
+                      </template>
+                    </td>
+                  </tr>
+                </template>
+                <template v-else>
+                  <tr v-if="status.preNameSync.lastSyncedAt">
+                    <td class="text-medium-emphasis">Next sync fetches from</td>
+                    <td>{{ formatDate(status.preNameSync.lastSyncedAt) }}</td>
+                  </tr>
+                </template>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Wanted List Sync -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-bookmark-check</v-icon>
+            Wanted List Sync
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningWantedVideoSync"
+              @click="runWantedVideoSync"
+            >
+              Run Now
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-medium-emphasis">Total on list</td>
+                  <td>{{ status.wantedVideoSync.total.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Unfulfilled</td>
+                  <td>{{ status.wantedVideoSync.unfulfilled.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Fulfilled</td>
+                  <td>{{ status.wantedVideoSync.fulfilled.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Pending video detail</td>
+                  <td>{{ status.wantedVideoSync.pendingDetail.toLocaleString() }}</td>
+                </tr>
+                <tr v-if="status.wantedVideoSync.lastSyncedAt">
+                  <td class="text-medium-emphasis">Last synced</td>
+                  <td>{{ formatDate(status.wantedVideoSync.lastSyncedAt) }}</td>
+                </tr>
+                <tr v-else>
+                  <td class="text-medium-emphasis">Last synced</td>
+                  <td class="text-medium-emphasis">Never</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Indexer Backfill -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-history</v-icon>
+            Indexer Backfill
+          </v-card-title>
+          <v-card-text>
+            <div v-if="status.indexerBackfills.length === 0" class="text-medium-emphasis">
+              No indexers configured.
+            </div>
+            <v-table v-else density="compact">
+              <thead>
+                <tr>
+                  <th class="text-left">Indexer</th>
+                  <th class="text-left">Window</th>
+                  <th class="text-left">Status</th>
+                  <th class="text-left">Next page</th>
+                  <th class="text-left">Last run</th>
+                  <th class="text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="indexer in status.indexerBackfills" :key="indexer.indexerId">
+                  <td>
+                    <div>{{ indexer.indexerTitle }}</div>
+                    <div class="text-caption text-medium-emphasis">
+                      {{ indexer.isEnabled ? 'Enabled' : 'Disabled' }}
+                    </div>
+                    <div v-if="indexer.cutoffUtc" class="text-caption text-medium-emphasis">
+                      Cutoff: {{ formatDate(indexer.cutoffUtc) }}
+                    </div>
+                  </td>
+                  <td>{{ indexer.days.toLocaleString() }} day<span v-if="indexer.days !== 1">s</span></td>
+                  <td>
+                    <span v-if="!indexer.isEnabled" class="text-medium-emphasis">Disabled</span>
+                    <span v-else-if="indexer.isComplete" class="text-success">
+                      Complete
+                      <span v-if="indexer.completedAtUtc" class="text-medium-emphasis">
+                        · {{ formatDate(indexer.completedAtUtc) }}
+                      </span>
+                    </span>
+                    <span v-else class="text-warning">
+                      {{ indexer.startedAtUtc ? 'In progress' : 'Pending first run' }}
+                    </span>
+                  </td>
+                  <td>
+                    {{ indexer.currentOffset != null ? Math.floor(indexer.currentOffset / 100) + 1 : '—' }}
+                  </td>
+                  <td>
+                    {{ indexer.lastRunAtUtc ? formatDate(indexer.lastRunAtUtc) : 'Never' }}
+                  </td>
+                  <td>
+                    <v-btn
+                      size="small"
+                      variant="tonal"
+                      prepend-icon="mdi-play"
+                      :loading="runningIndexerBackfillId === indexer.indexerId"
+                      :disabled="!indexer.isEnabled || indexer.isComplete || runningIndexerBackfillId !== null"
+                      @click="runIndexerBackfill(indexer.indexerId)"
+                    >
+                      Run Now
+                    </v-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Indexer Row Match Sync -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-link-variant</v-icon>
+            Indexer Row Match
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-bug"
+              :loading="runningDebug"
+              @click="runDebug"
+            >
+              Debug
+            </v-btn>
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningIndexerRowMatch"
+              @click="runIndexerRowMatch"
+            >
+              Run Now
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-medium-emphasis">Total matches</td>
+                  <td>{{ status.indexerRowMatchSync.totalMatches.toLocaleString() }}</td>
+                </tr>
+                <tr v-if="status.indexerRowMatchSync.lastRunAt">
+                  <td class="text-medium-emphasis">Last run</td>
+                  <td>{{ formatDate(status.indexerRowMatchSync.lastRunAt) }}</td>
+                </tr>
+                <tr v-else>
+                  <td class="text-medium-emphasis">Last run</td>
+                  <td class="text-medium-emphasis">Never</td>
+                </tr>
+              </tbody>
+            </v-table>
+
+            <template v-if="status.indexerRowMatchSync.topIndexers.length">
+              <div class="text-caption text-medium-emphasis mt-3 mb-1">Top indexers by row count</div>
+              <v-table density="compact">
+                <thead>
+                  <tr>
+                    <th class="text-left">Indexer</th>
+                    <th class="text-right">Total</th>
+                    <th class="text-right">Last 7 days</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="idx in status.indexerRowMatchSync.topIndexers" :key="idx.title">
+                    <td>{{ idx.title }}</td>
+                    <td class="text-right">{{ idx.totalRows.toLocaleString() }}</td>
+                    <td class="text-right">{{ idx.rowsLastWeek.toLocaleString() }}</td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </template>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Library Counts -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-database</v-icon>
+            Library
+            <v-spacer />
+            <v-btn
+              icon="mdi-information-outline"
+              size="small"
+              variant="text"
+              @click="infoDialog = true"
+            />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningSyncAll"
+              @click="runSyncAll"
+            >
+              Run Now
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-medium-emphasis">Networks</td>
+                  <td>{{ status.library.networks.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Sites</td>
+                  <td>
+                    {{ status.library.sites.toLocaleString() }}
+                    <span class="text-medium-emphasis text-body-2">
+                      ({{ status.library.favoriteSites.toLocaleString() }} favourite)
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Videos</td>
+                  <td>
+                    {{ status.library.videos.toLocaleString() }}
+                    <span class="text-medium-emphasis text-body-2">
+                      ({{ status.library.wantedVideos.toLocaleString() }} wanted)
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Pre-names</td>
+                  <td>{{ status.library.preNames.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Video images</td>
+                  <td>{{ status.library.videoImages.toLocaleString() }}</td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Actors</td>
+                  <td>
+                    {{ status.library.actors.toLocaleString() }}
+                    <span class="text-medium-emphasis text-body-2">
+                      ({{ status.library.favoriteActors.toLocaleString() }} favourite)
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-medium-emphasis">Actor images</td>
+                  <td>{{ status.library.actorImages.toLocaleString() }}</td>
+                </tr>
+                <tr v-if="status.syncWorker.lastRunAt">
+                  <td class="text-medium-emphasis">Last sync</td>
+                  <td>{{ formatDate(status.syncWorker.lastRunAt) }}</td>
+                </tr>
+                <tr v-else>
+                  <td class="text-medium-emphasis">Last sync</td>
+                  <td class="text-medium-emphasis">Never</td>
+                </tr>
+                <tr v-if="status.syncWorker.nextRunAt">
+                  <td class="text-medium-emphasis">Next sync</td>
+                  <td>{{ formatDate(status.syncWorker.nextRunAt) }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
       <!-- Rate Limits -->
       <v-col cols="12" md="6">
         <v-card>
           <v-card-title class="d-flex align-center ga-2">
             <v-icon>mdi-gauge</v-icon>
             Rate Limits
+            <v-spacer />
+            <v-btn
+              icon="mdi-refresh"
+              size="small"
+              variant="text"
+              :loading="loading"
+              @click="load"
+            />
           </v-card-title>
           <v-card-text>
             <div v-if="!status.rateLimit" class="text-medium-emphasis">
@@ -136,17 +589,87 @@
         </v-card>
       </v-col>
     </v-row>
+    <!-- Debug results dialog -->
+    <v-dialog v-model="debugDialog" max-width="960" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center ga-2 pt-4">
+          <v-icon>mdi-bug</v-icon>
+          Indexer Row Match — Debug Results
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="debugDialog = false" />
+        </v-card-title>
+        <v-card-subtitle class="pb-2">
+          Search: <strong>{{ debugSearch }}</strong> — {{ debugResult?.rowsChecked ?? 0 }} row(s) checked
+        </v-card-subtitle>
+        <v-card-text>
+          <div v-if="!debugResult?.rows.length" class="text-medium-emphasis">
+            No indexer rows matched the search string.
+          </div>
+          <v-table v-else density="compact">
+            <thead>
+              <tr>
+                <th>Indexer</th>
+                <th>NZB Title</th>
+                <th>Status</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in debugResult.rows" :key="entry.rowId">
+                <td class="text-body-2 py-2 text-no-wrap">{{ entry.indexerTitle }}</td>
+                <td class="text-body-2 py-2" style="word-break: break-all">{{ entry.title }}</td>
+                <td class="py-2">
+                  <v-chip size="small" :color="debugStatusColor(entry.matchStatus)">
+                    {{ entry.matchStatus }}
+                  </v-chip>
+                </td>
+                <td class="text-body-2 py-2">
+                  <template v-if="entry.matchedVideoTitle">
+                    {{ entry.matchedVideoTitle }}
+                    <span v-if="entry.candidatePreNames.length" class="text-medium-emphasis">
+                      ({{ entry.candidatePreNames[0] }})
+                    </span>
+                  </template>
+                  <template v-else-if="entry.candidatePreNames.length">
+                    {{ entry.candidatePreNames.join(' · ') }}
+                  </template>
+                  <template v-else>—</template>
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card-text>
+        <v-card-actions class="justify-end pb-4 pr-4">
+          <v-btn variant="tonal" @click="debugDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { api, type PrdbStatus } from '../../api'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { api, type PrdbStatus, type IndexerRowMatchDebugResult } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
 
-const status    = ref<PrdbStatus | null>(null)
-const loading   = ref(false)
-const resetting = ref(false)
-const error     = ref<string | null>(null)
+const status                   = ref<PrdbStatus | null>(null)
+const loading                  = ref(false)
+const infoDialog               = ref(false)
+const runningSyncAll           = ref(false)
+const runningBackfill          = ref(false)
+const runningVideoDetailSync   = ref(false)
+const runningPreNameSync       = ref(false)
+const resettingPreNameCursor   = ref(false)
+const runningWantedVideoSync   = ref(false)
+const runningIndexerBackfillId = ref<string | null>(null)
+const runningIndexerRowMatch   = ref(false)
+const runningDebug             = ref(false)
+const debugDialog              = ref(false)
+const debugSearch              = ref('')
+const debugResult              = ref<IndexerRowMatchDebugResult | null>(null)
+const error                    = ref<string | null>(null)
+
+// ── Actor summary backfill ─────────────────────────────────────────────────
 
 const backfillPercent = computed(() => {
   const bf = status.value?.actorBackfill
@@ -164,6 +687,36 @@ const backfillProgressLabel = computed(() => {
   }
   return `Page ${bf.currentPage}`
 })
+
+// ── Actor detail sync ──────────────────────────────────────────────────────
+
+const actorDetailPercent = computed(() => {
+  const s = status.value?.actorDetailSync
+  if (!s || s.totalActors === 0) return 0
+  return (s.actorsWithDetail / s.totalActors) * 100
+})
+
+const actorDetailProgressLabel = computed(() => {
+  const s = status.value?.actorDetailSync
+  if (!s) return ''
+  return `${s.actorsWithDetail.toLocaleString()} / ${s.totalActors.toLocaleString()} (${actorDetailPercent.value.toFixed(1)}%)`
+})
+
+// ── Video detail sync ──────────────────────────────────────────────────────
+
+const videoDetailPercent = computed(() => {
+  const s = status.value?.videoDetailSync
+  if (!s || s.totalVideos === 0) return 0
+  return (s.videosWithDetail / s.totalVideos) * 100
+})
+
+const videoDetailProgressLabel = computed(() => {
+  const s = status.value?.videoDetailSync
+  if (!s) return ''
+  return `${s.videosWithDetail.toLocaleString()} / ${s.totalVideos.toLocaleString()} (${videoDetailPercent.value.toFixed(1)}%)`
+})
+
+// ── Rate limits ────────────────────────────────────────────────────────────
 
 function ratePct(w: { used: number; limit: number }) {
   return w.limit > 0 ? (w.used / w.limit) * 100 : 0
@@ -188,8 +741,23 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleString()
 }
 
+// ── Actions ────────────────────────────────────────────────────────────────
+
+async function runSyncAll() {
+  runningSyncAll.value = true
+  error.value = null
+  try {
+    await api.prdbSync.syncAll()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningSyncAll.value = false
+  }
+}
+
 async function runBackfill() {
-  resetting.value = true
+  runningBackfill.value = true
   error.value = null
   try {
     await api.prdbStatus.runBackfill()
@@ -197,12 +765,117 @@ async function runBackfill() {
   } catch (e: any) {
     error.value = e.message
   } finally {
-    resetting.value = false
+    runningBackfill.value = false
+  }
+}
+
+async function runVideoDetailSync() {
+  runningVideoDetailSync.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.runVideoDetailSync()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningVideoDetailSync.value = false
+  }
+}
+
+async function resetPreNameCursor() {
+  resettingPreNameCursor.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.resetPreNameCursor()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    resettingPreNameCursor.value = false
+  }
+}
+
+async function runPreNameSync() {
+  runningPreNameSync.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.runPreNameSync()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningPreNameSync.value = false
+  }
+}
+
+async function runWantedVideoSync() {
+  runningWantedVideoSync.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.runWantedVideoSync()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningWantedVideoSync.value = false
+  }
+}
+
+async function runIndexerBackfill(id: string) {
+  runningIndexerBackfillId.value = id
+  error.value = null
+  try {
+    await api.prdbStatus.runIndexerBackfill(id)
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningIndexerBackfillId.value = null
+  }
+}
+
+function debugStatusColor(status: string) {
+  switch (status) {
+    case 'Matched':        return 'success'
+    case 'AlreadyMatched': return 'info'
+    case 'MultipleMatches': return 'warning'
+    default:               return undefined
+  }
+}
+
+async function runDebug() {
+  const search = window.prompt('Enter search string (words separated by spaces — all must appear in the title):')
+  if (!search?.trim()) return
+
+  debugSearch.value = search.trim()
+  runningDebug.value = true
+  error.value = null
+  try {
+    debugResult.value = await api.prdbStatus.debugIndexerRowMatch(debugSearch.value)
+    debugDialog.value = true
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningDebug.value = false
+  }
+}
+
+async function runIndexerRowMatch() {
+  runningIndexerRowMatch.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.runIndexerRowMatch()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningIndexerRowMatch.value = false
   }
 }
 
 async function load() {
   loading.value = true
+  setActionLoading(true)
   error.value = null
   try {
     status.value = await api.prdbStatus.get()
@@ -210,8 +883,16 @@ async function load() {
     error.value = e.message
   } finally {
     loading.value = false
+    setActionLoading(false)
   }
 }
 
-onMounted(load)
+const { setActions, clearAction, setActionLoading } = usePageAction()
+
+onMounted(() => {
+  load()
+  setActions()
+})
+
+onUnmounted(clearAction)
 </script>

@@ -1,50 +1,58 @@
 <template>
-  <v-container>
-    <v-row align="center" class="mb-4">
-      <v-col>
-        <h1 class="text-h4">Download Clients</h1>
-      </v-col>
-      <v-col class="text-right">
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
-          New Client
-        </v-btn>
-      </v-col>
-    </v-row>
-
+  <v-container style="max-width: 900px">
     <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
       {{ error }}
     </v-alert>
 
-    <v-data-table
-      :headers="headers"
-      :items="clients"
-      :loading="loading"
-      item-value="id"
-      hover
-    >
-      <template #item.clientType="{ item }">
-        {{ clientTypeLabel(item.clientType) }}
-      </template>
+    <v-row v-if="loading">
+      <v-col cols="12" class="text-center py-8">
+        <v-progress-circular indeterminate color="primary" />
+      </v-col>
+    </v-row>
 
-      <template #item.useSsl="{ item }">
-        <v-icon :color="item.useSsl ? 'success' : 'default'" size="small">
-          {{ item.useSsl ? 'mdi-lock' : 'mdi-lock-open-outline' }}
-        </v-icon>
-      </template>
+    <v-row v-else-if="clients.length === 0">
+      <v-col cols="12" class="text-center py-8 text-medium-emphasis">
+        No download clients configured.
+      </v-col>
+    </v-row>
 
-      <template #item.isEnabled="{ item }">
-        <v-chip :color="item.isEnabled ? 'success' : 'default'" size="small">
-          {{ item.isEnabled ? 'Enabled' : 'Disabled' }}
-        </v-chip>
-      </template>
+    <v-row v-else>
+      <v-col
+        v-for="client in clients"
+        :key="client.id"
+        cols="12"
+        sm="6"
+      >
+        <v-card height="100%">
+          <v-card-item class="pa-4">
+            <v-card-title class="text-h6">{{ client.title }}</v-card-title>
+            <v-card-subtitle class="mt-1">
+              <v-icon
+                :color="client.useSsl ? 'success' : 'default'"
+                size="small"
+                class="mr-1"
+              >{{ client.useSsl ? 'mdi-lock' : 'mdi-lock-open-outline' }}</v-icon>
+              {{ client.host }}:{{ client.port }}
+            </v-card-subtitle>
+            <template #append>
+              <v-chip :color="client.isEnabled ? 'success' : 'default'" size="small">
+                {{ client.isEnabled ? 'Enabled' : 'Disabled' }}
+              </v-chip>
+            </template>
+          </v-card-item>
 
-      <template #item.actions="{ item }">
-        <div class="d-flex justify-end flex-nowrap">
-          <v-btn icon="mdi-pencil" size="small" variant="text" @click="openEditDialog(item)" />
-          <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDelete(item)" />
-        </div>
-      </template>
-    </v-data-table>
+          <v-card-text class="px-4 pb-2">
+            <v-chip size="small" variant="outlined">{{ clientTypeLabel(client.clientType) }}</v-chip>
+          </v-card-text>
+
+          <v-card-actions class="px-4 pb-4">
+            <v-spacer />
+            <v-btn icon="mdi-pencil" size="small" variant="text" @click="openEditDialog(client)" />
+            <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDelete(client)" />
+          </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
 
     <!-- Create / Edit dialog -->
     <v-dialog v-model="dialog" max-width="520" persistent>
@@ -199,8 +207,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { api, type DownloadClient, ClientType } from '../../api'
+import { usePageAction } from '../../composables/usePageAction'
+
+const { setAction, clearAction } = usePageAction()
 
 const clientTypeOptions = [
   { title: 'SABnzbd', value: ClientType.Sabnzbd },
@@ -239,16 +250,6 @@ const emptyForm = () => ({
 })
 
 const form = ref(emptyForm())
-
-const headers = [
-  { title: 'Title', key: 'title' },
-  { title: 'Type', key: 'clientType', width: '110px' },
-  { title: 'Host', key: 'host' },
-  { title: 'Port', key: 'port', width: '80px' },
-  { title: 'SSL', key: 'useSsl', width: '60px', align: 'center' as const },
-  { title: 'Status', key: 'isEnabled', width: '110px' },
-  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '90px' },
-]
 
 const required = (v: string | number) => !!v || 'Required'
 const requiredSelect = (v: number | null) => v !== null && v !== undefined ? true : 'Required'
@@ -378,5 +379,10 @@ async function deleteClient() {
   }
 }
 
-onMounted(fetchClients)
+onMounted(() => {
+  fetchClients()
+  setAction('mdi-plus', 'New Client', openCreateDialog)
+})
+
+onUnmounted(clearAction)
 </script>

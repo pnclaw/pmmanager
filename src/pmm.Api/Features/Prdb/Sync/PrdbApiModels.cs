@@ -66,8 +66,60 @@ record PrdbApiActorDetail(
     int? CareerEnd,
     string? Tattoos,
     string? Piercings,
+    List<PrdbApiActorImageDetail> Images,
     List<PrdbApiActorAliasDetail> Aliases,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc);
 
 record PrdbApiActorAliasDetail(string Name, Guid? SiteId);
+
+record PrdbApiActorImageDetail(Guid Id, int ImageType, string? Url);
+
+record PrdbApiBatchActorsRequest(List<Guid> Ids);
+record PrdbApiBatchVideosRequest(List<Guid> Ids);
+
+record PrdbApiWantedVideoSummary(
+    Guid VideoId,
+    string VideoTitle,
+    string SiteTitle,
+    DateOnly? VideoReleaseDate,
+    DateTime? VideoCreatedAtUtc,
+    string? ImageCdnPath,
+    bool IsFulfilled,
+    DateTime? FulfilledAtUtc,
+    int? FulfilledInQuality,
+    string? FulfillmentExternalId,
+    int? FulfillmentByApp,
+    DateTime CreatedAtUtc,
+    DateTime UpdatedAtUtc);
+
+record PrdbApiVideoDetail(
+    Guid Id,
+    string Title,
+    DateOnly? ReleaseDate,
+    DateTime CreatedAtUtc,
+    DateTime UpdatedAtUtc,
+    PrdbApiVideoDetailSite Site,
+    List<PrdbApiVideoDetailImage> Images,
+    List<PrdbApiVideoDetailPreName> PreNames,
+    List<PrdbApiVideoDetailActor> Actors);
+
+record PrdbApiVideoDetailSite(Guid Id, string Title, string Url);
+
+record PrdbApiVideoDetailImage(Guid Id, string? CdnPath);
+
+record PrdbApiVideoDetailPreName(Guid Id, string Title);
+
+record PrdbApiLatestPreDbSite(Guid Id, string Title);
+record PrdbApiLatestPreDbVideo(Guid Id, string Title, DateOnly? ReleaseDate, PrdbApiLatestPreDbSite Site);
+record PrdbApiLatestPreDbItem(Guid Id, string Title, DateTime CreatedAtUtc, PrdbApiLatestPreDbVideo? Video);
+
+record PrdbApiVideoDetailActor(
+    Guid Id,
+    string Name,
+    int Gender,
+    DateOnly? Birthday,
+    int Nationality,
+    List<PrdbApiVideoDetailActorImage> Images);
+
+record PrdbApiVideoDetailActorImage(Guid Id, string? CdnPath, int ImageType);
