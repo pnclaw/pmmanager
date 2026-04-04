@@ -5,6 +5,18 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/amber-stone-river — 2026-04-04
+
+### Done
+- Videos older than 360 days are excluded from the detail resync queue — details are unlikely to change at that age
+- Videos ≤ 3 days old are now resynced every 3 hours to pick up images and actor links added shortly after release
+- Videos 3–360 days old continue on the existing 30-day rolling resync interval
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/copper-wave-dust — 2026-04-04
 
 ### Done
