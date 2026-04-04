@@ -5,6 +5,16 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/copper-wave-dust — 2026-04-04
+
+### Done
+- Extended the incremental PreDb sync to re-fetch entries from the previous 7 days on every run, so entries that arrived without a video link get their `PrdbVideoId` populated once prdb.net links them
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/prenames-view — 2026-04-03
 
 ### Done
