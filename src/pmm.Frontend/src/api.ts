@@ -567,6 +567,7 @@ export const api = {
   downloadLogs: {
     list: () => request<DownloadLog[]>('/download-logs'),
     get: (id: string) => request<DownloadLog>(`/download-logs/${id}`),
+    poll: () => request<void>('/download-logs/poll', { method: 'POST' }),
   },
   folderMappings: {
     list: () => request<FolderMapping[]>('/folder-mappings'),

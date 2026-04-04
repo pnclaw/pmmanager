@@ -38,6 +38,7 @@ builder.Services.AddScoped<pmm.Api.Features.Indexers.Scraping.IndexerBackfillSer
 builder.Services.AddHostedService<IndexerScraperBackgroundService>();
 builder.Services.AddScoped<DownloadClientTester>();
 builder.Services.AddScoped<DownloadClientSender>();
+builder.Services.AddScoped<pmm.Api.Features.DownloadClients.DownloadPollService>();
 builder.Services.AddScoped<pmm.Api.Features.DownloadClients.SabnzbdPoller>();
 builder.Services.AddScoped<pmm.Api.Features.DownloadClients.NzbgetPoller>();
 builder.Services.AddHostedService<pmm.Api.Background.SyncWorker>();

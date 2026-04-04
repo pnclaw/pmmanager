@@ -31,6 +31,17 @@
             hide-details
           />
         </v-col>
+        <v-col cols="auto">
+          <v-btn
+            size="small"
+            variant="tonal"
+            prepend-icon="mdi-refresh"
+            :loading="polling"
+            @click="pollNow"
+          >
+            Poll Now
+          </v-btn>
+        </v-col>
       </v-row>
     </v-expand-transition>
 
@@ -180,6 +191,7 @@ const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
 
 const logs    = ref<DownloadLog[]>([])
 const loading = ref(false)
+const polling = ref(false)
 const error   = ref<string | null>(null)
 
 const search       = ref('')
@@ -214,6 +226,19 @@ const filteredLogs = computed(() => {
     return true
   })
 })
+
+async function pollNow() {
+  polling.value = true
+  error.value = null
+  try {
+    await api.downloadLogs.poll()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    polling.value = false
+  }
+}
 
 async function load() {
   loading.value = true
