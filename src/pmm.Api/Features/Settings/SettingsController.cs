@@ -50,6 +50,7 @@ public class SettingsController(AppDbContext db) : ControllerBase
         await db.PrdbVideoActors.ExecuteDeleteAsync();
         await db.PrdbVideoImages.ExecuteDeleteAsync();
         await db.PrdbVideoPreNames.ExecuteDeleteAsync();
+        await db.PrdbPreDbEntries.ExecuteDeleteAsync();
         await db.PrdbVideos.ExecuteDeleteAsync();
         await db.PrdbSites.ExecuteDeleteAsync();
         await db.PrdbNetworks.ExecuteDeleteAsync();

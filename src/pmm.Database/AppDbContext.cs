@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<PrdbNetwork> PrdbNetworks => Set<PrdbNetwork>();
     public DbSet<PrdbSite> PrdbSites => Set<PrdbSite>();
     public DbSet<PrdbVideo> PrdbVideos => Set<PrdbVideo>();
+    public DbSet<PrdbPreDbEntry> PrdbPreDbEntries => Set<PrdbPreDbEntry>();
     public DbSet<PrdbVideoImage> PrdbVideoImages => Set<PrdbVideoImage>();
     public DbSet<PrdbVideoPreName> PrdbVideoPreNames => Set<PrdbVideoPreName>();
     public DbSet<PrdbActor> PrdbActors => Set<PrdbActor>();
@@ -57,6 +58,23 @@ public class AppDbContext : DbContext
         {
             e.HasIndex(f => f.OriginalFolder).IsUnique();
             e.HasIndex(f => f.MappedToFolder).IsUnique();
+        });
+
+        modelBuilder.Entity<PrdbPreDbEntry>(e =>
+        {
+            e.HasIndex(p => p.CreatedAtUtc);
+            e.HasIndex(p => p.Title);
+            e.HasIndex(p => p.PrdbVideoId);
+
+            e.HasOne(p => p.Video)
+             .WithMany(v => v.PreDbEntries)
+             .HasForeignKey(p => p.PrdbVideoId)
+             .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(p => p.Site)
+             .WithMany(s => s.PreDbEntries)
+             .HasForeignKey(p => p.PrdbSiteId)
+             .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

@@ -694,13 +694,13 @@
         }
       }
     },
-    "/prenames/search": {
+    "/predb/search-by-video": {
       "get": {
         "tags": [
-          "SearchPreNames"
+          "SearchPreDbByVideo"
         ],
-        "summary": "Search prenames by keyword",
-        "description": "Returns prenames grouped by video. 'q' (min 3 characters) is required unless 'releaseDate' is provided, in which case 'q' is optional. Each group includes Video.Id, Video.Title, Site.Id, and Site.Title. Capped at 500 video groups, no paging.",
+        "summary": "Search PreDb entries grouped by video",
+        "description": "Searches canonical PreDb titles and returns matching linked PreDb entries grouped by video. 'q' (min 3 characters) is required unless 'releaseDate' is provided, in which case 'q' is optional. Each group includes video and site details. Capped at 500 video groups, no paging.",
         "parameters": [
           {
             "name": "Q",
@@ -724,7 +724,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SearchPreNamesResponse"
+                  "$ref": "#/components/schemas/SearchPreDbByVideoResponse"
                 }
               }
             }
@@ -752,13 +752,131 @@
         }
       }
     },
-    "/prenames/latest": {
+    "/predb": {
       "get": {
         "tags": [
-          "LatestPreNames"
+          "ListPreDb"
         ],
-        "summary": "Get latest prenames",
-        "description": "Returns a paged list of prenames ordered by creation date descending. Supports filtering by site ID and creation date range. Requires API key authentication.",
+        "summary": "List PreDb entries",
+        "description": "Returns a paged list of PreDb entries. Supports filtering by title or release group search, category, and release date range. Default sort is release date descending. Requires API key authentication.",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Category",
+            "in": "query",
+            "schema": {
+              "pattern": "^(?i)(movies|tvshows|adult)$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "ReleaseDateFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "ReleaseDateTo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "SortBy",
+            "in": "query",
+            "schema": {
+              "pattern": "^(?i)(releaseDate|title)$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "SortDirection",
+            "in": "query",
+            "schema": {
+              "pattern": "^(?i)(asc|desc)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPreDbResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/predb/latest": {
+      "get": {
+        "tags": [
+          "LatestPreDb"
+        ],
+        "summary": "Get latest PreDb entries",
+        "description": "Returns a paged list of canonical PreDb entries ordered by creation date descending. Linked video details are included when available; unlinked PreDb entries are also returned. Supports filtering by site ID and creation date range. Requires API key authentication.",
         "parameters": [
           {
             "name": "Page",
@@ -819,7 +937,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LatestPreNamesResponse"
+                  "$ref": "#/components/schemas/LatestPreDbResponse"
                 }
               }
             }
@@ -2068,12 +2186,11 @@
           }
         }
       },
-      "LatestPreNameItemDto": {
+      "LatestPreDbItemDto": {
         "required": [
           "id",
           "title",
-          "createdAtUtc",
-          "video"
+          "createdAtUtc"
         ],
         "type": "object",
         "properties": {
@@ -2089,27 +2206,18 @@
             "format": "date-time"
           },
           "video": {
-            "$ref": "#/components/schemas/LatestPreNameVideoDto"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LatestPreDbVideoDto"
+              }
+            ]
           }
         }
       },
-      "LatestPreNameSiteDto": {
-        "required": [
-          "id",
-          "title"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "title": {
-            "type": "string"
-          }
-        }
-      },
-      "LatestPreNamesResponse": {
+      "LatestPreDbResponse": {
         "required": [
           "items",
           "totalCount",
@@ -2121,7 +2229,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/LatestPreNameItemDto"
+              "$ref": "#/components/schemas/LatestPreDbItemDto"
             }
           },
           "totalCount": {
@@ -2150,7 +2258,23 @@
           }
         }
       },
-      "LatestPreNameVideoDto": {
+      "LatestPreDbSiteDto": {
+        "required": [
+          "id",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "LatestPreDbVideoDto": {
         "required": [
           "id",
           "title",
@@ -2173,7 +2297,7 @@
             "format": "date"
           },
           "site": {
-            "$ref": "#/components/schemas/LatestPreNameSiteDto"
+            "$ref": "#/components/schemas/LatestPreDbSiteDto"
           }
         }
       },
@@ -2351,6 +2475,55 @@
           }
         }
       },
+      "ListPreDbResponse": {
+        "required": [
+          "items",
+          "totalCount",
+          "page",
+          "pageSize",
+          "sortBy",
+          "sortDirection"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreDbSummaryDto"
+            }
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sortBy": {
+            "type": "string"
+          },
+          "sortDirection": {
+            "type": "string"
+          }
+        }
+      },
       "ListSitesResponse": {
         "required": [
           "items",
@@ -2510,7 +2683,7 @@
       "Nationality": {
         "type": "integer"
       },
-      "PreNameItemDto": {
+      "PreDbItemDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -2522,7 +2695,45 @@
           }
         }
       },
-      "PreNameVideoGroupDto": {
+      "PreDbSummaryDto": {
+        "required": [
+          "id",
+          "title",
+          "releaseDate",
+          "releaseGroup",
+          "category"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "releaseDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "releaseGroup": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "filesize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "PreDbVideoGroupDto": {
         "type": "object",
         "properties": {
           "videoId": {
@@ -2539,10 +2750,10 @@
           "siteTitle": {
             "type": "string"
           },
-          "preNames": {
+          "predbs": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/PreNameItemDto"
+              "$ref": "#/components/schemas/PreDbItemDto"
             }
           }
         }
@@ -2628,13 +2839,13 @@
           }
         }
       },
-      "SearchPreNamesResponse": {
+      "SearchPreDbByVideoResponse": {
         "type": "object",
         "properties": {
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/PreNameVideoGroupDto"
+              "$ref": "#/components/schemas/PreDbVideoGroupDto"
             }
           },
           "totalGroups": {
@@ -3161,10 +3372,13 @@
       "name": "GetRateLimit"
     },
     {
-      "name": "SearchPreNames"
+      "name": "SearchPreDbByVideo"
     },
     {
-      "name": "LatestPreNames"
+      "name": "ListPreDb"
+    },
+    {
+      "name": "LatestPreDb"
     },
     {
       "name": "GetHealth"

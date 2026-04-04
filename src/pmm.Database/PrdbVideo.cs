@@ -19,6 +19,7 @@ public class PrdbVideo
     public DateTime SyncedAtUtc { get; set; }
     public DateTime? DetailSyncedAtUtc { get; set; }
 
+    public ICollection<PrdbPreDbEntry> PreDbEntries { get; set; } = [];
     public ICollection<PrdbVideoImage> Images { get; set; } = [];
     public ICollection<PrdbVideoPreName> PreNames { get; set; } = [];
     public ICollection<PrdbVideoActor> VideoActors { get; set; } = [];

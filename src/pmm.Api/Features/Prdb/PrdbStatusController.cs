@@ -16,7 +16,7 @@ public class PrdbStatusController(
     IHttpClientFactory httpClientFactory,
     PrdbActorSyncService actorSyncService,
     PrdbVideoDetailSyncService videoDetailSyncService,
-    PrdbLatestPreNameSyncService latestPreNameSyncService,
+    PrdbLatestPreDbSyncService latestPreDbSyncService,
     PrdbWantedVideoSyncService wantedVideoSyncService,
     IndexerRowMatchService indexerRowMatchService) : ControllerBase
 {
@@ -93,10 +93,12 @@ public class PrdbStatusController(
 
         // ── Prename sync ──────────────────────────────────────────────────────
         var totalPreNames = await db.PrdbVideoPreNames.CountAsync(ct);
+        var totalPreDbEntries = await db.PrdbPreDbEntries.CountAsync(ct);
 
         var preNameSync = new PreNameSyncStatus
         {
             TotalPreNames       = totalPreNames,
+            TotalPreDbEntries   = totalPreDbEntries,
             IsBackfilling       = settings.PrenamesBackfillPage is not null || settings.PrenamesSyncCursorUtc is null,
             BackfillPage        = settings.PrenamesBackfillPage,
             BackfillTotalCount  = settings.PrenamesBackfillTotalCount,
@@ -110,6 +112,7 @@ public class PrdbStatusController(
             Sites          = await db.PrdbSites.CountAsync(ct),
             FavoriteSites  = await db.PrdbSites.CountAsync(s => s.IsFavorite, ct),
             Videos         = videoCount,
+            PreDbEntries   = totalPreDbEntries,
             PreNames       = totalPreNames,
             Actors         = actorCount,
             FavoriteActors = favoriteActors,
@@ -206,18 +209,18 @@ public class PrdbStatusController(
     }
 
     [HttpPost("prename-sync/run")]
-    [EndpointSummary("Run prename sync")]
-    [EndpointDescription("Manually triggers one incremental prename sync run, identical to the scheduled SyncWorker tick.")]
+    [EndpointSummary("Run PreDb sync")]
+    [EndpointDescription("Manually triggers one PreDb sync run, identical to the scheduled SyncWorker tick.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RunPreNameSync(CancellationToken ct)
     {
-        await latestPreNameSyncService.RunAsync(ct);
+        await latestPreDbSyncService.RunAsync(ct);
         return NoContent();
     }
 
     [HttpPost("prename-sync/reset-cursor")]
-    [EndpointSummary("Reset prename sync cursor")]
-    [EndpointDescription("Clears the prename sync cursor so the next run performs a full backfill from the beginning.")]
+    [EndpointSummary("Reset PreDb sync cursor")]
+    [EndpointDescription("Clears the PreDb sync cursor so the next run performs a full backfill from the beginning.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ResetPreNameCursor(CancellationToken ct)
     {
@@ -336,6 +339,7 @@ public class IndexerRowStat
 public class PreNameSyncStatus
 {
     public int TotalPreNames { get; init; }
+    public int TotalPreDbEntries { get; init; }
     public bool IsBackfilling { get; init; }
     public int? BackfillPage { get; init; }
     public int? BackfillTotalCount { get; init; }
@@ -348,6 +352,7 @@ public class LibraryCounts
     public int Sites { get; init; }
     public int FavoriteSites { get; init; }
     public int Videos { get; init; }
+    public int PreDbEntries { get; init; }
     public int PreNames { get; init; }
     public int Actors { get; init; }
     public int FavoriteActors { get; init; }
