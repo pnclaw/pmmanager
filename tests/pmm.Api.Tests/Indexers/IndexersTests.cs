@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using pmm.Api.Features.Indexers;
+using Pmm.Database;
 using Pmm.Database.Enums;
 
 namespace pmm.Api.Tests.Indexers;
@@ -57,6 +60,7 @@ public sealed class IndexersTests : IAsyncLifetime
         body.Url.Should().Be("https://api.nzbgeek.info");
         body.ParsingType.Should().Be((int)ParsingType.Newznab);
         body.IsEnabled.Should().BeTrue();
+        body.BackfillDays.Should().Be(30);
     }
 
     [Fact]
@@ -125,7 +129,8 @@ public sealed class IndexersTests : IAsyncLifetime
             url = "https://updated.example.com",
             parsingType = (int)ParsingType.Newznab,
             isEnabled = false,
-            apiKey = "new-key"
+            apiKey = "new-key",
+            backfillDays = 45,
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -134,6 +139,127 @@ public sealed class IndexersTests : IAsyncLifetime
         body.Url.Should().Be("https://updated.example.com");
         body.IsEnabled.Should().BeFalse();
         body.ApiKey.Should().Be("new-key");
+        body.BackfillDays.Should().Be(45);
+    }
+
+    [Fact]
+    public async Task Update_IncreasingBackfillDays_ResetsOnlyThatIndexerBackfillState()
+    {
+        var created = await CreateIndexerAsync("Backfill Reset Test");
+        var startedAt = DateTime.UtcNow.AddHours(-2);
+        var cutoffUtc = DateTime.UtcNow.AddDays(-30);
+        var completedAt = DateTime.UtcNow.AddHours(-1);
+        var lastRunAt = DateTime.UtcNow.AddMinutes(-15);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var target = await db.Indexers.FirstAsync(i => i.Id == created.Id);
+            target.BackfillDays = 30;
+            target.BackfillStartedAtUtc = startedAt;
+            target.BackfillCutoffUtc = cutoffUtc;
+            target.BackfillCompletedAtUtc = completedAt;
+            target.BackfillLastRunAtUtc = lastRunAt;
+            target.BackfillCurrentOffset = 500;
+
+            var other = new Indexer
+            {
+                Id = Guid.NewGuid(),
+                Title = "Other Indexer",
+                Url = "https://other.example.com",
+                ParsingType = ParsingType.Newznab,
+                IsEnabled = true,
+                ApiKey = "other-key",
+                ApiPath = "/api",
+                BackfillDays = 20,
+                BackfillStartedAtUtc = startedAt,
+                BackfillCutoffUtc = startedAt.AddDays(-20),
+                BackfillCompletedAtUtc = completedAt,
+                BackfillLastRunAtUtc = lastRunAt,
+                BackfillCurrentOffset = 300,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            };
+
+            db.Indexers.Add(other);
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.PutAsJsonAsync($"/api/indexers/{created.Id}", new
+        {
+            title = created.Title,
+            url = created.Url,
+            parsingType = created.ParsingType,
+            isEnabled = created.IsEnabled,
+            apiKey = created.ApiKey,
+            apiPath = created.ApiPath,
+            backfillDays = 60,
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var updated = await verifyDb.Indexers.FirstAsync(i => i.Id == created.Id);
+        updated.BackfillDays.Should().Be(60);
+        updated.BackfillStartedAtUtc.Should().BeNull();
+        updated.BackfillCutoffUtc.Should().BeNull();
+        updated.BackfillCompletedAtUtc.Should().BeNull();
+        updated.BackfillLastRunAtUtc.Should().BeNull();
+        updated.BackfillCurrentOffset.Should().BeNull();
+
+        var otherUpdated = await verifyDb.Indexers.FirstAsync(i => i.Title == "Other Indexer");
+        otherUpdated.BackfillDays.Should().Be(20);
+        otherUpdated.BackfillStartedAtUtc.Should().Be(startedAt);
+        otherUpdated.BackfillCompletedAtUtc.Should().Be(completedAt);
+        otherUpdated.BackfillCurrentOffset.Should().Be(300);
+    }
+
+    [Fact]
+    public async Task Update_DecreasingBackfillDays_KeepsExistingBackfillState()
+    {
+        var created = await CreateIndexerAsync("Backfill Keep Test");
+        var startedAt = DateTime.UtcNow.AddHours(-2);
+        var cutoffUtc = DateTime.UtcNow.AddDays(-30);
+        var completedAt = DateTime.UtcNow.AddHours(-1);
+        var lastRunAt = DateTime.UtcNow.AddMinutes(-15);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var indexer = await db.Indexers.FirstAsync(i => i.Id == created.Id);
+            indexer.BackfillDays = 30;
+            indexer.BackfillStartedAtUtc = startedAt;
+            indexer.BackfillCutoffUtc = cutoffUtc;
+            indexer.BackfillCompletedAtUtc = completedAt;
+            indexer.BackfillLastRunAtUtc = lastRunAt;
+            indexer.BackfillCurrentOffset = 500;
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.PutAsJsonAsync($"/api/indexers/{created.Id}", new
+        {
+            title = created.Title,
+            url = created.Url,
+            parsingType = created.ParsingType,
+            isEnabled = created.IsEnabled,
+            apiKey = created.ApiKey,
+            apiPath = created.ApiPath,
+            backfillDays = 14,
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var updated = await verifyDb.Indexers.FirstAsync(i => i.Id == created.Id);
+        updated.BackfillDays.Should().Be(14);
+        updated.BackfillStartedAtUtc.Should().Be(startedAt);
+        updated.BackfillCutoffUtc.Should().Be(cutoffUtc);
+        updated.BackfillCompletedAtUtc.Should().Be(completedAt);
+        updated.BackfillLastRunAtUtc.Should().Be(lastRunAt);
+        updated.BackfillCurrentOffset.Should().Be(500);
     }
 
     [Fact]
@@ -145,7 +271,8 @@ public sealed class IndexersTests : IAsyncLifetime
             url = "https://example.com",
             parsingType = (int)ParsingType.Newznab,
             isEnabled = true,
-            apiKey = ""
+            apiKey = "",
+            backfillDays = 30,
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -183,7 +310,8 @@ public sealed class IndexersTests : IAsyncLifetime
             url = "https://example.com/api",
             parsingType = (int)ParsingType.Newznab,
             isEnabled = true,
-            apiKey = "test-key"
+            apiKey = "test-key",
+            backfillDays = 30,
         });
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<IndexerResponse>())!;

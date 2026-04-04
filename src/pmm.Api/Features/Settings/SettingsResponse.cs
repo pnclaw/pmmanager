@@ -10,5 +10,4 @@ public class SettingsResponse
 
     public bool SafeForWork { get; set; }
 
-    public int IndexerBackfillDays { get; set; }
 }

@@ -15,6 +15,4 @@ public class UpdateSettingsRequest
 
     public bool SafeForWork { get; set; }
 
-    [Range(1, 3650)]
-    public int IndexerBackfillDays { get; set; } = 30;
 }

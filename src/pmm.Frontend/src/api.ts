@@ -26,7 +26,6 @@ export interface AppSettings {
   prdbApiUrl: string
   preferredVideoQuality: VideoQuality
   safeForWork: boolean
-  indexerBackfillDays: number
 }
 
 export interface UpdateSettingsRequest {
@@ -34,7 +33,6 @@ export interface UpdateSettingsRequest {
   prdbApiUrl: string
   preferredVideoQuality: VideoQuality
   safeForWork: boolean
-  indexerBackfillDays: number
 }
 
 export enum ClientType {
@@ -82,6 +80,12 @@ export interface Indexer {
   parsingType: number
   isEnabled: boolean
   apiKey: string
+  backfillDays: number
+  backfillStartedAtUtc: string | null
+  backfillCutoffUtc: string | null
+  backfillCompletedAtUtc: string | null
+  backfillLastRunAtUtc: string | null
+  backfillCurrentOffset: number | null
   createdAt: string
   updatedAt: string
 }
@@ -93,6 +97,7 @@ export interface CreateIndexerRequest {
   parsingType: ParsingType
   isEnabled: boolean
   apiKey: string
+  backfillDays: number
 }
 
 export interface UpdateIndexerRequest {
@@ -102,6 +107,7 @@ export interface UpdateIndexerRequest {
   parsingType: ParsingType
   isEnabled: boolean
   apiKey: string
+  backfillDays: number
 }
 
 export interface ScrapeResult {
@@ -303,17 +309,18 @@ export interface PrdbStatus {
     pendingDetail: number
     lastSyncedAt: string | null
   }
-  indexerBackfill: {
+  indexerBackfills: {
+    indexerId: string
+    indexerTitle: string
+    isEnabled: boolean
     days: number
     isComplete: boolean
     startedAtUtc: string | null
     cutoffUtc: string | null
     completedAtUtc: string | null
     lastRunAtUtc: string | null
-    currentIndexerId: string | null
-    currentIndexerTitle: string | null
     currentOffset: number | null
-  }
+  }[]
   indexerRowMatchSync: {
     totalMatches: number
     lastRunAt: string | null
@@ -545,7 +552,7 @@ export const api = {
     runWantedVideoSync: () => request<void>('/prdb-status/wanted-video-sync/run', { method: 'POST' }),
     runPreNameSync: () => request<void>('/prdb-status/prename-sync/run', { method: 'POST' }),
     resetPreNameCursor: () => request<void>('/prdb-status/prename-sync/reset-cursor', { method: 'POST' }),
-    runIndexerBackfill: () => request<void>('/prdb-status/indexer-backfill/run', { method: 'POST' }),
+    runIndexerBackfill: (id: string) => request<void>(`/prdb-status/indexer-backfill/${id}/run`, { method: 'POST' }),
     runIndexerRowMatch: () => request<void>('/prdb-status/indexer-row-match/run', { method: 'POST' }),
     debugIndexerRowMatch: (search: string) => request<IndexerRowMatchDebugResult>('/prdb-status/indexer-row-match/debug', { method: 'POST', body: JSON.stringify({ search }) }),
   },

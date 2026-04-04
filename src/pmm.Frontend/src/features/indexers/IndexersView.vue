@@ -40,6 +40,9 @@
 
           <v-card-text class="px-4 pb-2">
             <v-chip size="small" variant="outlined">{{ parsingTypeLabel(indexer.parsingType) }}</v-chip>
+            <div class="text-body-2 text-medium-emphasis mt-3">
+              Backfill window: {{ indexer.backfillDays }} day<span v-if="indexer.backfillDays !== 1">s</span>
+            </div>
           </v-card-text>
 
           <v-card-actions class="px-4 pb-4">
@@ -126,6 +129,16 @@
             <v-text-field
               v-model="form.apiKey"
               label="API Key"
+              class="mb-2"
+            />
+            <v-text-field
+              v-model.number="form.backfillDays"
+              label="Backfill Days"
+              type="number"
+              min="1"
+              :rules="[requiredNumber]"
+              hint="One-time backfill window for this indexer. Increasing it reopens the backfill for this indexer only."
+              persistent-hint
               class="mb-2"
             />
             <v-switch
@@ -230,12 +243,14 @@ const emptyForm = () => ({
   parsingType: ParsingType.Newznab,
   isEnabled: true,
   apiKey: '',
+  backfillDays: 30,
 })
 
 const form = ref(emptyForm())
 
 const required = (v: string) => !!v || 'Required'
 const requiredSelect = (v: number | null) => v !== null && v !== undefined ? true : 'Required'
+const requiredNumber = (v: number | null) => (v != null && v >= 1) || 'Must be at least 1'
 
 function parsingTypeLabel(value: number): string {
   return parsingTypeOptions.find((o) => o.value === value)?.title ?? String(value)
@@ -269,6 +284,7 @@ function openEditDialog(indexer: Indexer) {
     parsingType: indexer.parsingType,
     isEnabled: indexer.isEnabled,
     apiKey: indexer.apiKey,
+    backfillDays: indexer.backfillDays,
   }
   testResult.value = null
   dialog.value = true

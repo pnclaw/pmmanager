@@ -68,15 +68,6 @@
                   :rules="[required]"
                   class="mb-4"
                 />
-                <v-text-field
-                  v-model.number="form.indexerBackfillDays"
-                  label="Indexer Backfill Days"
-                  type="number"
-                  min="1"
-                  :rules="[requiredNumber]"
-                  hint="One-time indexer backfill target window. After completion it will not auto-run again."
-                  persistent-hint
-                />
               </v-card-text>
             </v-card>
 
@@ -239,7 +230,6 @@ const form = ref<UpdateSettingsRequest>({
   prdbApiUrl: '',
   preferredVideoQuality: VideoQuality.P2160,
   safeForWork: false,
-  indexerBackfillDays: 30,
 })
 
 const qualityItems = Object.values(VideoQuality)
@@ -247,8 +237,6 @@ const qualityItems = Object.values(VideoQuality)
   .map(v => ({ title: VideoQualityLabels[v], value: v }))
 
 const required = (v: string) => !!v || 'Required'
-const requiredNumber = (v: number | null) => (v != null && v >= 1) || 'Must be at least 1'
-
 onMounted(async () => {
   try {
     const settings = await api.settings.get()
@@ -257,7 +245,6 @@ onMounted(async () => {
       prdbApiUrl: settings.prdbApiUrl,
       preferredVideoQuality: settings.preferredVideoQuality,
       safeForWork: settings.safeForWork,
-      indexerBackfillDays: settings.indexerBackfillDays,
     }
   } catch (e: any) {
     error.value = e.message

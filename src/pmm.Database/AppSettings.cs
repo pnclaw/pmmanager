@@ -67,38 +67,4 @@ public class AppSettings
     /// </summary>
     public DateTime? PrenamesSyncCursorUtc { get; set; }
 
-    /// <summary>
-    /// How far back the one-time incremental indexer backfill should fetch, measured in days.
-    /// </summary>
-    public int IndexerBackfillDays { get; set; } = 30;
-
-    /// <summary>
-    /// Set when the indexer backfill first starts. Remains fixed for the duration of the run.
-    /// </summary>
-    public DateTime? IndexerBackfillStartedAtUtc { get; set; }
-
-    /// <summary>
-    /// Fixed cutoff for the current/last indexer backfill run. Rows older than this are ignored.
-    /// </summary>
-    public DateTime? IndexerBackfillCutoffUtc { get; set; }
-
-    /// <summary>
-    /// Set when the indexer backfill has completed. Non-null means it must not auto-run again.
-    /// </summary>
-    public DateTime? IndexerBackfillCompletedAtUtc { get; set; }
-
-    /// <summary>
-    /// Set at the end of each indexer backfill step, whether scheduled or manual.
-    /// </summary>
-    public DateTime? IndexerBackfillLastRunAtUtc { get; set; }
-
-    /// <summary>
-    /// Indexer currently being backfilled. Null means no indexer is currently active.
-    /// </summary>
-    public Guid? IndexerBackfillCurrentIndexerId { get; set; }
-
-    /// <summary>
-    /// Next Newznab result offset to fetch for the current indexer during backfill.
-    /// </summary>
-    public int? IndexerBackfillCurrentOffset { get; set; }
 }

@@ -11,21 +11,12 @@ public class IndexerBackfillService(
     ILogger<IndexerBackfillService> logger)
 {
     private const int PageSize = 100;
-    private const int PagesPerRun = 3;
+    private const int PagesPerRunPerIndexer = 3;
     private const int Category = 6000;
 
     public async Task RunAsync(CancellationToken ct = default)
     {
-        var settings = await db.AppSettings.FirstAsync(ct);
         var now = DateTime.UtcNow;
-
-        if (settings.IndexerBackfillCompletedAtUtc != null)
-        {
-            logger.LogInformation("IndexerBackfillService: backfill already completed at {CompletedAt}", settings.IndexerBackfillCompletedAtUtc);
-            return;
-        }
-
-        settings.IndexerBackfillLastRunAtUtc = now;
 
         var enabledIndexers = await db.Indexers
             .Where(i => i.IsEnabled)
@@ -33,112 +24,8 @@ public class IndexerBackfillService(
             .ThenBy(i => i.Title)
             .ToListAsync(ct);
 
-        if (enabledIndexers.Count == 0)
-        {
-            settings.IndexerBackfillStartedAtUtc ??= now;
-            settings.IndexerBackfillCutoffUtc ??= now.AddDays(-settings.IndexerBackfillDays);
-            MarkCompleted(settings, now);
-            await db.SaveChangesAsync(ct);
-            logger.LogInformation("IndexerBackfillService: no enabled indexers, marking backfill complete");
-            return;
-        }
-
-        if (settings.IndexerBackfillStartedAtUtc is null || settings.IndexerBackfillCutoffUtc is null)
-        {
-            settings.IndexerBackfillStartedAtUtc = now;
-            settings.IndexerBackfillCutoffUtc = now.AddDays(-settings.IndexerBackfillDays);
-            settings.IndexerBackfillCurrentIndexerId = enabledIndexers[0].Id;
-            settings.IndexerBackfillCurrentOffset = 0;
-        }
-
-        var cutoffUtc = settings.IndexerBackfillCutoffUtc.Value;
-        var currentIndexer = ResolveCurrentIndexer(settings, enabledIndexers);
-        var pagesRemaining = PagesPerRun;
-
-        while (pagesRemaining > 0 && currentIndexer is not null)
-        {
-            var offset = settings.IndexerBackfillCurrentOffset ?? 0;
-            var result = await FetchPageAsync(currentIndexer, offset, ct);
-            db.IndexerApiRequests.Add(MakeSearchRequest(currentIndexer.Id, result.Success, result.StatusCode, result.ResponseTimeMs));
-
-            if (!result.Success)
-            {
-                await db.SaveChangesAsync(ct);
-                logger.LogWarning("IndexerBackfillService: stopping run after failed request for indexer {Title} at offset {Offset}", currentIndexer.Title, offset);
-                return;
-            }
-
-            if (result.Items.Count == 0)
-            {
-                AdvanceIndexer(settings, enabledIndexers, currentIndexer.Id, now);
-                pagesRemaining--;
-                continue;
-            }
-
-            var existingNzbIds = await db.IndexerRows
-                .Where(r => r.IndexerId == currentIndexer.Id)
-                .Select(r => r.NzbId)
-                .ToHashSetAsync(ct);
-
-            var newRows = new List<IndexerRow>();
-            var pageReachedCutoff = true;
-
-            foreach (var item in result.Items)
-            {
-                var isWithinWindow = item.NzbPublishedAt is null || item.NzbPublishedAt >= cutoffUtc;
-                if (isWithinWindow)
-                    pageReachedCutoff = false;
-
-                if (!isWithinWindow || string.IsNullOrEmpty(item.NzbId) || !existingNzbIds.Add(item.NzbId))
-                    continue;
-
-                newRows.Add(new IndexerRow
-                {
-                    Id = Guid.NewGuid(),
-                    IndexerId = currentIndexer.Id,
-                    Title = item.Title,
-                    NzbId = item.NzbId,
-                    NzbUrl = item.NzbUrl,
-                    NzbSize = item.NzbSize,
-                    NzbPublishedAt = item.NzbPublishedAt,
-                    FileSize = item.FileSize,
-                    Category = item.Category,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                });
-            }
-
-            if (newRows.Count > 0)
-                db.IndexerRows.AddRange(newRows);
-
-            if (pageReachedCutoff)
-            {
-                logger.LogInformation(
-                    "IndexerBackfillService: indexer {Title} reached cutoff {Cutoff} at offset {Offset}",
-                    currentIndexer.Title, cutoffUtc, offset);
-                AdvanceIndexer(settings, enabledIndexers, currentIndexer.Id, now);
-            }
-            else
-            {
-                settings.IndexerBackfillCurrentOffset = offset + PageSize;
-            }
-
-            await db.SaveChangesAsync(ct);
-
-            if (newRows.Count > 0)
-            {
-                logger.LogInformation(
-                    "IndexerBackfillService: saved {Count} new rows for indexer {Title} at offset {Offset}",
-                    newRows.Count, currentIndexer.Title, offset);
-            }
-
-            pagesRemaining--;
-
-            if (settings.IndexerBackfillCompletedAtUtc != null)
-                return;
-
-            currentIndexer = ResolveCurrentIndexer(settings, enabledIndexers);
-        }
+        foreach (var indexer in enabledIndexers)
+            await RunIndexerAsync(indexer, now, ct);
     }
 
     private async Task<IndexerPageFetchResult> FetchPageAsync(Indexer indexer, int offset, CancellationToken ct)
@@ -176,45 +63,117 @@ public class IndexerBackfillService(
         }
     }
 
-    private static Indexer? ResolveCurrentIndexer(AppSettings settings, List<Indexer> enabledIndexers)
+    public async Task RunIndexerAsync(Guid indexerId, CancellationToken ct = default)
     {
-        if (enabledIndexers.Count == 0)
-            return null;
+        var indexer = await db.Indexers.FirstOrDefaultAsync(i => i.Id == indexerId, ct);
+        if (indexer is null || !indexer.IsEnabled)
+            return;
 
-        var currentIndexer = settings.IndexerBackfillCurrentIndexerId is null
-            ? null
-            : enabledIndexers.FirstOrDefault(i => i.Id == settings.IndexerBackfillCurrentIndexerId.Value);
-
-        if (currentIndexer is not null)
-            return currentIndexer;
-
-        settings.IndexerBackfillCurrentIndexerId = enabledIndexers[0].Id;
-        settings.IndexerBackfillCurrentOffset = 0;
-        return enabledIndexers[0];
+        await RunIndexerAsync(indexer, DateTime.UtcNow, ct);
     }
 
-    private static void AdvanceIndexer(AppSettings settings, List<Indexer> enabledIndexers, Guid currentIndexerId, DateTime now)
+    private async Task RunIndexerAsync(Indexer indexer, DateTime now, CancellationToken ct)
     {
-        var currentIndex = enabledIndexers.FindIndex(i => i.Id == currentIndexerId);
-        var nextIndexer = currentIndex >= 0 && currentIndex + 1 < enabledIndexers.Count
-            ? enabledIndexers[currentIndex + 1]
-            : null;
-
-        if (nextIndexer is null)
+        if (indexer.BackfillCompletedAtUtc is not null)
         {
-            MarkCompleted(settings, now);
+            logger.LogDebug("IndexerBackfillService: backfill already completed for indexer {Title}", indexer.Title);
             return;
         }
 
-        settings.IndexerBackfillCurrentIndexerId = nextIndexer.Id;
-        settings.IndexerBackfillCurrentOffset = 0;
+        indexer.BackfillLastRunAtUtc = now;
+        indexer.BackfillStartedAtUtc ??= now;
+        indexer.BackfillCutoffUtc ??= now.AddDays(-indexer.BackfillDays);
+        indexer.BackfillCurrentOffset ??= 0;
+
+        var cutoffUtc = indexer.BackfillCutoffUtc.Value;
+
+        for (var page = 0; page < PagesPerRunPerIndexer; page++)
+        {
+            var offset = indexer.BackfillCurrentOffset ?? 0;
+            var result = await FetchPageAsync(indexer, offset, ct);
+            db.IndexerApiRequests.Add(MakeSearchRequest(indexer.Id, result.Success, result.StatusCode, result.ResponseTimeMs));
+
+            if (!result.Success)
+            {
+                await db.SaveChangesAsync(ct);
+                logger.LogWarning("IndexerBackfillService: stopping run after failed request for indexer {Title} at offset {Offset}", indexer.Title, offset);
+                return;
+            }
+
+            if (result.Items.Count == 0)
+            {
+                MarkIndexerCompleted(indexer, now);
+                await db.SaveChangesAsync(ct);
+                logger.LogInformation("IndexerBackfillService: indexer {Title} returned no more results at offset {Offset}", indexer.Title, offset);
+                return;
+            }
+
+            var existingNzbIds = await db.IndexerRows
+                .Where(r => r.IndexerId == indexer.Id)
+                .Select(r => r.NzbId)
+                .ToHashSetAsync(ct);
+
+            var newRows = new List<IndexerRow>();
+            var pageReachedCutoff = true;
+
+            foreach (var item in result.Items)
+            {
+                var isWithinWindow = item.NzbPublishedAt is null || item.NzbPublishedAt >= cutoffUtc;
+                if (isWithinWindow)
+                    pageReachedCutoff = false;
+
+                if (!isWithinWindow || string.IsNullOrEmpty(item.NzbId) || !existingNzbIds.Add(item.NzbId))
+                    continue;
+
+                newRows.Add(new IndexerRow
+                {
+                    Id = Guid.NewGuid(),
+                    IndexerId = indexer.Id,
+                    Title = item.Title,
+                    NzbId = item.NzbId,
+                    NzbUrl = item.NzbUrl,
+                    NzbSize = item.NzbSize,
+                    NzbPublishedAt = item.NzbPublishedAt,
+                    FileSize = item.FileSize,
+                    Category = item.Category,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                });
+            }
+
+            if (newRows.Count > 0)
+                db.IndexerRows.AddRange(newRows);
+
+            if (pageReachedCutoff)
+            {
+                logger.LogInformation(
+                    "IndexerBackfillService: indexer {Title} reached cutoff {Cutoff} at offset {Offset}",
+                    indexer.Title, cutoffUtc, offset);
+                MarkIndexerCompleted(indexer, now);
+            }
+            else
+            {
+                indexer.BackfillCurrentOffset = offset + PageSize;
+            }
+
+            await db.SaveChangesAsync(ct);
+
+            if (newRows.Count > 0)
+            {
+                logger.LogInformation(
+                    "IndexerBackfillService: saved {Count} new rows for indexer {Title} at offset {Offset}",
+                    newRows.Count, indexer.Title, offset);
+            }
+
+            if (indexer.BackfillCompletedAtUtc is not null)
+                return;
+        }
     }
 
-    private static void MarkCompleted(AppSettings settings, DateTime now)
+    private static void MarkIndexerCompleted(Indexer indexer, DateTime now)
     {
-        settings.IndexerBackfillCompletedAtUtc = now;
-        settings.IndexerBackfillCurrentIndexerId = null;
-        settings.IndexerBackfillCurrentOffset = null;
+        indexer.BackfillCompletedAtUtc = now;
+        indexer.BackfillCurrentOffset = null;
     }
 
     private static IndexerApiRequest MakeSearchRequest(Guid indexerId, bool success, int? statusCode, int responseTimeMs) => new()
