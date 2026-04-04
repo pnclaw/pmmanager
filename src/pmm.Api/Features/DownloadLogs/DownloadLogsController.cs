@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using pmm.Api.Features.DownloadClients;
 using Pmm.Database;
 
 namespace pmm.Api.Features.DownloadLogs;
@@ -8,8 +9,18 @@ namespace pmm.Api.Features.DownloadLogs;
 [ApiController]
 [Route("api/download-logs")]
 [Produces("application/json")]
-public class DownloadLogsController(AppDbContext db) : ControllerBase
+public class DownloadLogsController(AppDbContext db, DownloadPollService pollService) : ControllerBase
 {
+    [HttpPost("poll")]
+    [EndpointSummary("Poll download clients")]
+    [EndpointDescription("Immediately polls all download clients for status updates, identical to the scheduled background tick.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Poll(CancellationToken ct)
+    {
+        await pollService.PollAsync(ct);
+        return NoContent();
+    }
+
     [HttpGet]
     [EndpointSummary("List download logs")]
     [ProducesResponseType(typeof(IEnumerable<DownloadLogResponse>), StatusCodes.Status200OK)]
@@ -34,6 +45,28 @@ public class DownloadLogsController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(l => l.Id == id);
 
         return log is null ? NotFound() : Ok(ToResponse(log));
+    }
+
+    [HttpDelete("failed")]
+    [EndpointSummary("Delete failed download logs")]
+    [EndpointDescription("Permanently removes all download log entries with a Failed status.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteFailed(CancellationToken ct)
+    {
+        await db.DownloadLogs
+            .Where(l => l.Status == Pmm.Database.Enums.DownloadStatus.Failed)
+            .ExecuteDeleteAsync(ct);
+        return NoContent();
+    }
+
+    [HttpDelete]
+    [EndpointSummary("Delete all download logs")]
+    [EndpointDescription("Permanently removes all download log entries.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteAll(CancellationToken ct)
+    {
+        await db.DownloadLogs.ExecuteDeleteAsync(ct);
+        return NoContent();
     }
 
     private static DownloadLogResponse ToResponse(DownloadLog log) => new()

@@ -567,6 +567,9 @@ export const api = {
   downloadLogs: {
     list: () => request<DownloadLog[]>('/download-logs'),
     get: (id: string) => request<DownloadLog>(`/download-logs/${id}`),
+    poll: () => request<void>('/download-logs/poll', { method: 'POST' }),
+    deleteFailed: () => request<void>('/download-logs/failed', { method: 'DELETE' }),
+    deleteAll: () => request<void>('/download-logs', { method: 'DELETE' }),
   },
   folderMappings: {
     list: () => request<FolderMapping[]>('/folder-mappings'),

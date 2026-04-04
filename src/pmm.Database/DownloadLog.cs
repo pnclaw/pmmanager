@@ -44,4 +44,11 @@ public class DownloadLog : BaseEntity
 
     public DateTime? LastPolledAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+
+    /// <summary>
+    /// Number of consecutive poll cycles in which this item was not found in either the
+    /// download client queue or history. Reset to zero when the item reappears.
+    /// When this reaches 3 the item is marked Failed.
+    /// </summary>
+    public int MissedPollCount { get; set; }
 }
