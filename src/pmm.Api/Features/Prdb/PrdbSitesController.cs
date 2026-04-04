@@ -119,7 +119,7 @@ public class PrdbSitesController(AppDbContext db, PrdbFavoritesService favorites
                 Title       = v.Title,
                 ReleaseDate = v.ReleaseDate,
                 ActorCount  = v.VideoActors.Count,
-                PreNames    = v.PreNames
+                PreNames    = v.PreDbEntries
                     .Select(p => new PrdbPreNameResponse { Id = p.Id, Title = p.Title })
                     .ToList(),
             })

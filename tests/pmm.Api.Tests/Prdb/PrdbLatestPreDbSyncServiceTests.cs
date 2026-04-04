@@ -40,7 +40,7 @@ public sealed class PrdbLatestPreDbSyncServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task RunAsync_BackfillStoresAllPreDbEntries_AndProjectsOnlyLinkedOnes()
+    public async Task RunAsync_BackfillStoresAllPreDbEntries_AndLinksVideosWithoutProjectionTable()
     {
         var siteId = Guid.NewGuid();
         var videoId = Guid.NewGuid();
@@ -109,8 +109,6 @@ public sealed class PrdbLatestPreDbSyncServiceTests : IDisposable
 
         _db.PrdbSites.Should().ContainSingle(s => s.Id == siteId);
         _db.PrdbVideos.Should().ContainSingle(v => v.Id == videoId);
-        _db.PrdbVideoPreNames.Should().ContainSingle(p => p.Id == linkedEntryId && p.VideoId == videoId);
-        _db.PrdbVideoPreNames.Should().NotContain(p => p.Id == unlinkedEntryId);
 
         settings = _db.AppSettings.Single();
         settings.PrenamesBackfillPage.Should().BeNull();

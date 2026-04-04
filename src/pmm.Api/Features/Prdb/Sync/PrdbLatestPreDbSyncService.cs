@@ -37,7 +37,6 @@ public class PrdbLatestPreDbSyncService(
         var startPage          = settings.PrenamesBackfillPage ?? 1;
         var currentPage        = startPage;
         var totalUpserted      = 0;
-        var totalProjected     = 0;
         var totalUnlinked      = 0;
         var done               = false;
 
@@ -57,7 +56,6 @@ public class PrdbLatestPreDbSyncService(
 
             var result = await UpsertPreDbEntriesAsync(response.Items, ct);
             totalUpserted  += result.UpsertedEntries;
-            totalProjected += result.ProjectedPreNames;
             totalUnlinked  += result.UnlinkedEntries;
 
             settings.PrenamesBackfillTotalCount = response.TotalCount;
@@ -78,8 +76,8 @@ public class PrdbLatestPreDbSyncService(
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation(
-            "PrdbLatestPreDbSyncService: backfill pages {Start}-{End} - upserted {Upserted}, projected {Projected}, skipped {Unlinked} unlinked, next: {Next}",
-            startPage, currentPage - 1, totalUpserted, totalProjected, totalUnlinked,
+            "PrdbLatestPreDbSyncService: backfill pages {Start}-{End} - upserted {Upserted}, skipped {Unlinked} unlinked, next: {Next}",
+            startPage, currentPage - 1, totalUpserted, totalUnlinked,
             settings.PrenamesBackfillPage?.ToString() ?? "done");
     }
 
@@ -112,14 +110,14 @@ public class PrdbLatestPreDbSyncService(
 
         var result = allItems.Count > 0
             ? await UpsertPreDbEntriesAsync(allItems, ct)
-            : new UpsertPreDbResult(0, 0, 0);
+            : new UpsertPreDbResult(0, 0);
 
         settings.PrenamesSyncCursorUtc = runStartedAt;
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation(
-            "PrdbLatestPreDbSyncService: incremental sync complete - {Found} found, {Upserted} upserted, {Projected} projected, {Unlinked} unlinked",
-            allItems.Count, result.UpsertedEntries, result.ProjectedPreNames, result.UnlinkedEntries);
+            "PrdbLatestPreDbSyncService: incremental sync complete - {Found} found, {Upserted} upserted, {Unlinked} unlinked",
+            allItems.Count, result.UpsertedEntries, result.UnlinkedEntries);
     }
 
     private async Task<UpsertPreDbResult> UpsertPreDbEntriesAsync(List<PrdbApiLatestPreDbItem> items, CancellationToken ct)
@@ -131,10 +129,9 @@ public class PrdbLatestPreDbSyncService(
         await UpsertVideoStubsAsync(linkedItems, now, ct);
 
         var upsertedEntries = await UpsertRawPreDbEntriesAsync(items, now, ct);
-        var projected       = await UpsertLinkedPreNamesAsync(linkedItems, ct);
         var unlinked        = items.Count - linkedItems.Count;
 
-        return new UpsertPreDbResult(upsertedEntries, projected, unlinked);
+        return new UpsertPreDbResult(upsertedEntries, unlinked);
     }
 
     private async Task UpsertSiteStubsAsync(List<PrdbApiLatestPreDbItem> items, DateTime now, CancellationToken ct)
@@ -247,40 +244,6 @@ public class PrdbLatestPreDbSyncService(
         entry.SyncedAtUtc  = now;
     }
 
-    private async Task<int> UpsertLinkedPreNamesAsync(List<PrdbApiLatestPreDbItem> items, CancellationToken ct)
-    {
-        if (items.Count == 0)
-            return 0;
-
-        var existingPreNames = await db.PrdbVideoPreNames
-            .Where(p => items.Select(i => i.Id).Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id, ct);
-
-        foreach (var item in items)
-        {
-            var video = item.Video!;
-
-            if (existingPreNames.TryGetValue(item.Id, out var existing))
-            {
-                existing.Title   = item.Title;
-                existing.VideoId = video.Id;
-                continue;
-            }
-
-            db.PrdbVideoPreNames.Add(new PrdbVideoPreName
-            {
-                Id      = item.Id,
-                Title   = item.Title,
-                VideoId = video.Id,
-            });
-        }
-
-        if (db.ChangeTracker.HasChanges())
-            await db.SaveChangesAsync(ct);
-
-        return items.Count;
-    }
-
     private HttpClient CreateClient(AppSettings settings)
     {
         var http = httpClientFactory.CreateClient();
@@ -289,5 +252,5 @@ public class PrdbLatestPreDbSyncService(
         return http;
     }
 
-    private sealed record UpsertPreDbResult(int UpsertedEntries, int ProjectedPreNames, int UnlinkedEntries);
+    private sealed record UpsertPreDbResult(int UpsertedEntries, int UnlinkedEntries);
 }

@@ -25,31 +25,33 @@ public class PrdbPreNamesController(AppDbContext db) : ControllerBase
         if (!hasQuery && !hasDateRange)
             return BadRequest("Provide at least 3 characters in 'q' or a release date range.");
 
-        var preNamesQuery = db.PrdbVideoPreNames
-            .Include(p => p.Video).ThenInclude(v => v.Site)
+        var preNamesQuery = db.PrdbPreDbEntries
+            .Where(p => p.PrdbVideoId != null)
+            .Include(p => p.Video!)
+            .ThenInclude(v => v.Site)
             .AsQueryable();
 
         if (hasQuery)
             preNamesQuery = preNamesQuery.Where(p => EF.Functions.Like(p.Title, $"%{q!.Trim()}%"));
 
         if (releaseDateFrom.HasValue)
-            preNamesQuery = preNamesQuery.Where(p => p.Video.ReleaseDate >= releaseDateFrom);
+            preNamesQuery = preNamesQuery.Where(p => p.Video!.ReleaseDate >= releaseDateFrom);
 
         if (releaseDateTo.HasValue)
-            preNamesQuery = preNamesQuery.Where(p => p.Video.ReleaseDate <= releaseDateTo);
+            preNamesQuery = preNamesQuery.Where(p => p.Video!.ReleaseDate <= releaseDateTo);
 
         var flat = await preNamesQuery
-            .OrderBy(p => p.Video.Site.Title)
-            .ThenBy(p => p.Video.Title)
+            .OrderBy(p => p.Video!.Site!.Title)
+            .ThenBy(p => p.Video!.Title)
             .ThenBy(p => p.Title)
             .Select(p => new
             {
                 PreNameId    = p.Id,
                 PreNameTitle = p.Title,
-                VideoId      = p.Video.Id,
-                VideoTitle   = p.Video.Title,
-                SiteId       = p.Video.Site.Id,
-                SiteTitle    = p.Video.Site.Title,
+                VideoId      = p.Video!.Id,
+                VideoTitle   = p.Video!.Title,
+                SiteId       = p.Video!.Site!.Id,
+                SiteTitle    = p.Video!.Site!.Title,
             })
             .ToListAsync();
 

@@ -60,17 +60,27 @@ public sealed class IndexerRowMatchServiceTests : IAsyncLifetime
         return row;
     }
 
-    private async Task<(PrdbVideo video, PrdbVideoPreName prename)> SeedVideoWithPreNameAsync(string prename)
+    private async Task<(PrdbVideo video, PrdbPreDbEntry preDbEntry)> SeedVideoWithPreNameAsync(string prename)
     {
         var network = new PrdbNetwork { Id = Guid.NewGuid(), Title = "Net" };
         var site    = new PrdbSite    { Id = Guid.NewGuid(), Title = "Site", NetworkId = network.Id };
         var video   = new PrdbVideo   { Id = Guid.NewGuid(), Title = "Video", SiteId = site.Id, SyncedAtUtc = DateTime.UtcNow };
-        var pn      = new PrdbVideoPreName { Id = Guid.NewGuid(), Title = prename, VideoId = video.Id };
+        var pn      = new PrdbPreDbEntry
+        {
+            Id           = Guid.NewGuid(),
+            Title        = prename,
+            CreatedAtUtc = DateTime.UtcNow,
+            PrdbVideoId  = video.Id,
+            PrdbSiteId   = site.Id,
+            VideoTitle   = video.Title,
+            SiteTitle    = site.Title,
+            SyncedAtUtc  = DateTime.UtcNow,
+        };
 
         _db.PrdbNetworks.Add(network);
         _db.PrdbSites.Add(site);
         _db.PrdbVideos.Add(video);
-        _db.PrdbVideoPreNames.Add(pn);
+        _db.PrdbPreDbEntries.Add(pn);
         await _db.SaveChangesAsync();
 
         return (video, pn);
@@ -90,7 +100,7 @@ public sealed class IndexerRowMatchServiceTests : IAsyncLifetime
         var match = _db.IndexerRowMatches.SingleOrDefault(m => m.IndexerRowId == row.Id);
         match.Should().NotBeNull();
         match!.PrdbVideoId.Should().Be(video.Id);
-        match.MatchedPreNameId.Should().Be(pn.Id);
+        match.MatchedPreDbEntryId.Should().Be(pn.Id);
         match.MatchedTitle.Should().Be("Some.Scene.Title");
         match.MatchedAtUtc.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
     }

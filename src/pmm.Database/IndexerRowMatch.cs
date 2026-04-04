@@ -12,8 +12,8 @@ public class IndexerRowMatch
     public Guid PrdbVideoId { get; set; }
     public PrdbVideo Video { get; set; } = null!;
 
-    public Guid MatchedPreNameId { get; set; }
-    public PrdbVideoPreName MatchedPreName { get; set; } = null!;
+    public Guid MatchedPreDbEntryId { get; set; }
+    public PrdbPreDbEntry MatchedPreDbEntry { get; set; } = null!;
 
     /// <summary>
     /// The prename title that triggered the match (denormalised for convenience).
