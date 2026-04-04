@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using pmm.Api.Features.Indexers.Matching;
+using pmm.Api.Features.Indexers.Scraping;
 using pmm.Api.Features.Prdb.Sync;
 using Pmm.Database;
 
@@ -42,6 +43,7 @@ public class SyncWorker(IServiceScopeFactory scopeFactory, ILogger<SyncWorker> l
         await RunServiceAsync<PrdbVideoDetailSyncService>(s => s.RunAsync(ct), ct);
         await RunServiceAsync<PrdbLatestPreDbSyncService>(s => s.RunAsync(ct), ct);
         await RunServiceAsync<PrdbWantedVideoSyncService>(s => s.RunAsync(ct), ct);
+        await RunServiceAsync<IndexerBackfillService>(s => s.RunAsync(ct), ct);
         await RunServiceAsync<IndexerRowMatchService>(s => s.RunAsync(ct), ct);
 
         using var scope = scopeFactory.CreateScope();

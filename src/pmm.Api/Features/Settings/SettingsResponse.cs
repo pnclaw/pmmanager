@@ -9,4 +9,6 @@ public class SettingsResponse
     public int PreferredVideoQuality { get; set; }
 
     public bool SafeForWork { get; set; }
+
+    public int IndexerBackfillDays { get; set; }
 }

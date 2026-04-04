@@ -301,6 +301,68 @@
         </v-card>
       </v-col>
 
+      <!-- Indexer Backfill -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-history</v-icon>
+            Indexer Backfill
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="tonal"
+              prepend-icon="mdi-play"
+              :loading="runningIndexerBackfill"
+              :disabled="status.indexerBackfill.isComplete"
+              @click="runIndexerBackfill"
+            >
+              Run Now
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <div v-if="status.indexerBackfill.isComplete" class="d-flex align-center ga-2 mb-3">
+              <v-icon color="success">mdi-check-circle</v-icon>
+              <span class="text-success">Backfill complete</span>
+            </div>
+
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-medium-emphasis">Target window</td>
+                  <td>{{ status.indexerBackfill.days.toLocaleString() }} day<span v-if="status.indexerBackfill.days !== 1">s</span></td>
+                </tr>
+                <tr v-if="status.indexerBackfill.cutoffUtc">
+                  <td class="text-medium-emphasis">Cutoff</td>
+                  <td>{{ formatDate(status.indexerBackfill.cutoffUtc) }}</td>
+                </tr>
+                <tr v-if="status.indexerBackfill.currentIndexerTitle">
+                  <td class="text-medium-emphasis">Current indexer</td>
+                  <td>{{ status.indexerBackfill.currentIndexerTitle }}</td>
+                </tr>
+                <tr v-if="status.indexerBackfill.currentOffset != null">
+                  <td class="text-medium-emphasis">Next page</td>
+                  <td>{{ Math.floor(status.indexerBackfill.currentOffset / 100) + 1 }}</td>
+                </tr>
+                <tr v-if="status.indexerBackfill.lastRunAtUtc">
+                  <td class="text-medium-emphasis">Last run</td>
+                  <td>{{ formatDate(status.indexerBackfill.lastRunAtUtc) }}</td>
+                </tr>
+                <tr v-if="status.indexerBackfill.completedAtUtc">
+                  <td class="text-medium-emphasis">Completed</td>
+                  <td>{{ formatDate(status.indexerBackfill.completedAtUtc) }}</td>
+                </tr>
+                <tr v-else>
+                  <td class="text-medium-emphasis">Status</td>
+                  <td class="text-warning">
+                    {{ status.indexerBackfill.startedAtUtc ? 'In progress' : 'Pending first run' }}
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
       <!-- Indexer Row Match Sync -->
       <v-col cols="12" md="6">
         <v-card>
@@ -590,6 +652,7 @@ const runningVideoDetailSync   = ref(false)
 const runningPreNameSync       = ref(false)
 const resettingPreNameCursor   = ref(false)
 const runningWantedVideoSync   = ref(false)
+const runningIndexerBackfill   = ref(false)
 const runningIndexerRowMatch   = ref(false)
 const runningDebug             = ref(false)
 const debugDialog              = ref(false)
@@ -746,6 +809,19 @@ async function runWantedVideoSync() {
     error.value = e.message
   } finally {
     runningWantedVideoSync.value = false
+  }
+}
+
+async function runIndexerBackfill() {
+  runningIndexerBackfill.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.runIndexerBackfill()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningIndexerBackfill.value = false
   }
 }
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pmm.Database;
 using pmm.Api.Features.Indexers.Matching;
+using pmm.Api.Features.Indexers.Scraping;
 using pmm.Api.Features.Prdb.Sync;
 
 namespace pmm.Api.Features.Prdb;
@@ -18,6 +19,7 @@ public class PrdbStatusController(
     PrdbVideoDetailSyncService videoDetailSyncService,
     PrdbLatestPreDbSyncService latestPreDbSyncService,
     PrdbWantedVideoSyncService wantedVideoSyncService,
+    IndexerBackfillService indexerBackfillService,
     IndexerRowMatchService indexerRowMatchService) : ControllerBase
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -143,6 +145,12 @@ public class PrdbStatusController(
             .Where(i => topIndexerIds.Contains(i.Id))
             .Select(i => new { i.Id, i.Title })
             .ToDictionaryAsync(i => i.Id, i => i.Title, ct);
+        var currentIndexerTitle = settings.IndexerBackfillCurrentIndexerId is null
+            ? null
+            : await db.Indexers
+                .Where(i => i.Id == settings.IndexerBackfillCurrentIndexerId.Value)
+                .Select(i => i.Title)
+                .FirstOrDefaultAsync(ct);
 
         var topIndexers = topGrouped
             .Select(g => new IndexerRowStat
@@ -152,6 +160,19 @@ public class PrdbStatusController(
                 RowsLastWeek = g.RowsLastWeek,
             })
             .ToList();
+
+        var indexerBackfill = new IndexerBackfillStatus
+        {
+            Days = settings.IndexerBackfillDays,
+            StartedAtUtc = settings.IndexerBackfillStartedAtUtc,
+            CutoffUtc = settings.IndexerBackfillCutoffUtc,
+            CompletedAtUtc = settings.IndexerBackfillCompletedAtUtc,
+            LastRunAtUtc = settings.IndexerBackfillLastRunAtUtc,
+            CurrentIndexerId = settings.IndexerBackfillCurrentIndexerId,
+            CurrentIndexerTitle = currentIndexerTitle,
+            CurrentOffset = settings.IndexerBackfillCurrentOffset,
+            IsComplete = settings.IndexerBackfillCompletedAtUtc != null,
+        };
 
         var indexerRowMatchSync = new IndexerRowMatchSyncStatus
         {
@@ -182,6 +203,7 @@ public class PrdbStatusController(
             VideoDetailSync      = videoDetailSync,
             PreNameSync          = preNameSync,
             WantedVideoSync      = wantedVideoSync,
+            IndexerBackfill      = indexerBackfill,
             IndexerRowMatchSync  = indexerRowMatchSync,
             Library              = library,
             RateLimit            = rateLimit,
@@ -241,6 +263,16 @@ public class PrdbStatusController(
         return NoContent();
     }
 
+    [HttpPost("indexer-backfill/run")]
+    [EndpointSummary("Run indexer backfill")]
+    [EndpointDescription("Manually triggers one indexer backfill step, identical to the scheduled 15-minute background run.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RunIndexerBackfill(CancellationToken ct)
+    {
+        await indexerBackfillService.RunAsync(ct);
+        return NoContent();
+    }
+
     [HttpPost("indexer-row-match/run")]
     [EndpointSummary("Run indexer row match sync")]
     [EndpointDescription("Manually triggers one indexer row match run, identical to the scheduled SyncWorker tick.")]
@@ -276,6 +308,7 @@ public class PrdbStatusResponse
     public VideoDetailSyncStatus VideoDetailSync { get; init; } = null!;
     public PreNameSyncStatus PreNameSync { get; init; } = null!;
     public WantedVideoSyncStatus WantedVideoSync { get; init; } = null!;
+    public IndexerBackfillStatus IndexerBackfill { get; init; } = null!;
     public IndexerRowMatchSyncStatus IndexerRowMatchSync { get; init; } = null!;
     public LibraryCounts Library { get; init; } = null!;
     public PrdbRateLimitStatus? RateLimit { get; init; }
@@ -320,6 +353,19 @@ public class WantedVideoSyncStatus
     public int Fulfilled { get; init; }
     public int PendingDetail { get; init; }
     public DateTime? LastSyncedAt { get; init; }
+}
+
+public class IndexerBackfillStatus
+{
+    public int Days { get; init; }
+    public bool IsComplete { get; init; }
+    public DateTime? StartedAtUtc { get; init; }
+    public DateTime? CutoffUtc { get; init; }
+    public DateTime? CompletedAtUtc { get; init; }
+    public DateTime? LastRunAtUtc { get; init; }
+    public Guid? CurrentIndexerId { get; init; }
+    public string? CurrentIndexerTitle { get; init; }
+    public int? CurrentOffset { get; init; }
 }
 
 public class IndexerRowMatchSyncStatus

@@ -28,11 +28,16 @@ public class SettingsController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> Update([FromBody] UpdateSettingsRequest request)
     {
         var settings = await db.AppSettings.FirstAsync();
+        var previousIndexerBackfillDays = settings.IndexerBackfillDays;
 
         settings.PrdbApiKey = request.PrdbApiKey;
         settings.PrdbApiUrl = request.PrdbApiUrl;
         settings.PreferredVideoQuality = request.PreferredVideoQuality;
         settings.SafeForWork = request.SafeForWork;
+        settings.IndexerBackfillDays = request.IndexerBackfillDays;
+
+        if (request.IndexerBackfillDays > previousIndexerBackfillDays)
+            ResetIndexerBackfillState(settings);
 
         await db.SaveChangesAsync();
         return Ok(ToResponse(settings));
@@ -67,6 +72,12 @@ public class SettingsController(AppDbContext db) : ControllerBase
         settings.PrenamesBackfillPage       = 1;
         settings.PrenamesBackfillTotalCount = null;
         settings.PrenamesSyncCursorUtc      = null;
+        settings.IndexerBackfillStartedAtUtc = null;
+        settings.IndexerBackfillCutoffUtc = null;
+        settings.IndexerBackfillCompletedAtUtc = null;
+        settings.IndexerBackfillLastRunAtUtc = null;
+        settings.IndexerBackfillCurrentIndexerId = null;
+        settings.IndexerBackfillCurrentOffset = null;
         await db.SaveChangesAsync();
 
         return NoContent();
@@ -78,5 +89,16 @@ public class SettingsController(AppDbContext db) : ControllerBase
         PrdbApiUrl = settings.PrdbApiUrl,
         PreferredVideoQuality = (int)settings.PreferredVideoQuality,
         SafeForWork = settings.SafeForWork,
+        IndexerBackfillDays = settings.IndexerBackfillDays,
     };
+
+    private static void ResetIndexerBackfillState(AppSettings settings)
+    {
+        settings.IndexerBackfillStartedAtUtc = null;
+        settings.IndexerBackfillCutoffUtc = null;
+        settings.IndexerBackfillCompletedAtUtc = null;
+        settings.IndexerBackfillLastRunAtUtc = null;
+        settings.IndexerBackfillCurrentIndexerId = null;
+        settings.IndexerBackfillCurrentOffset = null;
+    }
 }
