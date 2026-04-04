@@ -14,4 +14,5 @@ public class UpdateSettingsRequest
     public VideoQuality PreferredVideoQuality { get; set; }
 
     public bool SafeForWork { get; set; }
+
 }

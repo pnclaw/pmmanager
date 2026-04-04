@@ -66,6 +66,7 @@
                   v-model="form.prdbApiUrl"
                   label="prdb.net Url"
                   :rules="[required]"
+                  class="mb-4"
                 />
               </v-card-text>
             </v-card>
@@ -236,7 +237,6 @@ const qualityItems = Object.values(VideoQuality)
   .map(v => ({ title: VideoQualityLabels[v], value: v }))
 
 const required = (v: string) => !!v || 'Required'
-
 onMounted(async () => {
   try {
     const settings = await api.settings.get()

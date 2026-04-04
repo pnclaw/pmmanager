@@ -301,6 +301,77 @@
         </v-card>
       </v-col>
 
+      <!-- Indexer Backfill -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon>mdi-history</v-icon>
+            Indexer Backfill
+          </v-card-title>
+          <v-card-text>
+            <div v-if="status.indexerBackfills.length === 0" class="text-medium-emphasis">
+              No indexers configured.
+            </div>
+            <v-table v-else density="compact">
+              <thead>
+                <tr>
+                  <th class="text-left">Indexer</th>
+                  <th class="text-left">Window</th>
+                  <th class="text-left">Status</th>
+                  <th class="text-left">Next page</th>
+                  <th class="text-left">Last run</th>
+                  <th class="text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="indexer in status.indexerBackfills" :key="indexer.indexerId">
+                  <td>
+                    <div>{{ indexer.indexerTitle }}</div>
+                    <div class="text-caption text-medium-emphasis">
+                      {{ indexer.isEnabled ? 'Enabled' : 'Disabled' }}
+                    </div>
+                    <div v-if="indexer.cutoffUtc" class="text-caption text-medium-emphasis">
+                      Cutoff: {{ formatDate(indexer.cutoffUtc) }}
+                    </div>
+                  </td>
+                  <td>{{ indexer.days.toLocaleString() }} day<span v-if="indexer.days !== 1">s</span></td>
+                  <td>
+                    <span v-if="!indexer.isEnabled" class="text-medium-emphasis">Disabled</span>
+                    <span v-else-if="indexer.isComplete" class="text-success">
+                      Complete
+                      <span v-if="indexer.completedAtUtc" class="text-medium-emphasis">
+                        · {{ formatDate(indexer.completedAtUtc) }}
+                      </span>
+                    </span>
+                    <span v-else class="text-warning">
+                      {{ indexer.startedAtUtc ? 'In progress' : 'Pending first run' }}
+                    </span>
+                  </td>
+                  <td>
+                    {{ indexer.currentOffset != null ? Math.floor(indexer.currentOffset / 100) + 1 : '—' }}
+                  </td>
+                  <td>
+                    {{ indexer.lastRunAtUtc ? formatDate(indexer.lastRunAtUtc) : 'Never' }}
+                  </td>
+                  <td>
+                    <v-btn
+                      size="small"
+                      variant="tonal"
+                      prepend-icon="mdi-play"
+                      :loading="runningIndexerBackfillId === indexer.indexerId"
+                      :disabled="!indexer.isEnabled || indexer.isComplete || runningIndexerBackfillId !== null"
+                      @click="runIndexerBackfill(indexer.indexerId)"
+                    >
+                      Run Now
+                    </v-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
       <!-- Indexer Row Match Sync -->
       <v-col cols="12" md="6">
         <v-card>
@@ -590,6 +661,7 @@ const runningVideoDetailSync   = ref(false)
 const runningPreNameSync       = ref(false)
 const resettingPreNameCursor   = ref(false)
 const runningWantedVideoSync   = ref(false)
+const runningIndexerBackfillId = ref<string | null>(null)
 const runningIndexerRowMatch   = ref(false)
 const runningDebug             = ref(false)
 const debugDialog              = ref(false)
@@ -746,6 +818,19 @@ async function runWantedVideoSync() {
     error.value = e.message
   } finally {
     runningWantedVideoSync.value = false
+  }
+}
+
+async function runIndexerBackfill(id: string) {
+  runningIndexerBackfillId.value = id
+  error.value = null
+  try {
+    await api.prdbStatus.runIndexerBackfill(id)
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningIndexerBackfillId.value = null
   }
 }
 

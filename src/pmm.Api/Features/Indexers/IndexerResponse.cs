@@ -12,6 +12,12 @@ public class IndexerResponse
     public bool IsEnabled { get; set; }
     public string ApiKey { get; set; } = string.Empty;
     public string ApiPath { get; set; } = string.Empty;
+    public int BackfillDays { get; set; }
+    public DateTime? BackfillStartedAtUtc { get; set; }
+    public DateTime? BackfillCutoffUtc { get; set; }
+    public DateTime? BackfillCompletedAtUtc { get; set; }
+    public DateTime? BackfillLastRunAtUtc { get; set; }
+    public int? BackfillCurrentOffset { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

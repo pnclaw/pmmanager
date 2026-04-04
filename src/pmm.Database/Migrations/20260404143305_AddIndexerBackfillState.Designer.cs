@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pmm.Database;
 
@@ -10,9 +11,11 @@ using Pmm.Database;
 namespace Pmm.Database.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260404143305_AddIndexerBackfillState")]
+    partial class AddIndexerBackfillState
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
@@ -22,6 +25,27 @@ namespace Pmm.Database.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("IndexerBackfillCompletedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("IndexerBackfillCurrentIndexerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("IndexerBackfillCurrentOffset")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("IndexerBackfillCutoffUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("IndexerBackfillDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("IndexerBackfillLastRunAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("IndexerBackfillStartedAtUtc")
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("IndexerRowMatchLastRunAt")
                         .HasColumnType("TEXT");
@@ -74,6 +98,7 @@ namespace Pmm.Database.Migrations
                         new
                         {
                             Id = 1,
+                            IndexerBackfillDays = 30,
                             PrdbActorSyncPage = 1,
                             PrdbApiKey = "",
                             PrdbApiUrl = "https://api.prdb.net",
@@ -255,24 +280,6 @@ namespace Pmm.Database.Migrations
                     b.Property<string>("ApiPath")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("BackfillCompletedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("BackfillCurrentOffset")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("BackfillCutoffUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("BackfillDays")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("BackfillLastRunAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("BackfillStartedAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")

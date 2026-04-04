@@ -66,4 +66,5 @@ public class AppSettings
     /// Null means backfill has never completed.
     /// </summary>
     public DateTime? PrenamesSyncCursorUtc { get; set; }
+
 }

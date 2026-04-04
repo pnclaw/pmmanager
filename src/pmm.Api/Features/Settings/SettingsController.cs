@@ -67,6 +67,12 @@ public class SettingsController(AppDbContext db) : ControllerBase
         settings.PrenamesBackfillPage       = 1;
         settings.PrenamesBackfillTotalCount = null;
         settings.PrenamesSyncCursorUtc      = null;
+        await db.Indexers.ExecuteUpdateAsync(setters => setters
+            .SetProperty(i => i.BackfillStartedAtUtc, (DateTime?)null)
+            .SetProperty(i => i.BackfillCutoffUtc, (DateTime?)null)
+            .SetProperty(i => i.BackfillCompletedAtUtc, (DateTime?)null)
+            .SetProperty(i => i.BackfillLastRunAtUtc, (DateTime?)null)
+            .SetProperty(i => i.BackfillCurrentOffset, (int?)null));
         await db.SaveChangesAsync();
 
         return NoContent();
