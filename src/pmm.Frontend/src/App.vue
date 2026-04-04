@@ -55,6 +55,12 @@
           rounded="lg"
         />
         <v-list-item
+          prepend-icon="mdi-format-list-bulleted-square"
+          title="PreDB"
+          to="/prdb/predb"
+          rounded="lg"
+        />
+        <v-list-item
           prepend-icon="mdi-video"
           title="Videos"
           to="/prdb/videos"

@@ -187,6 +187,22 @@ export interface PrdbPreNamesSearchResult {
   totalGroups: number
 }
 
+export interface PrdbPreDbEntry {
+  id: string
+  title: string
+  createdAtUtc: string
+  videoId: string | null
+  videoTitle: string | null
+  siteId: string | null
+  siteTitle: string | null
+  releaseDate: string | null
+  hasLinkedVideo: boolean
+}
+
+export interface PrdbPreDbFilterOptions {
+  sites: { id: string; title: string }[]
+}
+
 export interface PrdbVideoDetail {
   id: string
   title: string
@@ -493,6 +509,18 @@ export const api = {
       if (params.releaseDateTo) q.set('releaseDateTo', params.releaseDateTo)
       return request<PrdbPreNamesSearchResult>(`/prdb-prenames/search?${q}`)
     },
+  },
+  prdbPreDb: {
+    list: (params?: { search?: string; siteId?: string; hasLinkedVideo?: boolean; page?: number; pageSize?: number }) => {
+      const q = new URLSearchParams()
+      if (params?.search) q.set('search', params.search)
+      if (params?.siteId) q.set('siteId', params.siteId)
+      if (params?.hasLinkedVideo !== undefined) q.set('hasLinkedVideo', String(params.hasLinkedVideo))
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.pageSize) q.set('pageSize', String(params.pageSize))
+      return request<PagedResult<PrdbPreDbEntry>>(`/prdb-predb?${q}`)
+    },
+    filterOptions: () => request<PrdbPreDbFilterOptions>('/prdb-predb/filter-options'),
   },
   prdbSync: {
     syncAll: () => request<{ networksUpserted: number; sitesUpserted: number; favoriteSitesSynced: number; favoriteActorsSynced: number; videosUpserted: number }>('/prdb-sync', { method: 'POST' }),
