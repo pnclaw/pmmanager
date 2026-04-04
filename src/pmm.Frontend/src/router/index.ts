@@ -13,14 +13,13 @@ import PrdbStatusView from '../features/prdb/PrdbStatusView.vue'
 import PrdbWantedVideosView from '../features/prdb/PrdbWantedVideosView.vue'
 import PrdbVideoDetailView from '../features/prdb/PrdbVideoDetailView.vue'
 import PrdbVideosView from '../features/prdb/PrdbVideosView.vue'
-import PrdbPreNamesView from '../features/prdb/PrdbPreNamesView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', redirect: '/prdb/wanted' },
     { path: '/health', component: HealthView, meta: { title: 'Health' } },
-{ path: '/indexers', component: IndexersView, meta: { title: 'Indexers' } },
+    { path: '/indexers', component: IndexersView, meta: { title: 'Indexers' } },
     { path: '/indexers/:id/rows', component: IndexerRowsView, meta: { title: 'Indexer Rows' } },
     { path: '/indexers/:id/stats', component: IndexerStatsView, meta: { title: 'Indexer Stats' } },
     { path: '/download-clients', component: DownloadClientsView, meta: { title: 'Download Clients' } },
@@ -29,7 +28,6 @@ const router = createRouter({
     { path: '/prdb/sites', component: PrdbSitesView, meta: { title: 'PRDB Sites' } },
     { path: '/prdb/sites/:id/videos', component: PrdbSiteVideosView, meta: { title: 'PRDB Site Videos' } },
     { path: '/prdb/actors', component: PrdbActorsView, meta: { title: 'PRDB Actors' } },
-    { path: '/prdb/prenames', component: PrdbPreNamesView, meta: { title: 'Prenames' } },
     { path: '/prdb/status', component: PrdbStatusView, meta: { title: 'PRDB Status' } },
     { path: '/prdb/wanted', component: PrdbWantedVideosView, meta: { title: 'Wanted' } },
     { path: '/prdb/videos', component: PrdbVideosView, meta: { title: 'Videos' } },
