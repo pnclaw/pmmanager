@@ -85,12 +85,13 @@ public class PrdbLatestPreDbSyncService(
     {
         var cursor       = settings.PrenamesSyncCursorUtc!.Value;
         var runStartedAt = DateTime.UtcNow;
+        var fetchFrom    = cursor.AddDays(-7);
 
-        logger.LogInformation("PrdbLatestPreDbSyncService: incremental sync since {Cursor:O}", cursor);
+        logger.LogInformation("PrdbLatestPreDbSyncService: incremental sync since {Cursor:O} (re-fetching 7-day window from {FetchFrom:O})", cursor, fetchFrom);
 
         var allItems    = new List<PrdbApiLatestPreDbItem>();
         var page        = 1;
-        var cursorParam = Uri.EscapeDataString(cursor.ToString("O"));
+        var cursorParam = Uri.EscapeDataString(fetchFrom.ToString("O"));
 
         while (true)
         {
