@@ -554,6 +554,7 @@ export const api = {
     resetPreNameCursor: () => request<void>('/prdb-status/prename-sync/reset-cursor', { method: 'POST' }),
     runIndexerBackfill: (id: string) => request<void>(`/prdb-status/indexer-backfill/${id}/run`, { method: 'POST' }),
     runIndexerRowMatch: () => request<void>('/prdb-status/indexer-row-match/run', { method: 'POST' }),
+    runWantedFulfillment: () => request<void>('/prdb-status/wanted-fulfillment/run', { method: 'POST' }),
     debugIndexerRowMatch: (search: string) => request<IndexerRowMatchDebugResult>('/prdb-status/indexer-row-match/debug', { method: 'POST', body: JSON.stringify({ search }) }),
   },
   settings: {

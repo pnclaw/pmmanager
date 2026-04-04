@@ -5,6 +5,21 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/wanted-list-fulfillment — 2026-04-04
+
+### Done
+- New `WantedVideoFulfillmentService` automatically queues NZB downloads for unfulfilled wanted videos when a matching indexer row exists — runs as part of the 15-minute SyncWorker cycle, immediately after the indexer row match step
+- Quality-aware match selection: prefers the configured `PreferredVideoQuality`; falls back to the highest quality available if preferred is not found; quality is detected from the NZB title (`720p`, `1080p`, `2160p`/`4k`/`uhd`)
+- Duplicate prevention: skips rows that already have an active or completed `DownloadLog` (retries failed ones)
+- `DownloadPollingWorker` now populates `FulfilledInQuality` when marking a wanted video as fulfilled
+- "Fulfill Now" button added to the Wanted List Sync card on the Status page for manual on-demand triggering
+- New `POST /api/prdb-status/wanted-fulfillment/run` endpoint backing the manual trigger
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/amber-stone-river — 2026-04-04
 
 ### Done

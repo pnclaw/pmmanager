@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using pmm.Api.Features.DownloadClients;
+using pmm.Api.Features.WantedFulfillment;
 using Pmm.Database;
 using Pmm.Database.Enums;
 
@@ -121,6 +122,7 @@ public class DownloadPollingWorker(
         var rowIds = completedLogs.Select(l => l.IndexerRowId).ToList();
 
         var matches = await db.Set<IndexerRowMatch>()
+            .Include(m => m.IndexerRow)
             .Where(m => rowIds.Contains(m.IndexerRowId))
             .ToListAsync(ct);
 
@@ -140,6 +142,7 @@ public class DownloadPollingWorker(
             w.IsFulfilled            = true;
             w.FulfilledAtUtc         = DateTime.UtcNow;
             w.FulfillmentExternalId  = log.Id.ToString();
+            w.FulfilledInQuality     = (int?)WantedVideoFulfillmentService.ParseQuality(match.IndexerRow.Title);
         }
 
         if (wanted.Count > 0)
