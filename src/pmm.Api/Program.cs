@@ -30,7 +30,7 @@ builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbSyncService>();
 builder.Services.AddScoped<pmm.Api.Features.Prdb.PrdbFavoritesService>();
 builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbActorSyncService>();
 builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbVideoDetailSyncService>();
-builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbLatestPreNameSyncService>();
+builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbLatestPreDbSyncService>();
 builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbWantedVideoSyncService>();
 builder.Services.AddScoped<pmm.Api.Features.Indexers.Matching.IndexerRowMatchService>();
 builder.Services.AddHostedService<IndexerScraperBackgroundService>();
