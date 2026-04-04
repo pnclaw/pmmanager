@@ -33,6 +33,7 @@ builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbVideoDetailSyncService
 builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbLatestPreDbSyncService>();
 builder.Services.AddScoped<pmm.Api.Features.Prdb.Sync.PrdbWantedVideoSyncService>();
 builder.Services.AddScoped<pmm.Api.Features.Indexers.Matching.IndexerRowMatchService>();
+builder.Services.AddScoped<pmm.Api.Features.WantedFulfillment.WantedVideoFulfillmentService>();
 builder.Services.AddScoped<pmm.Api.Features.Indexers.Scraping.IndexerBackfillService>();
 builder.Services.AddHostedService<IndexerScraperBackgroundService>();
 builder.Services.AddScoped<DownloadClientTester>();

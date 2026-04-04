@@ -6,6 +6,7 @@ using Pmm.Database;
 using pmm.Api.Features.Indexers.Matching;
 using pmm.Api.Features.Indexers.Scraping;
 using pmm.Api.Features.Prdb.Sync;
+using pmm.Api.Features.WantedFulfillment;
 
 namespace pmm.Api.Features.Prdb;
 
@@ -20,7 +21,8 @@ public class PrdbStatusController(
     PrdbLatestPreDbSyncService latestPreDbSyncService,
     PrdbWantedVideoSyncService wantedVideoSyncService,
     IndexerBackfillService indexerBackfillService,
-    IndexerRowMatchService indexerRowMatchService) : ControllerBase
+    IndexerRowMatchService indexerRowMatchService,
+    WantedVideoFulfillmentService wantedVideoFulfillmentService) : ControllerBase
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -272,6 +274,16 @@ public class PrdbStatusController(
             return NotFound();
 
         await indexerBackfillService.RunIndexerAsync(id, ct);
+        return NoContent();
+    }
+
+    [HttpPost("wanted-fulfillment/run")]
+    [EndpointSummary("Run wanted video fulfillment")]
+    [EndpointDescription("Manually triggers one wanted video fulfillment run, identical to the scheduled SyncWorker tick.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RunWantedFulfillment(CancellationToken ct)
+    {
+        await wantedVideoFulfillmentService.RunAsync(ct);
         return NoContent();
     }
 

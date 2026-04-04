@@ -261,6 +261,15 @@
             <v-btn
               size="small"
               variant="tonal"
+              prepend-icon="mdi-download"
+              :loading="runningWantedFulfillment"
+              @click="runWantedFulfillment"
+            >
+              Fulfill Now
+            </v-btn>
+            <v-btn
+              size="small"
+              variant="tonal"
               prepend-icon="mdi-play"
               :loading="runningWantedVideoSync"
               @click="runWantedVideoSync"
@@ -663,6 +672,7 @@ const resettingPreNameCursor   = ref(false)
 const runningWantedVideoSync   = ref(false)
 const runningIndexerBackfillId = ref<string | null>(null)
 const runningIndexerRowMatch   = ref(false)
+const runningWantedFulfillment = ref(false)
 const runningDebug             = ref(false)
 const debugDialog              = ref(false)
 const debugSearch              = ref('')
@@ -857,6 +867,19 @@ async function runDebug() {
     error.value = e.message
   } finally {
     runningDebug.value = false
+  }
+}
+
+async function runWantedFulfillment() {
+  runningWantedFulfillment.value = true
+  error.value = null
+  try {
+    await api.prdbStatus.runWantedFulfillment()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    runningWantedFulfillment.value = false
   }
 }
 
