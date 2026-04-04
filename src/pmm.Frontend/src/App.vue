@@ -73,6 +73,12 @@
           rounded="lg"
         />
         <v-list-item
+          prepend-icon="mdi-format-list-bulleted-square"
+          title="PreDB"
+          to="/prdb/predb"
+          rounded="lg"
+        />
+        <v-list-item
           prepend-icon="mdi-chart-box"
           title="Status"
           to="/prdb/status"
