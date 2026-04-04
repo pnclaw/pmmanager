@@ -23,7 +23,7 @@ public sealed class PrdbPreDbTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetAll_DefaultsToLatestLinkedEntries()
+    public async Task GetAll_DefaultsToAllLatestEntries()
     {
         var response = await _client.GetAsync("/api/prdb-predb");
 
@@ -31,10 +31,9 @@ public sealed class PrdbPreDbTests : IAsyncLifetime
         var body = await response.Content.ReadFromJsonAsync<PagedResult<PrdbPreDbListItemDto>>();
 
         body.Should().NotBeNull();
-        body!.Total.Should().Be(2);
-        body.Items.Should().HaveCount(2);
-        body.Items.Should().OnlyContain(i => i.HasLinkedVideo);
-        body.Items.Select(i => i.Title).Should().ContainInOrder("Zulu.Release", "Alpha.Release");
+        body!.Total.Should().Be(3);
+        body.Items.Should().HaveCount(3);
+        body.Items.Select(i => i.Title).Should().ContainInOrder("Zulu.Release", "Orphan.Release", "Alpha.Release");
     }
 
     [Fact]
