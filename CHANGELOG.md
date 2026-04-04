@@ -5,6 +5,19 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/download-log-optimization — 2026-04-04
+
+### Done
+- Extracted polling logic from `DownloadPollingWorker` into a scoped `DownloadPollService`, making it reusable from both the background worker and the API
+- New `POST /api/download-logs/poll` endpoint triggers an immediate poll cycle; wired to a "Poll Now" button in the Downloads view
+- Download log entries that disappear from the download client (deleted by the user in SABnzbd/NZBGet) are now detected: after 3 consecutive polls with no result the entry is marked `Failed` with the message "Item not found in download client after 3 polls — likely deleted." — tracked via a new `MissedPollCount` column
+- New `DELETE /api/download-logs/failed` removes all failed entries; new `DELETE /api/download-logs` clears the entire log (with confirmation dialog) — both wired to buttons in the Downloads view
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/wanted-list-fulfillment — 2026-04-04
 
 ### Done

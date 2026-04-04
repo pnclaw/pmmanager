@@ -47,6 +47,28 @@ public class DownloadLogsController(AppDbContext db, DownloadPollService pollSer
         return log is null ? NotFound() : Ok(ToResponse(log));
     }
 
+    [HttpDelete("failed")]
+    [EndpointSummary("Delete failed download logs")]
+    [EndpointDescription("Permanently removes all download log entries with a Failed status.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteFailed(CancellationToken ct)
+    {
+        await db.DownloadLogs
+            .Where(l => l.Status == Pmm.Database.Enums.DownloadStatus.Failed)
+            .ExecuteDeleteAsync(ct);
+        return NoContent();
+    }
+
+    [HttpDelete]
+    [EndpointSummary("Delete all download logs")]
+    [EndpointDescription("Permanently removes all download log entries.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteAll(CancellationToken ct)
+    {
+        await db.DownloadLogs.ExecuteDeleteAsync(ct);
+        return NoContent();
+    }
+
     private static DownloadLogResponse ToResponse(DownloadLog log) => new()
     {
         Id                   = log.Id,

@@ -31,7 +31,7 @@
             hide-details
           />
         </v-col>
-        <v-col cols="auto">
+        <v-col cols="auto" class="d-flex ga-2">
           <v-btn
             size="small"
             variant="tonal"
@@ -41,9 +41,41 @@
           >
             Poll Now
           </v-btn>
+          <v-btn
+            size="small"
+            variant="tonal"
+            color="warning"
+            prepend-icon="mdi-delete-sweep"
+            :loading="deletingFailed"
+            @click="removeFailed"
+          >
+            Remove Failed
+          </v-btn>
+          <v-btn
+            size="small"
+            variant="tonal"
+            color="error"
+            prepend-icon="mdi-delete-forever"
+            :loading="deletingAll"
+            @click="confirmResetAll = true"
+          >
+            Reset All
+          </v-btn>
         </v-col>
       </v-row>
     </v-expand-transition>
+
+    <v-dialog v-model="confirmResetAll" max-width="400">
+      <v-card>
+        <v-card-title class="pt-4">Reset Download Log</v-card-title>
+        <v-card-text>This will permanently delete all download log entries. This cannot be undone.</v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="confirmResetAll = false">Cancel</v-btn>
+          <v-btn color="error" variant="tonal" :loading="deletingAll" @click="resetAll">Delete All</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <div v-if="loading" class="text-center py-8">
       <v-progress-circular indeterminate color="primary" />
@@ -189,10 +221,13 @@ const { mobile } = useDisplay()
 const { setActions, clearAction } = usePageAction()
 const { filterPanelOpen, toggle, closePanel } = useFilterPanel()
 
-const logs    = ref<DownloadLog[]>([])
-const loading = ref(false)
-const polling = ref(false)
-const error   = ref<string | null>(null)
+const logs           = ref<DownloadLog[]>([])
+const loading        = ref(false)
+const polling        = ref(false)
+const deletingFailed = ref(false)
+const deletingAll    = ref(false)
+const confirmResetAll = ref(false)
+const error          = ref<string | null>(null)
 
 const search       = ref('')
 const statusFilter = ref<number | 'all'>('all')
@@ -237,6 +272,33 @@ async function pollNow() {
     error.value = e.message
   } finally {
     polling.value = false
+  }
+}
+
+async function removeFailed() {
+  deletingFailed.value = true
+  error.value = null
+  try {
+    await api.downloadLogs.deleteFailed()
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    deletingFailed.value = false
+  }
+}
+
+async function resetAll() {
+  deletingAll.value = true
+  error.value = null
+  try {
+    await api.downloadLogs.deleteAll()
+    confirmResetAll.value = false
+    await load()
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    deletingAll.value = false
   }
 }
 
