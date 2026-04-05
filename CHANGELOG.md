@@ -5,6 +5,20 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/download-log-improvements — 2026-04-05
+
+### Done
+- New `GET /api/prdb-videos/{id}/indexer-matches` endpoint returns all indexer rows matched to a video, each with its latest download status
+- Video detail page shows matched indexer rows as mobile-friendly cards (title, size, date, status chip) with icon buttons to send directly to the download client or download the NZB file
+- Quick-download section in the video detail header picks the best match for the configured preferred quality (falls back to highest available) and shows send/download icon buttons with hover tooltips
+- Video listing cards show a subtle grey "NZB" badge in the top-right corner when at least one indexer match exists for that video
+- README clarified to separate user-facing and developer-facing documentation
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/download-log-optimization — 2026-04-04
 
 ### Done
