@@ -30,8 +30,7 @@ public class DownloadLog : BaseEntity
     [MaxLength(2000)]
     public string? StoragePath { get; set; }
 
-    /// <summary>JSON array of filenames present in StoragePath after extraction.</summary>
-    public string? FileNames { get; set; }
+    public ICollection<DownloadLogFile> Files { get; set; } = [];
 
     /// <summary>Total size in bytes as reported by the download client.</summary>
     public long? TotalSizeBytes { get; set; }

@@ -1,3 +1,4 @@
+using pmm.Api.Features.DownloadLogs;
 using Pmm.Database.Enums;
 
 namespace pmm.Api.Features.Prdb;
@@ -13,5 +14,5 @@ public class VideoIndexerMatchResponse
     public int Category { get; set; }
     public DownloadStatus? DownloadStatus { get; set; }
     public string? StoragePath { get; set; }
-    public List<string>? FileNames { get; set; }
+    public List<DownloadLogFileResponse>? Files { get; set; }
 }

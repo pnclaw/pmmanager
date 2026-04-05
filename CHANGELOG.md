@@ -5,6 +5,19 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/video-detail-improvements — 2026-04-05
+
+### Done
+- Moved download log filenames out of a JSON blob (`FileNames` TEXT column) into a dedicated `DownloadLogFiles` table — each row stores `FileName` (relative path), `OsHash`, and a reserved `PHash` column for future use
+- `DownloadPollService` now computes an **OSHash** (OpenSubtitles hash: file size + uint64 sum of first and last 64 KB) for every file discovered after a download completes
+- `DownloadLogFileResponse` DTO exposes `Id`, `FileName`, and `OsHash`; replaces the flat `FileNames: string[]` in both `DownloadLogResponse` and `VideoIndexerMatchResponse`
+- Added `TODO.md` with a detailed spec for future pHash (perceptual hash) implementation
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/download-location-improvement — 2026-04-05
 
 ### Done

@@ -1,6 +1,6 @@
 using System.Net.Http.Json;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using pmm.Api.Features.DownloadLogs;
 using pmm.Api.Features.WantedFulfillment;
 using Pmm.Database;
 using Pmm.Database.Enums;
@@ -104,7 +104,7 @@ public class DownloadPollService(
     private async Task ScanStoragePathsAsync(List<DownloadLog> completedLogs, CancellationToken ct)
     {
         var logsToScan = completedLogs
-            .Where(l => l.StoragePath != null && l.FileNames == null)
+            .Where(l => l.StoragePath != null)
             .ToList();
 
         if (logsToScan.Count == 0) return;
@@ -129,18 +129,28 @@ public class DownloadPollService(
                 continue;
             }
 
-            var files = Directory
+            var fullPaths = Directory
                 .GetFiles(localPath, "*", SearchOption.AllDirectories)
-                .Select(f => Path.GetRelativePath(localPath, f))
                 .Order()
                 .ToList();
 
-            if (files.Count > 0)
+            if (fullPaths.Count == 0) continue;
+
+            var now = DateTime.UtcNow;
+            var files = fullPaths.Select(fullPath => new DownloadLogFile
             {
-                log.FileNames = JsonSerializer.Serialize(files);
-                log.UpdatedAt = DateTime.UtcNow;
-                logger.LogDebug("ScanStoragePaths: found {Count} file(s) for log {LogId}", files.Count, log.Id);
-            }
+                Id            = Guid.NewGuid(),
+                DownloadLogId = log.Id,
+                FileName      = Path.GetRelativePath(localPath, fullPath),
+                OsHash        = OsHash.Compute(fullPath),
+                CreatedAt     = now,
+                UpdatedAt     = now,
+            }).ToList();
+
+            db.DownloadLogFiles.AddRange(files);
+            log.UpdatedAt = now;
+
+            logger.LogDebug("ScanStoragePaths: found {Count} file(s) for log {LogId}", files.Count, log.Id);
         }
 
         await db.SaveChangesAsync(ct);

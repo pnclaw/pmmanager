@@ -1,6 +1,6 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using pmm.Api.Features.DownloadLogs;
 using Pmm.Database;
 using Pmm.Database.Enums;
 
@@ -142,7 +142,13 @@ public class PrdbVideosController(AppDbContext db) : ControllerBase
         var latestLogs = await db.DownloadLogs
             .Where(l => rowIds.Contains(l.IndexerRowId))
             .OrderByDescending(l => l.CreatedAt)
-            .Select(l => new { l.IndexerRowId, l.Status, l.StoragePath, l.FileNames })
+            .Select(l => new
+            {
+                l.IndexerRowId,
+                l.Status,
+                l.StoragePath,
+                Files = l.Files.Select(f => new { f.Id, f.FileName, f.OsHash }).ToList(),
+            })
             .ToListAsync();
 
         var logByRow = latestLogs
@@ -163,8 +169,8 @@ public class PrdbVideosController(AppDbContext db) : ControllerBase
                 Category       = r.Category,
                 DownloadStatus = log == null ? null : (DownloadStatus?)log.Status,
                 StoragePath    = log?.StoragePath,
-                FileNames      = log?.FileNames != null
-                    ? JsonSerializer.Deserialize<List<string>>(log.FileNames)
+                Files          = log?.Files.Count > 0
+                    ? log.Files.Select(f => new DownloadLogFileResponse { Id = f.Id, FileName = f.FileName, OsHash = f.OsHash }).ToList()
                     : null,
             };
         }).ToList();
