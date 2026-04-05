@@ -89,6 +89,13 @@
               >
                 {{ item.isFulfilled ? 'Fulfilled' : 'Wanted' }}
               </div>
+              <div
+                v-if="item.hasIndexerMatch"
+                class="position-absolute text-caption font-weight-bold px-2 py-1"
+                style="top: 0; right: 0; z-index: 1; border-bottom-left-radius: 6px; background: rgba(120,120,120,0.7); color: #fff"
+              >
+                NZB
+              </div>
               <v-img
                 v-if="item.thumbnailCdnPath"
                 :src="item.thumbnailCdnPath"
