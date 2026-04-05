@@ -75,7 +75,10 @@ public class DownloadPollService(
             .ToList();
 
         if (completed.Count > 0)
+        {
+            await ScanStoragePathsAsync(completed, ct);
             await FulfillWantedVideosAsync(completed, ct);
+        }
     }
 
     private static void ApplyResult(DownloadLog log, DownloadPollResult result)
@@ -91,14 +94,56 @@ public class DownloadPollService(
         if (result.StoragePath != null)
             log.StoragePath = result.StoragePath;
 
-        if (result.FileNames is { Count: > 0 })
-            log.FileNames = JsonSerializer.Serialize(result.FileNames);
-
         if (result.ErrorMessage != null)
             log.ErrorMessage = result.ErrorMessage;
 
         if (result.Status is DownloadStatus.Completed or DownloadStatus.Failed)
             log.CompletedAt = DateTime.UtcNow;
+    }
+
+    private async Task ScanStoragePathsAsync(List<DownloadLog> completedLogs, CancellationToken ct)
+    {
+        var logsToScan = completedLogs
+            .Where(l => l.StoragePath != null && l.FileNames == null)
+            .ToList();
+
+        if (logsToScan.Count == 0) return;
+
+        var folderMappings = await db.FolderMappings.ToListAsync(ct);
+
+        foreach (var log in logsToScan)
+        {
+            var localPath = log.StoragePath!;
+            foreach (var mapping in folderMappings)
+            {
+                if (localPath.StartsWith(mapping.OriginalFolder, StringComparison.OrdinalIgnoreCase))
+                {
+                    localPath = mapping.MappedToFolder + localPath[mapping.OriginalFolder.Length..];
+                    break;
+                }
+            }
+
+            if (!Directory.Exists(localPath))
+            {
+                logger.LogDebug("ScanStoragePaths: directory not found at '{Path}' for log {LogId}", localPath, log.Id);
+                continue;
+            }
+
+            var files = Directory
+                .GetFiles(localPath, "*", SearchOption.AllDirectories)
+                .Select(f => Path.GetRelativePath(localPath, f))
+                .Order()
+                .ToList();
+
+            if (files.Count > 0)
+            {
+                log.FileNames = JsonSerializer.Serialize(files);
+                log.UpdatedAt = DateTime.UtcNow;
+                logger.LogDebug("ScanStoragePaths: found {Count} file(s) for log {LogId}", files.Count, log.Id);
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
     }
 
     private async Task FulfillWantedVideosAsync(List<DownloadLog> completedLogs, CancellationToken ct)

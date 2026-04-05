@@ -9,6 +9,5 @@ public class DownloadPollResult
     public long? TotalSizeBytes { get; init; }
     public long? DownloadedBytes { get; init; }
     public string? StoragePath { get; init; }
-    public List<string>? FileNames { get; init; }
     public string? ErrorMessage { get; init; }
 }
