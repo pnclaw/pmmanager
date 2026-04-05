@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using pmm.Api.Features.WantedFulfillment;
@@ -10,6 +11,7 @@ public class DownloadPollService(
     AppDbContext db,
     SabnzbdPoller sabnzbdPoller,
     NzbgetPoller nzbgetPoller,
+    IHttpClientFactory httpClientFactory,
     ILogger<DownloadPollService> logger)
 {
     public async Task PollAsync(CancellationToken ct)
@@ -116,18 +118,65 @@ public class DownloadPollService(
             .Where(w => videoIds.Contains(w.VideoId) && !w.IsFulfilled)
             .ToListAsync(ct);
 
+        if (wanted.Count == 0) return;
+
+        var now = DateTime.UtcNow;
+
         foreach (var w in wanted)
         {
             var match = matches.First(m => m.PrdbVideoId == w.VideoId);
             var log   = completedLogs.First(l => l.IndexerRowId == match.IndexerRowId);
 
             w.IsFulfilled           = true;
-            w.FulfilledAtUtc        = DateTime.UtcNow;
+            w.FulfilledAtUtc        = now;
             w.FulfillmentExternalId = log.Id.ToString();
             w.FulfilledInQuality    = (int?)WantedVideoFulfillmentService.ParseQuality(match.IndexerRow.Title);
         }
 
-        if (wanted.Count > 0)
-            await db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct);
+        await NotifyPrdbFulfillmentAsync(wanted, ct);
+    }
+
+    private async Task NotifyPrdbFulfillmentAsync(List<PrdbWantedVideo> fulfilled, CancellationToken ct)
+    {
+        var settings = await db.AppSettings.FirstAsync(ct);
+
+        if (string.IsNullOrWhiteSpace(settings.PrdbApiKey))
+        {
+            logger.LogWarning("DownloadPollService: PrdbApiKey not configured — skipping fulfilment notification");
+            return;
+        }
+
+        var http = httpClientFactory.CreateClient();
+        http.BaseAddress = new Uri(settings.PrdbApiUrl.TrimEnd('/') + "/");
+        http.DefaultRequestHeaders.Add("X-Api-Key", settings.PrdbApiKey);
+
+        foreach (var w in fulfilled)
+        {
+            try
+            {
+                var response = await http.PutAsJsonAsync(
+                    $"wanted-videos/{w.VideoId}",
+                    new
+                    {
+                        isFulfilled           = true,
+                        fulfilledAtUtc        = w.FulfilledAtUtc,
+                        fulfilledInQuality    = w.FulfilledInQuality,
+                        fulfillmentExternalId = w.FulfillmentExternalId,
+                    },
+                    ct);
+
+                if (!response.IsSuccessStatusCode)
+                    logger.LogWarning(
+                        "DownloadPollService: failed to notify prdb.net of fulfilment for video {VideoId} — {StatusCode}",
+                        w.VideoId, response.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "DownloadPollService: error notifying prdb.net of fulfilment for video {VideoId}",
+                    w.VideoId);
+            }
+        }
     }
 }

@@ -137,19 +137,27 @@ public class PrdbWantedVideosController(AppDbContext db, IHttpClientFactory http
         var entry = await db.PrdbWantedVideos.FindAsync([videoId], ct);
         if (entry is null) return NotFound();
 
+        var now            = request.IsFulfilled ? (DateTime?)DateTime.UtcNow : null;
+        entry.IsFulfilled           = request.IsFulfilled;
+        entry.FulfilledAtUtc        = request.IsFulfilled ? entry.FulfilledAtUtc ?? now : null;
+        entry.FulfilledInQuality    = request.IsFulfilled ? entry.FulfilledInQuality : null;
+        entry.FulfillmentExternalId = request.IsFulfilled ? entry.FulfillmentExternalId : null;
+        entry.FulfillmentByApp      = request.IsFulfilled ? entry.FulfillmentByApp : null;
+
         var settings = await db.AppSettings.FirstAsync(ct);
         var http = httpClientFactory.CreateClient();
         http.BaseAddress = new Uri(settings.PrdbApiUrl.TrimEnd('/') + "/");
         http.DefaultRequestHeaders.Add("X-Api-Key", settings.PrdbApiKey);
 
-        var prdbRequest = new HttpRequestMessage(HttpMethod.Put, $"wanted-videos/{videoId}")
+        (await http.PutAsJsonAsync($"wanted-videos/{videoId}", new
         {
-            Content = JsonContent.Create(new { request.IsFulfilled }),
-        };
-        (await http.SendAsync(prdbRequest, ct)).EnsureSuccessStatusCode();
+            isFulfilled           = entry.IsFulfilled,
+            fulfilledAtUtc        = entry.FulfilledAtUtc,
+            fulfilledInQuality    = entry.FulfilledInQuality,
+            fulfillmentExternalId = entry.FulfillmentExternalId,
+            fulfillmentByApp      = entry.FulfillmentByApp,
+        }, ct)).EnsureSuccessStatusCode();
 
-        entry.IsFulfilled   = request.IsFulfilled;
-        entry.FulfilledAtUtc = request.IsFulfilled ? entry.FulfilledAtUtc ?? DateTime.UtcNow : null;
         await db.SaveChangesAsync(ct);
 
         return NoContent();

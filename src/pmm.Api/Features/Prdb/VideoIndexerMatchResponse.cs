@@ -12,4 +12,6 @@ public class VideoIndexerMatchResponse
     public DateTime? NzbPublishedAt { get; set; }
     public int Category { get; set; }
     public DownloadStatus? DownloadStatus { get; set; }
+    public string? StoragePath { get; set; }
+    public List<string>? FileNames { get; set; }
 }

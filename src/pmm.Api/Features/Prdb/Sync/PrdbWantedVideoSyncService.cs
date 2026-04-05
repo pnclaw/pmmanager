@@ -162,13 +162,18 @@ public class PrdbWantedVideoSyncService(
         {
             if (existingMap.TryGetValue(item.VideoId, out var existing))
             {
-                existing.IsFulfilled           = item.IsFulfilled;
-                existing.FulfilledAtUtc        = item.FulfilledAtUtc;
-                existing.FulfilledInQuality    = item.FulfilledInQuality;
-                existing.FulfillmentExternalId = item.FulfillmentExternalId;
-                existing.FulfillmentByApp      = item.FulfillmentByApp;
-                existing.PrdbUpdatedAtUtc      = item.UpdatedAtUtc;
-                existing.SyncedAtUtc           = now;
+                // Only update fulfillment fields from the API if not already fulfilled
+                // locally. Local fulfillment (set by DownloadPollService) takes precedence.
+                if (!existing.IsFulfilled)
+                {
+                    existing.IsFulfilled           = item.IsFulfilled;
+                    existing.FulfilledAtUtc        = item.FulfilledAtUtc;
+                    existing.FulfilledInQuality    = item.FulfilledInQuality;
+                    existing.FulfillmentExternalId = item.FulfillmentExternalId;
+                    existing.FulfillmentByApp      = item.FulfillmentByApp;
+                }
+                existing.PrdbUpdatedAtUtc = item.UpdatedAtUtc;
+                existing.SyncedAtUtc      = now;
             }
             else
             {

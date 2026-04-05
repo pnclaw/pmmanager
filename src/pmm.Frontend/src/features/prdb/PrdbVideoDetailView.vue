@@ -119,6 +119,40 @@
         </div>
       </div>
 
+      <!-- Download location (fulfilled videos with a completed download log) -->
+      <div v-if="video.isFulfilled && fulfilledMatch" class="mb-6">
+        <div class="text-subtitle-1 font-weight-medium mb-2">Download location</div>
+        <v-card variant="outlined">
+          <v-card-text class="py-2 px-3">
+            <div
+              class="text-body-2 text-medium-emphasis mb-2"
+              style="word-break: break-all; font-family: monospace"
+            >
+              {{ applyFolderMapping(fulfilledMatch.storagePath!) }}
+            </div>
+            <div class="d-flex flex-wrap ga-2">
+              <v-btn
+                prepend-icon="mdi-folder-open-outline"
+                variant="tonal"
+                size="small"
+                @click="shellOpen(fulfilledMatch!.storagePath!)"
+              >
+                Open folder
+              </v-btn>
+              <v-btn
+                v-if="findVideoFile(fulfilledMatch.fileNames)"
+                prepend-icon="mdi-play-circle-outline"
+                variant="tonal"
+                size="small"
+                @click="shellOpen(fulfilledMatch!.storagePath! + '/' + findVideoFile(fulfilledMatch!.fileNames))"
+              >
+                Open video
+              </v-btn>
+            </div>
+          </v-card-text>
+        </v-card>
+      </div>
+
       <div v-if="matches.length > 0" class="mb-6">
         <div class="text-subtitle-1 font-weight-medium mb-2">Indexer matches</div>
         <div class="d-flex flex-column ga-2">
@@ -194,21 +228,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { api, type PrdbVideoDetail, type VideoIndexerMatch, type DownloadClient, type AppSettings, DownloadStatus, VideoQuality } from '../../api'
+import { api, type PrdbVideoDetail, type VideoIndexerMatch, type DownloadClient, type AppSettings, type FolderMapping, DownloadStatus, VideoQuality } from '../../api'
 import { useSfwMode } from '../../composables/useSfwMode'
 
 const { sfwMode } = useSfwMode()
 const route = useRoute()
 const id = route.params.id as string
 
-const video         = ref<PrdbVideoDetail | null>(null)
-const matches       = ref<VideoIndexerMatch[]>([])
-const defaultClient = ref<DownloadClient | null>(null)
-const settings      = ref<AppSettings | null>(null)
-const loading       = ref(false)
-const error         = ref<string | null>(null)
-const sending       = ref<string | null>(null)
-const snackbar      = ref({ show: false, text: '', color: 'success' })
+const video          = ref<PrdbVideoDetail | null>(null)
+const matches        = ref<VideoIndexerMatch[]>([])
+const defaultClient  = ref<DownloadClient | null>(null)
+const settings       = ref<AppSettings | null>(null)
+const folderMappings = ref<FolderMapping[]>([])
+const loading        = ref(false)
+const error          = ref<string | null>(null)
+const sending        = ref<string | null>(null)
+const snackbar       = ref({ show: false, text: '', color: 'success' })
 
 // Mirror of WantedVideoFulfillmentService.ParseQuality
 function parseQuality(title: string): VideoQuality | null {
@@ -236,16 +271,18 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    const [v, m, clients, s] = await Promise.all([
+    const [v, m, clients, s, fm] = await Promise.all([
       api.prdbVideos.get(id),
       api.prdbVideos.getIndexerMatches(id),
       api.downloadClients.list(),
       api.settings.get(),
+      api.folderMappings.list(),
     ])
     video.value = v
     matches.value = m
     defaultClient.value = clients.find(c => c.isEnabled) ?? null
     settings.value = s
+    folderMappings.value = fm
   } catch (e: any) {
     error.value = e.message
   } finally {
@@ -309,6 +346,34 @@ function formatSize(bytes: number): string {
   if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`
   if (bytes >= 1_048_576)     return `${(bytes / 1_048_576).toFixed(0)} MB`
   return `${(bytes / 1_024).toFixed(0)} KB`
+}
+
+// The match that fulfilled this video (completed download with a storage path)
+const fulfilledMatch = computed<VideoIndexerMatch | null>(() =>
+  matches.value.find(m => m.downloadStatus === DownloadStatus.Completed && m.storagePath != null) ?? null
+)
+
+function applyFolderMapping(path: string): string {
+  for (const mapping of folderMappings.value) {
+    if (path.startsWith(mapping.originalFolder)) {
+      return mapping.mappedToFolder + path.slice(mapping.originalFolder.length)
+    }
+  }
+  return path
+}
+
+async function shellOpen(path: string) {
+  try {
+    await api.shell.open(path)
+  } catch (e: any) {
+    snackbar.value = { show: true, text: e.message, color: 'error' }
+  }
+}
+
+const VIDEO_EXTENSIONS = ['.mkv', '.mp4', '.avi', '.wmv', '.mov', '.m4v', '.ts', '.m2ts', '.webm', '.flv']
+
+function findVideoFile(fileNames: string[] | null): string | null {
+  return fileNames?.find(f => VIDEO_EXTENSIONS.some(ext => f.toLowerCase().endsWith(ext))) ?? null
 }
 
 onMounted(load)

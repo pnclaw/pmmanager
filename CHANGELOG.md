@@ -5,6 +5,21 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/video-list-improvements — 2026-04-05
+
+### Done
+- Video listing cards now show a **Download NZB** / **Send to client** button in the card overlay for videos with an indexer match; uses the same preferred-quality selection logic as the detail page
+- When adding a video to the wanted list from the listing page, if a matching NZB exists and a download client is configured, it is automatically sent to the client immediately (without waiting for the background sync)
+- Video detail page shows a **Download location** section for fulfilled videos that have a completed download log: displays the folder-mapped storage path and provides **Open folder** / **Open video** buttons via a backend shell-open endpoint (avoids browser `file://` security restrictions)
+- Fixed: the prdb.net sync service no longer overwrites local fulfilment state — local state set by `DownloadPollService` now takes precedence over what the API returns
+- `DownloadPollService` now notifies prdb.net via `PUT /wanted-videos/{id}` when it marks a video as fulfilled locally
+- Manual toggle-fulfilled from the wanted list now sends the full fulfilment payload (`fulfilledAtUtc`, `fulfilledInQuality`, `fulfillmentExternalId`, `fulfillmentByApp`) to prdb.net, and clears those fields when marking as unfulfilled
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/download-log-improvements — 2026-04-05
 
 ### Done
