@@ -5,6 +5,18 @@ See [`docs/changelog/`](docs/changelog/) for archived entries.
 
 ---
 
+## feature/download-location-improvement — 2026-04-05
+
+### Done
+- **Open folder / Open video** buttons in the video detail page now apply folder mappings before sending the path to the backend shell-open endpoint, so the correct local path is opened when the download client runs on Docker or a remote machine
+- Replaced SABnzbd `stage_log` file-name parsing with a directory scan: when a download completes, `DownloadPollService` scans the storage path (after applying folder mappings) and stores all files found as paths relative to the storage root
+- Removed `FileNames` from `DownloadPollResult` and deleted the `ExtractFileNames` method from `SabnzbdPoller` — file discovery is now entirely filesystem-based
+
+### Dead Ends
+- *(none)*
+
+---
+
 ## feature/video-list-improvements — 2026-04-05
 
 ### Done

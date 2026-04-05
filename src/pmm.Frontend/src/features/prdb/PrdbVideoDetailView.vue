@@ -135,7 +135,7 @@
                 prepend-icon="mdi-folder-open-outline"
                 variant="tonal"
                 size="small"
-                @click="shellOpen(fulfilledMatch!.storagePath!)"
+                @click="shellOpen(applyFolderMapping(fulfilledMatch!.storagePath!))"
               >
                 Open folder
               </v-btn>
@@ -144,7 +144,7 @@
                 prepend-icon="mdi-play-circle-outline"
                 variant="tonal"
                 size="small"
-                @click="shellOpen(fulfilledMatch!.storagePath! + '/' + findVideoFile(fulfilledMatch!.fileNames))"
+                @click="shellOpen(applyFolderMapping(fulfilledMatch!.storagePath!) + '/' + findVideoFile(fulfilledMatch!.fileNames))"
               >
                 Open video
               </v-btn>

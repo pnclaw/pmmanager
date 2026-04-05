@@ -140,10 +140,6 @@ public class SabnzbdPoller(IHttpClientFactory httpClientFactory, ILogger<Sabnzbd
                         errorMessage = msg;
                 }
 
-                List<string>? fileNames = null;
-                if (status == DownloadStatus.Completed)
-                    fileNames = ExtractFileNames(slot);
-
                 return new DownloadPollResult
                 {
                     ClientItemId    = nzoId,
@@ -151,7 +147,6 @@ public class SabnzbdPoller(IHttpClientFactory httpClientFactory, ILogger<Sabnzbd
                     TotalSizeBytes  = totalBytes,
                     DownloadedBytes = status == DownloadStatus.Completed ? totalBytes : null,
                     StoragePath     = storagePath,
-                    FileNames       = fileNames,
                     ErrorMessage    = errorMessage,
                 };
             }
@@ -159,46 +154,6 @@ public class SabnzbdPoller(IHttpClientFactory httpClientFactory, ILogger<Sabnzbd
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Failed to poll SABnzbd history for nzo_id {NzoId}", nzoId);
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Attempts to extract extracted filenames from the Unpack stage_log entry.
-    /// Returns null if the information is unavailable.
-    /// </summary>
-    private static List<string>? ExtractFileNames(JsonElement slot)
-    {
-        if (!slot.TryGetProperty("stage_log", out var stageLog)) return null;
-
-        foreach (var stage in stageLog.EnumerateArray())
-        {
-            var stageName = stage.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
-            if (stageName is not ("Unpack" or "Moving")) continue;
-            if (!stage.TryGetProperty("actions", out var actions)) continue;
-
-            var files = new List<string>();
-            foreach (var action in actions.EnumerateArray())
-            {
-                var text = action.GetString();
-                if (text == null) continue;
-
-                // e.g. "Unpacking movie.mkv" or "Unpacked movie.mkv from archive.rar"
-                if (text.StartsWith("Unpacking ", StringComparison.OrdinalIgnoreCase))
-                {
-                    files.Add(text["Unpacking ".Length..].Trim());
-                }
-                else if (text.StartsWith("Unpacked ", StringComparison.OrdinalIgnoreCase))
-                {
-                    var part = text["Unpacked ".Length..].Trim();
-                    var fromIdx = part.IndexOf(" from ", StringComparison.OrdinalIgnoreCase);
-                    files.Add(fromIdx >= 0 ? part[..fromIdx].Trim() : part);
-                }
-            }
-
-            if (files.Count > 0)
-                return files.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         return null;
