@@ -76,6 +76,42 @@
               >
                 {{ item.isWanted ? 'Remove wanted' : 'Add to wanted' }}
               </v-btn>
+              <template v-if="item.hasIndexerMatch">
+                <v-btn
+                  v-if="defaultClient && bestMatchFor(item.id) && canSend(bestMatchFor(item.id)!)"
+                  prepend-icon="mdi-send"
+                  variant="tonal"
+                  color="white"
+                  width="180"
+                  :loading="sendingMatch === item.id"
+                  @click.stop="sendBestMatch(item)"
+                >
+                  Send to client
+                </v-btn>
+                <v-btn
+                  v-else-if="bestMatchFor(item.id)"
+                  prepend-icon="mdi-download"
+                  variant="tonal"
+                  color="white"
+                  width="180"
+                  :href="bestMatchFor(item.id)!.nzbUrl"
+                  download
+                  @click.stop
+                >
+                  Download NZB
+                </v-btn>
+                <v-btn
+                  v-else-if="loadingMatches === item.id"
+                  prepend-icon="mdi-download"
+                  variant="tonal"
+                  color="white"
+                  width="180"
+                  loading
+                  @click.stop
+                >
+                  Download NZB
+                </v-btn>
+              </template>
             </div>
 
             <div class="position-relative">
@@ -137,14 +173,18 @@
         />
       </div>
     </template>
+
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
+      {{ snackbar.text }}
+    </v-snackbar>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useRouter } from 'vue-router'
-import { api, type PrdbVideoListItem, type PrdbVideoFilterOptions } from '../../api'
+import { api, type PrdbVideoListItem, type PrdbVideoFilterOptions, type VideoIndexerMatch, type DownloadClient, type AppSettings, VideoQuality, DownloadStatus } from '../../api'
 import { useSfwMode } from '../../composables/useSfwMode'
 import { usePageAction } from '../../composables/usePageAction'
 import { useFilterPanel } from '../../composables/useFilterPanel'
@@ -163,6 +203,12 @@ const togglingWanted  = ref<string | null>(null)
 const activeOverlayId = ref<string | null>(null)
 const loadingOptions  = ref(false)
 const filterOptions   = ref<PrdbVideoFilterOptions>({ sites: [] })
+const settings        = ref<AppSettings | null>(null)
+const defaultClient   = ref<DownloadClient | null>(null)
+const videoMatchesMap = ref<Record<string, VideoIndexerMatch[]>>({})
+const loadingMatches  = ref<string | null>(null)
+const sendingMatch    = ref<string | null>(null)
+const snackbar        = ref({ show: false, text: '', color: 'success' })
 
 const search         = ref('')
 const selectedSiteId = ref<string | null>(null)
@@ -217,6 +263,30 @@ async function toggleWanted(item: PrdbVideoListItem) {
       await api.prdbWantedVideos.add(item.id)
       item.isWanted = true
       item.isFulfilled = false
+      // Auto-send best NZB to download client if one is configured
+      if (item.hasIndexerMatch && defaultClient.value) {
+        if (!videoMatchesMap.value[item.id]) {
+          try {
+            videoMatchesMap.value[item.id] = await api.prdbVideos.getIndexerMatches(item.id)
+          } catch { /* ignore */ }
+        }
+        const match = bestMatchFor(item.id)
+        if (match && canSend(match)) {
+          const result = await api.downloadClients.send(
+            defaultClient.value.id,
+            match.nzbUrl,
+            match.title,
+            match.indexerId,
+            match.indexerRowId,
+          )
+          if (result.success) {
+            snackbar.value = { show: true, text: 'Added to wanted and sent to download client', color: 'success' }
+            videoMatchesMap.value[item.id] = await api.prdbVideos.getIndexerMatches(item.id)
+          } else {
+            snackbar.value = { show: true, text: `Added to wanted, but failed to send to client: ${result.message}`, color: 'warning' }
+          }
+        }
+      }
     }
   } catch (e: any) {
     error.value = e.message
@@ -241,11 +311,89 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+// Mirror of WantedVideoFulfillmentService.ParseQuality
+function parseQuality(title: string): VideoQuality | null {
+  const t = title.toLowerCase()
+  if (t.includes('2160p') || t.includes('4k') || t.includes('uhd')) return VideoQuality.P2160
+  if (t.includes('1080p') || t.includes('1080i'))                    return VideoQuality.P1080
+  if (t.includes('720p')  || t.includes('720i'))                     return VideoQuality.P720
+  return null
+}
+
+function bestMatchFor(videoId: string): VideoIndexerMatch | null {
+  const matches = videoMatchesMap.value[videoId]
+  if (!matches || matches.length === 0) return null
+  const preferred = settings.value?.preferredVideoQuality ?? VideoQuality.P1080
+  const exact = matches.find(m => parseQuality(m.title) === preferred)
+  if (exact) return exact
+  return [...matches].sort((a, b) => {
+    const qa = parseQuality(a.title) ?? -1
+    const qb = parseQuality(b.title) ?? -1
+    return qb - qa
+  })[0]
+}
+
+function canSend(match: VideoIndexerMatch): boolean {
+  return match.downloadStatus === null || match.downloadStatus === DownloadStatus.Failed
+}
+
+async function loadSettingsAndClients() {
+  try {
+    const [clients, s] = await Promise.all([api.downloadClients.list(), api.settings.get()])
+    defaultClient.value = clients.find(c => c.isEnabled) ?? null
+    settings.value = s
+  } catch {
+    // non-critical
+  }
+}
+
+async function sendBestMatch(item: PrdbVideoListItem) {
+  if (!defaultClient.value) return
+  const match = bestMatchFor(item.id)
+  if (!match) return
+  sendingMatch.value = item.id
+  try {
+    const result = await api.downloadClients.send(
+      defaultClient.value.id,
+      match.nzbUrl,
+      match.title,
+      match.indexerId,
+      match.indexerRowId,
+    )
+    if (result.success) {
+      snackbar.value = { show: true, text: 'Sent to download client', color: 'success' }
+      videoMatchesMap.value[item.id] = await api.prdbVideos.getIndexerMatches(item.id)
+    } else {
+      snackbar.value = { show: true, text: result.message, color: 'error' }
+    }
+  } catch (e: any) {
+    snackbar.value = { show: true, text: e.message, color: 'error' }
+  } finally {
+    sendingMatch.value = null
+  }
+}
+
+watch(activeOverlayId, async (newId) => {
+  if (!newId) return
+  const item = videos.value.find(v => v.id === newId)
+  if (!item?.hasIndexerMatch) return
+  if (videoMatchesMap.value[newId]) return // already loaded
+  loadingMatches.value = newId
+  try {
+    videoMatchesMap.value[newId] = await api.prdbVideos.getIndexerMatches(newId)
+  } catch {
+    // non-critical
+  } finally {
+    loadingMatches.value = null
+  }
+})
+
 const filtersActive = computed(() => !!search.value || !!selectedSiteId.value)
 
 onMounted(() => {
   loadFilterOptions()
   load()
+  loadSettingsAndClients()
   setActions({ icon: 'mdi-tune', title: 'Toggle filters', onClick: toggle, badgeActive: () => filtersActive.value, mobileOnly: true })
 })
 
