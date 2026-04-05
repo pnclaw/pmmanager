@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using pmm.Api.Features.DownloadClients;
@@ -28,6 +27,7 @@ public class DownloadLogsController(AppDbContext db, DownloadPollService pollSer
     {
         var logs = await db.DownloadLogs
             .Include(l => l.DownloadClient)
+            .Include(l => l.Files)
             .OrderByDescending(l => l.CreatedAt)
             .ToListAsync();
 
@@ -42,6 +42,7 @@ public class DownloadLogsController(AppDbContext db, DownloadPollService pollSer
     {
         var log = await db.DownloadLogs
             .Include(l => l.DownloadClient)
+            .Include(l => l.Files)
             .FirstOrDefaultAsync(l => l.Id == id);
 
         return log is null ? NotFound() : Ok(ToResponse(log));
@@ -80,8 +81,8 @@ public class DownloadLogsController(AppDbContext db, DownloadPollService pollSer
         ClientItemId         = log.ClientItemId,
         Status               = (int)log.Status,
         StoragePath          = log.StoragePath,
-        FileNames            = log.FileNames != null
-            ? JsonSerializer.Deserialize<List<string>>(log.FileNames)
+        Files                = log.Files.Count > 0
+            ? log.Files.Select(f => new DownloadLogFileResponse { Id = f.Id, FileName = f.FileName, OsHash = f.OsHash }).ToList()
             : null,
         TotalSizeBytes       = log.TotalSizeBytes,
         DownloadedBytes      = log.DownloadedBytes,

@@ -15,8 +15,8 @@ public class DownloadLogResponse
 
     public string? StoragePath { get; set; }
 
-    /// <summary>Filenames extracted after completion. Null while in progress.</summary>
-    public List<string>? FileNames { get; set; }
+    /// <summary>Files discovered in StoragePath after completion. Null while in progress.</summary>
+    public List<DownloadLogFileResponse>? Files { get; set; }
 
     public long? TotalSizeBytes { get; set; }
     public long? DownloadedBytes { get; set; }

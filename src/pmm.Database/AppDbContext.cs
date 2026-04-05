@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<IndexerRowMatch> IndexerRowMatches => Set<IndexerRowMatch>();
     public DbSet<FolderMapping> FolderMappings => Set<FolderMapping>();
     public DbSet<DownloadLog> DownloadLogs => Set<DownloadLog>();
+    public DbSet<DownloadLogFile> DownloadLogFiles => Set<DownloadLogFile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,6 +62,16 @@ public class AppDbContext : DbContext
         {
             e.HasIndex(f => f.OriginalFolder).IsUnique();
             e.HasIndex(f => f.MappedToFolder).IsUnique();
+        });
+
+        modelBuilder.Entity<DownloadLogFile>(e =>
+        {
+            e.HasOne(f => f.DownloadLog)
+             .WithMany(l => l.Files)
+             .HasForeignKey(f => f.DownloadLogId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(f => f.DownloadLogId);
         });
 
         modelBuilder.Entity<PrdbPreDbEntry>(e =>
