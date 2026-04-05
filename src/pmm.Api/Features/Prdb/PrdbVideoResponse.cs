@@ -11,6 +11,7 @@ public class PrdbVideoListResponse
     public int ActorCount { get; set; }
     public bool IsWanted { get; set; }
     public bool? IsFulfilled { get; set; }
+    public bool HasIndexerMatch { get; set; }
 }
 
 public class PrdbVideoResponse

@@ -224,6 +224,17 @@ export interface PrdbVideoDetail {
   isFulfilled: boolean | null
 }
 
+export interface VideoIndexerMatch {
+  indexerRowId: string
+  indexerId: string
+  title: string
+  nzbUrl: string
+  nzbSize: number
+  nzbPublishedAt: string | null
+  category: number
+  downloadStatus: DownloadStatus | null
+}
+
 export interface PrdbActor {
   id: string
   name: string
@@ -264,6 +275,7 @@ export interface PrdbVideoListItem {
   actorCount: number
   isWanted: boolean
   isFulfilled: boolean | null
+  hasIndexerMatch: boolean
 }
 
 export interface PrdbVideoFilterOptions {
@@ -520,6 +532,7 @@ export const api = {
     },
     filterOptions: () => request<PrdbVideoFilterOptions>('/prdb-videos/filter-options'),
     get: (id: string) => request<PrdbVideoDetail>(`/prdb-videos/${id}`),
+    getIndexerMatches: (id: string) => request<VideoIndexerMatch[]>(`/prdb-videos/${id}/indexer-matches`),
   },
   prdbPreNames: {
     search: (params: { q?: string; releaseDateFrom?: string; releaseDateTo?: string }) => {

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pmm.Database;
+using Pmm.Database.Enums;
 
 namespace pmm.Api.Features.Prdb;
 
@@ -44,6 +45,7 @@ public class PrdbVideosController(AppDbContext db) : ControllerBase
                 ActorCount       = v.VideoActors.Count,
                 IsWanted         = db.PrdbWantedVideos.Any(w => w.VideoId == v.Id),
                 IsFulfilled      = db.PrdbWantedVideos.Where(w => w.VideoId == v.Id).Select(w => (bool?)w.IsFulfilled).FirstOrDefault(),
+                HasIndexerMatch  = db.IndexerRowMatches.Any(m => m.PrdbVideoId == v.Id),
             })
             .ToListAsync();
 
@@ -107,5 +109,38 @@ public class PrdbVideosController(AppDbContext db) : ControllerBase
             PreNames    = video.PreDbEntries.Select(p => p.Title).ToList(),
             IsFulfilled = wanted?.IsFulfilled,
         });
+    }
+
+    [HttpGet("{id:guid}/indexer-matches")]
+    [EndpointSummary("Get indexer matches for a video")]
+    [EndpointDescription("Returns all indexer rows matched to this video, along with their latest download status if any.")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetIndexerMatches(Guid id)
+    {
+        if (!await db.PrdbVideos.AnyAsync(v => v.Id == id))
+            return NotFound();
+
+        var matches = await db.IndexerRowMatches
+            .Where(m => m.PrdbVideoId == id)
+            .Select(m => new VideoIndexerMatchResponse
+            {
+                IndexerRowId   = m.IndexerRow.Id,
+                IndexerId      = m.IndexerRow.IndexerId,
+                Title          = m.IndexerRow.Title,
+                NzbUrl         = m.IndexerRow.NzbUrl,
+                NzbSize        = m.IndexerRow.NzbSize,
+                NzbPublishedAt = m.IndexerRow.NzbPublishedAt,
+                Category       = m.IndexerRow.Category,
+                DownloadStatus = db.DownloadLogs
+                    .Where(l => l.IndexerRowId == m.IndexerRow.Id)
+                    .OrderByDescending(l => l.CreatedAt)
+                    .Select(l => (DownloadStatus?)l.Status)
+                    .FirstOrDefault(),
+            })
+            .OrderByDescending(m => m.NzbPublishedAt)
+            .ToListAsync();
+
+        return Ok(matches);
     }
 }

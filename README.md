@@ -11,7 +11,7 @@ A self-hosted private media manager built with .NET 10 and Vue 3.
 | Logging | Serilog (console + rolling file) |
 | Container | Docker, Docker Compose |
 
-## Getting Started
+## Running the App
 
 ### Docker Hub (recommended)
 
@@ -34,13 +34,29 @@ docker run -d ... pnclaw/pmmanager:1.0.0
 
 ### Docker Compose
 
-```bash
-docker-compose up
+Create a `docker-compose.yml` and run `docker compose up -d`:
+
+```yaml
+services:
+  pmm:
+    image: pnclaw/pmmanager:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    restart: unless-stopped
 ```
 
 App runs at [http://localhost:8080](http://localhost:8080). Data is persisted to `./data/app.db` and logs to `./logs/`.
 
-### Local Development
+## Development
+
+### Hot reload (recommended)
+
+Run the backend and frontend separately for a faster feedback loop.
 
 **Backend**
 
@@ -59,6 +75,16 @@ npm run dev
 ```
 
 The frontend dev server proxies `/api` requests to the backend automatically.
+
+### Docker (build from source)
+
+To test the production Docker build locally:
+
+```bash
+docker compose up -d --build
+```
+
+This builds the image from source and runs it at [http://localhost:8080](http://localhost:8080).
 
 ## Data Management
 
