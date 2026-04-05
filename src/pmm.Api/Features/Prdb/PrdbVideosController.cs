@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pmm.Database;
@@ -121,25 +122,52 @@ public class PrdbVideosController(AppDbContext db) : ControllerBase
         if (!await db.PrdbVideos.AnyAsync(v => v.Id == id))
             return NotFound();
 
-        var matches = await db.IndexerRowMatches
+        var rows = await db.IndexerRowMatches
             .Where(m => m.PrdbVideoId == id)
-            .Select(m => new VideoIndexerMatchResponse
+            .OrderByDescending(m => m.IndexerRow.NzbPublishedAt)
+            .Select(m => new
             {
-                IndexerRowId   = m.IndexerRow.Id,
-                IndexerId      = m.IndexerRow.IndexerId,
-                Title          = m.IndexerRow.Title,
-                NzbUrl         = m.IndexerRow.NzbUrl,
-                NzbSize        = m.IndexerRow.NzbSize,
-                NzbPublishedAt = m.IndexerRow.NzbPublishedAt,
-                Category       = m.IndexerRow.Category,
-                DownloadStatus = db.DownloadLogs
-                    .Where(l => l.IndexerRowId == m.IndexerRow.Id)
-                    .OrderByDescending(l => l.CreatedAt)
-                    .Select(l => (DownloadStatus?)l.Status)
-                    .FirstOrDefault(),
+                m.IndexerRow.Id,
+                m.IndexerRow.IndexerId,
+                m.IndexerRow.Title,
+                m.IndexerRow.NzbUrl,
+                m.IndexerRow.NzbSize,
+                m.IndexerRow.NzbPublishedAt,
+                m.IndexerRow.Category,
             })
-            .OrderByDescending(m => m.NzbPublishedAt)
             .ToListAsync();
+
+        var rowIds = rows.Select(r => r.Id).ToList();
+
+        var latestLogs = await db.DownloadLogs
+            .Where(l => rowIds.Contains(l.IndexerRowId))
+            .OrderByDescending(l => l.CreatedAt)
+            .Select(l => new { l.IndexerRowId, l.Status, l.StoragePath, l.FileNames })
+            .ToListAsync();
+
+        var logByRow = latestLogs
+            .GroupBy(l => l.IndexerRowId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var matches = rows.Select(r =>
+        {
+            logByRow.TryGetValue(r.Id, out var log);
+            return new VideoIndexerMatchResponse
+            {
+                IndexerRowId   = r.Id,
+                IndexerId      = r.IndexerId,
+                Title          = r.Title,
+                NzbUrl         = r.NzbUrl,
+                NzbSize        = r.NzbSize,
+                NzbPublishedAt = r.NzbPublishedAt,
+                Category       = r.Category,
+                DownloadStatus = log == null ? null : (DownloadStatus?)log.Status,
+                StoragePath    = log?.StoragePath,
+                FileNames      = log?.FileNames != null
+                    ? JsonSerializer.Deserialize<List<string>>(log.FileNames)
+                    : null,
+            };
+        }).ToList();
 
         return Ok(matches);
     }

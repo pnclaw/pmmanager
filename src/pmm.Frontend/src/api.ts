@@ -233,6 +233,8 @@ export interface VideoIndexerMatch {
   nzbPublishedAt: string | null
   category: number
   downloadStatus: DownloadStatus | null
+  storagePath: string | null
+  fileNames: string[] | null
 }
 
 export interface PrdbActor {
@@ -592,6 +594,9 @@ export const api = {
       request<FolderMapping>(`/folder-mappings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) =>
       request<void>(`/folder-mappings/${id}`, { method: 'DELETE' }),
+  },
+  shell: {
+    open: (path: string) => request<void>('/shell/open', { method: 'POST', body: JSON.stringify({ path }) }),
   },
   downloadClients: {
     list: () => request<DownloadClient[]>('/download-clients'),
